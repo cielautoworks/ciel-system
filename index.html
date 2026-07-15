@@ -19,7 +19,9 @@ header h1{margin:0;font-size:20px;font-weight:600;}
 header p{margin:4px 0 0;font-size:13px;opacity:.9;}
 .wrap{padding:20px 28px 60px;max-width:1400px;margin:0 auto;}
 .summary{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:10px;margin-bottom:18px;}
-.card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:14px 16px;}
+.card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:14px 16px;cursor:pointer;transition:transform .1s,box-shadow .1s;}
+.card:hover{box-shadow:0 2px 8px rgba(0,0,0,.06);}
+.card.active-card{outline:2px solid var(--sky);outline-offset:-2px;}
 .card .label{font-size:12px;color:var(--text-sub);margin:0 0 4px;}
 .card .value{font-size:22px;font-weight:600;margin:0;}
 .card.danger{background:var(--danger-bg);border-color:var(--danger-border);}
@@ -179,13 +181,13 @@ const shakenMismatchCount = rows.filter(r=>r.shakenMismatch).length;
 const cleanCount = rows.filter(r=>!r.missing && !r.priceMismatch && !r.mileageMismatch && !r.shakenMismatch).length;
 
 document.getElementById('summary').innerHTML = `
-  <div class="card"><p class="label">対象車両数(4サイト合算)</p><p class="value">${total}台</p></div>
-  <div class="card danger"><p class="label">掲載漏れ(サイト間)</p><p class="value">${missingCount}台</p></div>
-  <div class="card warn"><p class="label">棚卸に該当なし(要確認)</p><p class="value">${notInStockCount}台</p></div>
-  <div class="card warn"><p class="label">価格ずれ</p><p class="value">${priceMismatchCount}台</p></div>
-  <div class="card warn"><p class="label">走行距離ずれ</p><p class="value">${mileageMismatchCount}台</p></div>
-  <div class="card warn"><p class="label">車検ずれ</p><p class="value">${shakenMismatchCount}台</p></div>
-  <div class="card"><p class="label">全項目一致</p><p class="value">${cleanCount}台</p></div>
+  <div class="card" data-filter="all"><p class="label">対象車両数(4サイト合算)</p><p class="value">${total}台</p></div>
+  <div class="card danger" data-filter="missing"><p class="label">掲載漏れ(サイト間)</p><p class="value">${missingCount}台</p></div>
+  <div class="card warn" data-filter="notinstock"><p class="label">棚卸に該当なし(要確認)</p><p class="value">${notInStockCount}台</p></div>
+  <div class="card warn" data-filter="price"><p class="label">価格ずれ</p><p class="value">${priceMismatchCount}台</p></div>
+  <div class="card warn" data-filter="mileage"><p class="label">走行距離ずれ</p><p class="value">${mileageMismatchCount}台</p></div>
+  <div class="card warn" data-filter="shaken"><p class="label">車検ずれ</p><p class="value">${shakenMismatchCount}台</p></div>
+  <div class="card" data-filter="clean"><p class="label">全項目一致</p><p class="value">${cleanCount}台</p></div>
 `;
 
 function siteCell(site, r){
@@ -251,6 +253,7 @@ function applyFilters(){
   if(currentFilter==='price') filtered = filtered.filter(r=>r.priceMismatch);
   if(currentFilter==='mileage') filtered = filtered.filter(r=>r.mileageMismatch);
   if(currentFilter==='shaken') filtered = filtered.filter(r=>r.shakenMismatch);
+  if(currentFilter==='clean') filtered = filtered.filter(r=>!r.missing && !r.priceMismatch && !r.mileageMismatch && !r.shakenMismatch);
   if(currentSearch){
     const q = currentSearch.toLowerCase();
     filtered = filtered.filter(r => r.vin.toLowerCase().includes(q) || r.carName.toLowerCase().includes(q));
@@ -276,21 +279,27 @@ function render(list){
   `).join('');
 }
 
-document.querySelectorAll('.filterbtn').forEach(btn=>{
-  btn.addEventListener('click', ()=>{
-    const clicked = btn.dataset.filter;
-    if(clicked === 'all'){
-      currentFilter = 'all';
-    } else if(currentFilter === clicked){
-      currentFilter = 'all';
-    } else {
-      currentFilter = clicked;
-    }
-    document.querySelectorAll('.filterbtn').forEach(b=>{
-      b.classList.toggle('active', b.dataset.filter === currentFilter);
-    });
-    applyFilters();
+function setFilter(key){
+  if(currentFilter === key){
+    currentFilter = 'all';
+  } else {
+    currentFilter = key;
+  }
+  document.querySelectorAll('.filterbtn').forEach(b=>{
+    b.classList.toggle('active', b.dataset.filter === currentFilter);
   });
+  document.querySelectorAll('.card[data-filter]').forEach(c=>{
+    c.classList.toggle('active-card', c.dataset.filter === currentFilter && currentFilter !== 'all');
+  });
+  applyFilters();
+}
+
+document.querySelectorAll('.filterbtn').forEach(btn=>{
+  btn.addEventListener('click', ()=> setFilter(btn.dataset.filter));
+});
+document.getElementById('summary').addEventListener('click', (e)=>{
+  const card = e.target.closest('.card[data-filter]');
+  if(card) setFilter(card.dataset.filter);
 });
 document.getElementById('searchBox').addEventListener('input', (e)=>{
   currentSearch = e.target.value;
