@@ -278,9 +278,17 @@ function render(list){
 
 document.querySelectorAll('.filterbtn').forEach(btn=>{
   btn.addEventListener('click', ()=>{
-    document.querySelectorAll('.filterbtn').forEach(b=>b.classList.remove('active'));
-    btn.classList.add('active');
-    currentFilter = btn.dataset.filter;
+    const clicked = btn.dataset.filter;
+    if(clicked === 'all'){
+      currentFilter = 'all';
+    } else if(currentFilter === clicked){
+      currentFilter = 'all';
+    } else {
+      currentFilter = clicked;
+    }
+    document.querySelectorAll('.filterbtn').forEach(b=>{
+      b.classList.toggle('active', b.dataset.filter === currentFilter);
+    });
     applyFilters();
   });
 });
