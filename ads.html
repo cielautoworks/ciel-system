@@ -1,0 +1,631 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>広告掲載状況ダッシュボード | シエルオートワークス</title>
+<style>
+:root{
+  --sky:#4AABCF; --pink:#D97A9A;
+  --bg:#f5f6f4; --card:#ffffff; --border:#e2e2de;
+  --text:#232320; --text-sub:#6b6b65; --text-muted:#9a9a92;
+  --danger-bg:#fbeaea; --danger-text:#a32d2d; --danger-border:#e9b9b9;
+  --warn-bg:#fbf1de; --warn-text:#8a5a0a; --warn-border:#eecf9d;
+  --ok-bg:#e9f4ea; --ok-text:#2c6b34;
+}
+*{box-sizing:border-box;}
+body{margin:0;font-family:"Hiragino Kaku Gothic ProN","Yu Gothic",sans-serif;background:var(--bg);color:var(--text);}
+header{background:linear-gradient(90deg,var(--sky),#3d8fae);color:#fff;padding:20px 28px;}
+header h1{margin:0;font-size:20px;font-weight:600;}
+header p{margin:4px 0 0;font-size:13px;opacity:.9;}
+.wrap{padding:20px 28px 60px;max-width:1440px;margin:0 auto;}
+.summary{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:10px;margin-bottom:18px;}
+.card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:14px 16px;cursor:pointer;transition:box-shadow .1s;}
+.card:hover{box-shadow:0 2px 8px rgba(0,0,0,.06);}
+.card.active-card{outline:2px solid var(--sky);outline-offset:-2px;}
+.card .label{font-size:12px;color:var(--text-sub);margin:0 0 4px;}
+.card .value{font-size:22px;font-weight:600;margin:0;}
+.card.danger{background:var(--danger-bg);border-color:var(--danger-border);}
+.card.danger .value{color:var(--danger-text);}
+.card.warn{background:var(--warn-bg);border-color:var(--warn-border);}
+.card.warn .value{color:var(--warn-text);}
+.toolbar{display:flex;gap:8px;align-items:center;margin-bottom:14px;flex-wrap:wrap;}
+.toolbar input[type=text]{flex:1;min-width:200px;padding:8px 12px;border:1px solid var(--border);border-radius:8px;font-size:13px;}
+.filterbtn{font-size:12.5px;padding:6px 12px;border-radius:20px;border:1px solid var(--border);background:#fff;cursor:pointer;color:var(--text-sub);}
+.filterbtn.active{background:var(--sky);color:#fff;border-color:var(--sky);}
+.filterbtn.active.d{background:var(--danger-text);border-color:var(--danger-text);}
+.filterbtn.active.w{background:var(--warn-text);border-color:var(--warn-text);}
+table{width:100%;border-collapse:collapse;background:var(--card);border-radius:10px;overflow:hidden;font-size:12.5px;}
+thead th{position:sticky;top:0;background:#fafaf8;text-align:left;padding:9px 8px;font-weight:600;color:var(--text-sub);border-bottom:1px solid var(--border);white-space:nowrap;}
+thead th.sortable{cursor:pointer;user-select:none;}
+thead th.sortable:hover{color:var(--sky);}
+thead th .arrow{font-size:10px;color:var(--text-muted);margin-left:2px;}
+thead th.sort-active .arrow{color:var(--sky);}
+tbody td{padding:8px;border-bottom:1px solid #eeeeea;vertical-align:top;white-space:nowrap;}
+tbody tr:hover{background:#fafbfc;}
+.vin{font-family:monospace;color:var(--text-muted);font-size:11.5px;}
+.carname{font-weight:600;}
+.grade{color:var(--text-sub);font-size:11.5px;}
+.miss{color:var(--danger-text);font-weight:600;}
+.mismatch{color:var(--warn-text);font-weight:600;}
+.badge{display:inline-block;font-size:11px;padding:2px 8px;border-radius:20px;margin:1px 2px 1px 0;}
+.badge.ok{background:var(--ok-bg);color:var(--ok-text);}
+.badge.miss{background:var(--danger-bg);color:var(--danger-text);}
+.badge.warn{background:var(--warn-bg);color:var(--warn-text);}
+.site-col{border-left:2px solid var(--border);}
+.subtle{color:var(--text-muted);font-size:11px;}
+.tablewrap{overflow-x:auto;border:1px solid var(--border);border-radius:10px;}
+.legend{font-size:11.5px;color:var(--text-sub);margin:10px 0 4px;}
+.count-hint{font-size:12px;color:var(--text-sub);margin:0 0 8px;}
+.uploadPanel{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:14px 16px;margin-bottom:16px;}
+.uploadPanel summary{cursor:pointer;font-weight:600;font-size:13.5px;color:var(--text);}
+.uploadGrid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px;margin-top:12px;}
+.uploadItem label{display:block;font-size:12px;color:var(--text-sub);margin-bottom:4px;}
+.uploadItem input[type=file]{width:100%;font-size:11.5px;}
+.uploadStatus{font-size:11.5px;color:var(--text-muted);margin-top:4px;min-height:14px;}
+.uploadStatus.ok{color:var(--ok-text);}
+.uploadStatus.err{color:var(--danger-text);}
+.updateBtn{margin-top:14px;background:var(--sky);color:#fff;border:none;border-radius:8px;padding:9px 20px;font-size:13px;cursor:pointer;font-weight:600;}
+.updateBtn:hover{background:#3d8fae;}
+.lastUpdated{font-size:12px;color:var(--text-sub);margin-top:8px;}
+</style>
+</head>
+<body>
+<header>
+<h1>広告掲載状況ダッシュボード</h1>
+<p>カーセンサー ／ グーネット ／ QuickNetwork（業販） ／ オートサーバー（業販） の4サイト突合(棚卸一覧は参考照合用)</p>
+</header>
+<div class="wrap">
+
+<details class="uploadPanel">
+<summary>📂 CSVを読み込んでデータを更新</summary>
+<div class="uploadGrid">
+  <div class="uploadItem">
+    <label>カーセンサー(torokubukken*.csv)</label>
+    <input type="file" id="file-carsensor" accept=".csv,.txt">
+    <div class="uploadStatus" id="status-carsensor"></div>
+  </div>
+  <div class="uploadItem">
+    <label>グーネット(在庫検索一覧*.csv)</label>
+    <input type="file" id="file-goonet" accept=".csv,.txt">
+    <div class="uploadStatus" id="status-goonet"></div>
+  </div>
+  <div class="uploadItem">
+    <label>QuickNetwork(_quicknetwork*.csv)</label>
+    <input type="file" id="file-quicknetwork" accept=".csv,.txt">
+    <div class="uploadStatus" id="status-quicknetwork"></div>
+  </div>
+  <div class="uploadItem">
+    <label>オートサーバー(貼付テキスト保存.txt)</label>
+    <input type="file" id="file-autoserver" accept=".csv,.txt">
+    <div class="uploadStatus" id="status-autoserver"></div>
+  </div>
+  <div class="uploadItem">
+    <label>車両棚卸一覧(*.csv・任意)</label>
+    <input type="file" id="file-tanaoroshi" accept=".csv,.txt">
+    <div class="uploadStatus" id="status-tanaoroshi"></div>
+  </div>
+</div>
+<button class="updateBtn" id="updateDataBtn">選択したファイルでダッシュボードを更新</button>
+<div class="lastUpdated" id="lastUpdated"></div>
+</details>
+
+<div class="summary" id="summary"></div>
+
+<div class="toolbar">
+  <input type="text" id="searchBox" placeholder="車台番号・車名で検索">
+  <button class="filterbtn active" data-filter="all">すべて</button>
+  <button class="filterbtn d" data-filter="missing">掲載漏れのみ</button>
+  <button class="filterbtn w" data-filter="notinstock">棚卸に該当なし(要確認)</button>
+  <button class="filterbtn w" data-filter="price">価格ずれのみ</button>
+  <button class="filterbtn w" data-filter="mileage">走行距離ずれ</button>
+  <button class="filterbtn w" data-filter="shaken">車検ずれ</button>
+</div>
+
+<p class="count-hint" id="countHint"></p>
+
+<div class="tablewrap">
+<table>
+<thead>
+<tr>
+  <th class="sortable" data-sort="vin">車台番号<span class="arrow">↕</span></th>
+  <th>棚卸</th>
+  <th class="sortable" data-sort="carname">車両<span class="arrow">↕</span></th>
+  <th class="site-col sortable" data-sort="carsensor">カーセンサー<span class="arrow">↕</span><br><span class="subtle">支払総額</span></th>
+  <th class="sortable" data-sort="goonet">グーネット<span class="arrow">↕</span><br><span class="subtle">支払総額</span></th>
+  <th class="site-col sortable" data-sort="quicknetwork">QuickNetwork<span class="arrow">↕</span><br><span class="subtle">業販価格</span></th>
+  <th class="sortable" data-sort="autoserver">オートサーバー<span class="arrow">↕</span><br><span class="subtle">業販価格</span></th>
+  <th class="site-col sortable" data-sort="mileage">走行距離<span class="arrow">↕</span></th>
+  <th class="sortable" data-sort="shaken">車検<span class="arrow">↕</span></th>
+  <th class="sortable" data-sort="flags">フラグ<span class="arrow">↕</span></th>
+</tr>
+</thead>
+<tbody id="tbody"></tbody>
+</table>
+</div>
+
+<p class="legend">※掲載漏れ＝いずれかのサイトで掲載中なのに別サイトで非掲載・未掲載　／　棚卸に該当なし＝車両棚卸一覧にVINが見当たらない車両（売約済みの可能性がありますが棚卸には非売品も混在するため断定はできません。要確認の参考情報です）　／　価格ずれ＝小売2サイト間または業販2サイト間で金額不一致　／　走行距離ずれ＝サイト間最大差3,000km超　／　車検ずれ＝有効期限(年月)がサイト間で不一致</p>
+
+</div>
+
+<script id="data-json" type="application/json">{"carsensor": {"JC1-1059851": {"car_name": "ホンダ ライフ", "grade": "660パステルHIDスペシャル", "price_total": 298000, "price_honntai": 198000, "mileage_km": 57000, "shaken": "車検整備付", "status": "掲載"}, "LA100F-0003009": {"car_name": "スバル ステラ", "grade": "660L", "price_total": 248000, "price_honntai": 148000, "mileage_km": 108000, "shaken": "車検整備付", "status": "掲載"}, "JE1-1112132": {"car_name": "ホンダ ゼスト", "grade": "660D", "price_total": 218000, "price_honntai": 118000, "mileage_km": 121000, "shaken": "車検整備付", "status": "掲載"}, "LA650S-1006507": {"car_name": "ダイハツ タント", "grade": "660X", "price_total": 998000, "price_honntai": 898000, "mileage_km": 23000, "shaken": "車検整備付", "status": "掲載"}, "LA100S-0279917": {"car_name": "ダイハツ ムーヴ", "grade": "660カスタムX", "price_total": 248000, "price_honntai": 148000, "mileage_km": 175000, "shaken": "2027年1月", "status": "掲載"}, "LA100S-0253061": {"car_name": "ダイハツ ムーヴ", "grade": "660X SA", "price_total": 298000, "price_honntai": 198000, "mileage_km": 84000, "shaken": "2028年7月", "status": "掲載"}, "ZVW50-8006757": {"car_name": "トヨタ プリウス", "grade": "1.8Sツーリングセレクション", "price_total": 1098000, "price_honntai": 998000, "mileage_km": 109000, "shaken": "車検整備付", "status": "掲載"}, "ZWR80-0036895": {"car_name": "トヨタ ノア", "grade": "1.8ハイブリッドX", "price_total": 898000, "price_honntai": 798000, "mileage_km": 132000, "shaken": "車検整備付", "status": "掲載"}, "NHP10-2265677": {"car_name": "トヨタ アクア", "grade": "1.5S", "price_total": 448000, "price_honntai": 348000, "mileage_km": 112000, "shaken": "車検整備付", "status": "掲載"}, "JC1-2000918": {"car_name": "ホンダ ライフ", "grade": "660ディーバ ターボ", "price_total": 218000, "price_honntai": 118000, "mileage_km": 172000, "shaken": "車検整備付", "status": "掲載"}, "JC1-1017527": {"car_name": "ホンダ ライフ", "grade": "660G", "price_total": 248000, "price_honntai": 148000, "mileage_km": 74000, "shaken": "2028年7月", "status": "掲載"}, "LA160S-0000822": {"car_name": "ダイハツ ムーヴ", "grade": "660X SA 4WD", "price_total": 298000, "price_honntai": 198000, "mileage_km": 160000, "shaken": "車検整備付", "status": "掲載"}, "NHP10-2446214": {"car_name": "トヨタ アクア", "grade": "1.5S", "price_total": 598000, "price_honntai": 498000, "mileage_km": 113000, "shaken": "車検整備付", "status": "掲載"}, "ZVW51-8007216": {"car_name": "トヨタ プリウス", "grade": "1.8Aプレミアム ツーリングセレクション", "price_total": 998000, "price_honntai": 898000, "mileage_km": 177000, "shaken": "車検整備付", "status": "掲載"}, "NHP10-2108378": {"car_name": "トヨタ アクア", "grade": "1.5S", "price_total": 448000, "price_honntai": 348000, "mileage_km": 113000, "shaken": "車検整備付", "status": "掲載"}, "ZWR80-0097782": {"car_name": "トヨタ ノア", "grade": "1.8ハイブリッドG", "price_total": 1198000, "price_honntai": 1098000, "mileage_km": 93000, "shaken": "車検整備付", "status": "掲載"}, "ZVW51-8020085": {"car_name": "トヨタ プリウス", "grade": "1.8A", "price_total": 1398000, "price_honntai": 1298000, "mileage_km": 86000, "shaken": "車検整備付", "status": "掲載"}, "JC1-1218015": {"car_name": "ホンダ ライフ", "grade": "660G", "price_total": 298000, "price_honntai": 198000, "mileage_km": 69000, "shaken": "車検整備付", "status": "掲載"}, "LA350S-0131010": {"car_name": "ダイハツ ミライース", "grade": "660L", "price_total": 648000, "price_honntai": 548000, "mileage_km": 21000, "shaken": "車検整備付", "status": "掲載"}, "JE2-1301272": {"car_name": "ホンダ ゼスト", "grade": "660D 4WD", "price_total": 248000, "price_honntai": 148000, "mileage_km": 62000, "shaken": "2027年4月", "status": "掲載"}, "LA350S-0074998": {"car_name": "ダイハツ ミライース", "grade": "660L", "price_total": 498000, "price_honntai": 398000, "mileage_km": 89000, "shaken": "2027年4月", "status": "掲載"}, "LA800S-0181613": {"car_name": "ダイハツ ムーヴキャンバス", "grade": "660GメイクアップリミテッドSAⅢ", "price_total": 598000, "price_honntai": 498000, "mileage_km": 145000, "shaken": "車検整備付", "status": "掲載"}, "LA250S-0147194": {"car_name": "ダイハツ キャスト", "grade": "スタイル660XリミテッドSAⅢ", "price_total": 598000, "price_honntai": 498000, "mileage_km": 84000, "shaken": "2027年10月", "status": "掲載"}, "ZWR80-0209244": {"car_name": "トヨタ ヴォクシー", "grade": "1.8ハイブリッドV", "price_total": 1098000, "price_honntai": 998000, "mileage_km": 157000, "shaken": "2027年8月", "status": "掲載"}, "LA150S-2115382": {"car_name": "ダイハツ ムーヴ", "grade": "660XリミテッドⅡ SAⅢ", "price_total": 798000, "price_honntai": 698000, "mileage_km": 94000, "shaken": "車検整備付", "status": "掲載"}, "JC1-1242701": {"car_name": "ホンダ ライフ", "grade": "660ディーバ スマートスタイル", "price_total": 298000, "price_honntai": 198000, "mileage_km": 105000, "shaken": "車検整備付", "status": "掲載"}, "LA110S-0009912": {"car_name": "ダイハツ ムーヴ", "grade": "660L 4WD", "price_total": 248000, "price_honntai": 148000, "mileage_km": 122000, "shaken": "車検整備付", "status": "掲載"}, "MR31S-298541": {"car_name": "スズキ ハスラー", "grade": "660G", "price_total": 498000, "price_honntai": 398000, "mileage_km": 103000, "shaken": "車検整備付", "status": "非掲載"}, "LA350S-0130640": {"car_name": "ダイハツ ミライース", "grade": "660X SAⅢ", "price_total": 628000, "price_honntai": 528000, "mileage_km": 16000, "shaken": "車検整備付", "status": "掲載"}, "LA100S-0076832": {"car_name": "ダイハツ ムーヴ", "grade": "660L", "price_total": 278000, "price_honntai": 178000, "mileage_km": 80000, "shaken": "車検整備付", "status": "掲載"}, "LA110S-0010044": {"car_name": "ダイハツ ムーヴ", "grade": "660L 4WD", "price_total": 248000, "price_honntai": 148000, "mileage_km": 137000, "shaken": "車検整備付", "status": "掲載"}, "LA650S-1070524": {"car_name": "ダイハツ タント", "grade": "660X", "price_total": 898000, "price_honntai": 798000, "mileage_km": 70000, "shaken": "車検整備付", "status": "掲載"}, "LA600S-0021715": {"car_name": "ダイハツ タント", "grade": "660X SA", "price_total": 498000, "price_honntai": 398000, "mileage_km": 120000, "shaken": "車検整備付", "status": "掲載"}, "LA160S-1012901": {"car_name": "ダイハツ ムーヴ", "grade": "660XターボSAⅢ 4WD", "price_total": 598000, "price_honntai": 498000, "mileage_km": 97000, "shaken": "2027年3月", "status": "掲載"}, "LA250S-0041710": {"car_name": "ダイハツ キャスト", "grade": "スタイル660G SAⅡ", "price_total": 498000, "price_honntai": 398000, "mileage_km": 136000, "shaken": "2027年4月", "status": "掲載"}, "U62V-2201086": {"car_name": "三菱 ミニキャブ", "grade": "バン660CL ハイルーフ 4WD", "price_total": 598000, "price_honntai": 498000, "mileage_km": 26000, "shaken": "2027年2月", "status": "掲載"}, "LA110F-0000624": {"car_name": "スバル ステラ", "grade": "660L 4WD", "price_total": 498000, "price_honntai": 398000, "mileage_km": 29000, "shaken": "車検整備付", "status": "掲載"}, "NHP10-2170218": {"car_name": "トヨタ アクア", "grade": "1.5S", "price_total": 398000, "price_honntai": 298000, "mileage_km": 109000, "shaken": "車検整備付", "status": "掲載"}, "LA150F-0011622": {"car_name": "スバル ステラ", "grade": "660Lスマートアシスト", "price_total": 598000, "price_honntai": 498000, "mileage_km": 51000, "shaken": "2027年11月", "status": "掲載"}, "LA160S-0011045": {"car_name": "ダイハツ ムーヴ", "grade": "660L SAⅡ 4WD", "price_total": 598000, "price_honntai": 498000, "mileage_km": 93000, "shaken": "車検整備付", "status": "掲載"}, "U62T-0402487": {"car_name": "三菱 ミニキャブ", "grade": "トラック660Vタイプ エアコン付 4WD", "price_total": 398000, "price_honntai": 298000, "mileage_km": 51000, "shaken": "車検整備付", "status": "掲載"}, "DA63T-470793": {"car_name": "スズキ キャリイ", "grade": "トラック660KCエアコン・パワステ3方開 4WD", "price_total": 598000, "price_honntai": 498000, "mileage_km": 16000, "shaken": "車検整備付", "status": "掲載"}, "LA250S-0105700": {"car_name": "ダイハツ キャスト", "grade": "アクティバ660GプライムC SAⅡ", "price_total": 598000, "price_honntai": 498000, "mileage_km": 123000, "shaken": "車検整備付", "status": "掲載"}, "JC1-1052091": {"car_name": "ホンダ ライフ", "grade": "660パステル", "price_total": 198000, "price_honntai": 98000, "mileage_km": 181000, "shaken": "車検整備付", "status": "掲載"}, "LA650S-0397320": {"car_name": "ダイハツ タント", "grade": "660X", "price_total": 1398000, "price_honntai": 1298000, "mileage_km": 6000, "shaken": "2027年3月", "status": "非掲載"}, "JC2-1206008": {"car_name": "ホンダ ライフ", "grade": "660Gスマートプラス 4WD", "price_total": 298000, "price_honntai": 198000, "mileage_km": 106000, "shaken": "車検整備付", "status": "非掲載"}, "LA900S-0035560": {"car_name": "ダイハツ タフト", "grade": "660G", "price_total": 1198000, "price_honntai": 1098000, "mileage_km": 44000, "shaken": "車検整備付", "status": "掲載"}, "LA900S-0104497": {"car_name": "ダイハツ タフト", "grade": "660G", "price_total": 1298000, "price_honntai": 1198000, "mileage_km": 50000, "shaken": "車検整備付", "status": "掲載"}, "ZWR80-0109372": {"car_name": "トヨタ ノア", "grade": "1.8ハイブリッドXディライト プラス", "price_total": 998000, "price_honntai": 898000, "mileage_km": 151000, "shaken": "2027年4月", "status": "掲載"}, "NHP10-6146424": {"car_name": "トヨタ アクア", "grade": "1.5S", "price_total": 448000, "price_honntai": 348000, "mileage_km": 146000, "shaken": "車検整備付", "status": "掲載"}, "MXPK16-2011139": {"car_name": "トヨタ アクア", "grade": "1.5X E-Four 4WD", "price_total": 1298000, "price_honntai": 1198000, "mileage_km": 87000, "shaken": "車検整備付", "status": "掲載"}, "MXPK16-2010970": {"car_name": "トヨタ アクア", "grade": "1.5X E-Four 4WD", "price_total": 1398000, "price_honntai": 1298000, "mileage_km": 82000, "shaken": "車検整備付", "status": "掲載"}, "LA150S-2009695": {"car_name": "ダイハツ ムーヴ", "grade": "660L SAⅢ", "price_total": 798000, "price_honntai": 698000, "mileage_km": 54000, "shaken": "2028年4月", "status": "掲載"}, "JC1-1016369": {"car_name": "ホンダ ライフ", "grade": "660G", "price_total": 248000, "price_honntai": 148000, "mileage_km": 63000, "shaken": "車検整備付", "status": "掲載"}, "MR31S-208198": {"car_name": "スズキ ハスラー", "grade": "660G", "price_total": 498000, "price_honntai": 398000, "mileage_km": 135000, "shaken": "2027年3月", "status": "非掲載"}, "LA260S-0012407": {"car_name": "ダイハツ キャスト", "grade": "アクティバ660X SAⅡ 4WD", "price_total": 448000, "price_honntai": 348000, "mileage_km": 152000, "shaken": "2027年6月", "status": "掲載"}, "AWS210-6001041": {"car_name": "トヨタ クラウン", "grade": "アスリート ハイブリッド2.5", "price_total": 1398000, "price_honntai": 1298000, "mileage_km": 164000, "shaken": "車検整備付", "status": "掲載"}, "LA650S-0126228": {"car_name": "ダイハツ タント", "grade": "660カスタムX", "price_total": 898000, "price_honntai": 798000, "mileage_km": 111000, "shaken": "2028年4月", "status": "掲載"}, "LA650S-0115689": {"car_name": "ダイハツ タント", "grade": "660X", "price_total": 798000, "price_honntai": 698000, "mileage_km": 107000, "shaken": "2028年4月", "status": "掲載"}, "LA700S-0018691": {"car_name": "ダイハツ ウェイク", "grade": "660L SA", "price_total": 498000, "price_honntai": 398000, "mileage_km": 117000, "shaken": "2028年4月", "status": "掲載"}, "LA250S-0102583": {"car_name": "ダイハツ キャスト", "grade": "アクティバ660X", "price_total": 778000, "price_honntai": 678000, "mileage_km": 51000, "shaken": "車検整備付", "status": "掲載"}, "JC1-1155939": {"car_name": "ホンダ ライフ", "grade": "660Cコンフォートスペシャル", "price_total": 228000, "price_honntai": 128000, "mileage_km": 110000, "shaken": "2028年4月", "status": "掲載"}, "LA650S-0061975": {"car_name": "ダイハツ タント", "grade": "660X", "price_total": 898000, "price_honntai": 798000, "mileage_km": 100000, "shaken": "2028年4月", "status": "掲載"}, "LA250S-0005147": {"car_name": "ダイハツ キャスト", "grade": "アクティバ660X SAⅡ", "price_total": 678000, "price_honntai": 578000, "mileage_km": 50000, "shaken": "車検整備付", "status": "掲載"}, "LA550S-0015532": {"car_name": "ダイハツ ミラトコット", "grade": "660L SAⅢ", "price_total": 798000, "price_honntai": 698000, "mileage_km": 8000, "shaken": "2027年10月", "status": "掲載"}, "ZWE80-0097083": {"car_name": "トヨタ ノア", "grade": "1.8ハイブリッドG", "price_total": 1198000, "price_honntai": 1098000, "mileage_km": 140000, "shaken": "車検整備付", "status": "掲載"}, "LA660F-0001385": {"car_name": "スバル シフォン", "grade": "660カスタムRSスマートアシスト 4WD", "price_total": 898000, "price_honntai": 798000, "mileage_km": 130000, "shaken": "2027年1月", "status": "掲載"}, "NHP10-2259623": {"car_name": "トヨタ アクア", "grade": "1.5S", "price_total": 448000, "price_honntai": 348000, "mileage_km": 100000, "shaken": "2026年10月", "status": "掲載"}, "HA35S-210491": {"car_name": "スズキ アルト", "grade": "5ドア660エコL", "price_total": 398000, "price_honntai": 298000, "mileage_km": 29000, "shaken": "2027年12月", "status": "掲載"}, "AXVH70-1009873": {"car_name": "トヨタ カムリ", "grade": "2.5G", "price_total": 1898000, "price_honntai": 1798000, "mileage_km": 78000, "shaken": "2026年10月", "status": "掲載"}, "LA100S-0194910": {"car_name": "ダイハツ ムーヴ", "grade": "660カスタムX SA", "price_total": 398000, "price_honntai": 298000, "mileage_km": 110000, "shaken": "車検整備付", "status": "掲載"}, "LA310F-1502042": {"car_name": "スバル プレオプラス", "grade": "660LA 4WD", "price_total": 398000, "price_honntai": 298000, "mileage_km": 81000, "shaken": "2026年10月", "status": "掲載"}, "JE1-1143620": {"car_name": "ホンダ ゼスト", "grade": "660Dスペシャル", "price_total": 348000, "price_honntai": 248000, "mileage_km": 19000, "shaken": "車検整備付", "status": "掲載"}, "ZVW51-8005625": {"car_name": "トヨタ プリウス", "grade": "1.8A", "price_total": 1098000, "price_honntai": 998000, "mileage_km": 102000, "shaken": "2027年3月", "status": "掲載"}, "JH1-1006200": {"car_name": "ホンダ N-WGN", "grade": "660G", "price_total": 498000, "price_honntai": 398000, "mileage_km": 14000, "shaken": "車検整備付", "status": "掲載"}, "B11W-0205839": {"car_name": "三菱 eKワゴン", "grade": "660M eアシスト", "price_total": 398000, "price_honntai": 298000, "mileage_km": 91000, "shaken": "2026年12月", "status": "掲載"}, "LA700S-0155969": {"car_name": "ダイハツ ウェイク", "grade": "660L SAⅢ", "price_total": 798000, "price_honntai": 698000, "mileage_km": 102000, "shaken": "2028年4月", "status": "掲載"}, "MH55S-102841": {"car_name": "スズキ ワゴンR", "grade": "660ハイブリッドFZセーフティPKG装着車", "price_total": 598000, "price_honntai": 498000, "mileage_km": 108000, "shaken": "車検整備付", "status": "掲載"}, "B43W-0038945": {"car_name": "日産 デイズ", "grade": "660X", "price_total": 698000, "price_honntai": 598000, "mileage_km": 54000, "shaken": "車検整備付", "status": "掲載"}}, "goonet": {"ZWR80G-0209244": {"car_name": "トヨタ ヴォクシー", "grade": "ハイブリッドＶ", "price_honntai": 998000, "price_total": 1098000, "mileage_km": 157000, "shaken": "検2027年08月", "status": "掲載"}, "LA160S-0000822": {"car_name": "ダイハツ ムーヴ", "grade": "Ｘ　ＳＡ", "price_honntai": 198000, "price_total": 298000, "mileage_km": 160000, "shaken": "車検整備付", "status": "掲載"}, "JC1-1017527": {"car_name": "ホンダ ライフ", "grade": "Ｇ", "price_honntai": 148000, "price_total": 248000, "mileage_km": 74000, "shaken": "車検整備付", "status": "掲載"}, "JC1-2000918": {"car_name": "ホンダ ライフ", "grade": "ディーバターボ", "price_honntai": 118000, "price_total": 218000, "mileage_km": 172000, "shaken": "車検整備付", "status": "掲載"}, "NHP10-2265677": {"car_name": "トヨタ アクア", "grade": "Ｓ", "price_honntai": 348000, "price_total": 448000, "mileage_km": 112000, "shaken": "車検整備付", "status": "掲載"}, "ZWR80G-0036895": {"car_name": "トヨタ ノア", "grade": "ハイブリッドＸ", "price_honntai": 798000, "price_total": 898000, "mileage_km": 132000, "shaken": "車検整備付", "status": "掲載"}, "ZVW50-8006757": {"car_name": "トヨタ プリウス", "grade": "Ｓツーリングセレクション", "price_honntai": 998000, "price_total": 1098000, "mileage_km": 110000, "shaken": "車検整備付", "status": "掲載"}, "LA100F-0003009": {"car_name": "スバル ステラ", "grade": "Ｌ", "price_honntai": 148000, "price_total": 248000, "mileage_km": 108000, "shaken": "車検整備付", "status": "掲載"}, "JC1-1059851": {"car_name": "ホンダ ライフ", "grade": "パステル　ＨＩＤスペシャル", "price_honntai": 198000, "price_total": 298000, "mileage_km": 57000, "shaken": "車検整備付", "status": "掲載"}, "JE1-1112132": {"car_name": "ホンダ ゼスト", "grade": "Ｄ", "price_honntai": 118000, "price_total": 218000, "mileage_km": 121000, "shaken": "車検整備付", "status": "掲載"}, "LA650S-1006507": {"car_name": "ダイハツ タント", "grade": "Ｘ", "price_honntai": 898000, "price_total": 998000, "mileage_km": 23000, "shaken": "車検整備付", "status": "掲載"}, "SXE10-0047318": {"car_name": "トヨタ アルテッツァ", "grade": "ＲＳ２００　Ｚエディション", "price_honntai": 1298000, "price_total": 1398000, "mileage_km": 199000, "shaken": "検2027年01月", "status": "掲載"}, "LA100S-0253061": {"car_name": "ダイハツ ムーヴ", "grade": "Ｘ　ＳＡ", "price_honntai": 198000, "price_total": 298000, "mileage_km": 84000, "shaken": "検2028年07月", "status": "掲載"}, "NHP10-2446214": {"car_name": "トヨタ アクア", "grade": "Ｓ", "price_honntai": 498000, "price_total": 598000, "mileage_km": 113000, "shaken": "車検整備付", "status": "掲載"}, "ZVW51-8007216": {"car_name": "トヨタ プリウス", "grade": "Ａプレミアム　ツーリングセレクション", "price_honntai": 898000, "price_total": 998000, "mileage_km": 177000, "shaken": "車検整備付", "status": "掲載"}, "ZWR80G-0097782": {"car_name": "トヨタ ノア", "grade": "ハイブリッドＧ", "price_honntai": 1098000, "price_total": 1198000, "mileage_km": 93000, "shaken": "車検整備付", "status": "掲載"}, "LA600S-0245746": {"car_name": "ダイハツ タント", "grade": "カスタムＸ", "price_honntai": 498000, "price_total": 598000, "mileage_km": 70000, "shaken": "車検整備付", "status": "非掲載"}, "ZVW51-8020085": {"car_name": "トヨタ プリウス", "grade": "Ａ", "price_honntai": 1298000, "price_total": 1398000, "mileage_km": 86000, "shaken": "車検整備付", "status": "掲載"}, "NHP10-2108378": {"car_name": "トヨタ アクア", "grade": "Ｓ", "price_honntai": 348000, "price_total": 448000, "mileage_km": 113000, "shaken": "車検整備付", "status": "掲載"}, "JE2-1301272": {"car_name": "ホンダ ゼスト", "grade": "Ｄ", "price_honntai": 148000, "price_total": 248000, "mileage_km": 62000, "shaken": "検2027年04月", "status": "非掲載"}, "LA350S-0074998": {"car_name": "ダイハツ ミライース", "grade": "Ｌ", "price_honntai": 398000, "price_total": 498000, "mileage_km": 89000, "shaken": "検2027年04月", "status": "掲載"}, "LA800S-0181613": {"car_name": "ダイハツ ムーヴキャンバス", "grade": "Ｇメイクアップリミテッド　ＳＡＩＩＩ", "price_honntai": 498000, "price_total": 598000, "mileage_km": 145000, "shaken": "車検整備付", "status": "掲載"}, "JZS161-0031255": {"car_name": "トヨタ アリスト", "grade": "Ｖ３００ベルテックスエディション", "price_honntai": 2398000, "price_total": 2498000, "mileage_km": 133000, "shaken": "検2027年03月", "status": "非掲載"}, "LA250S-0147194": {"car_name": "ダイハツ キャスト", "grade": "スタイルＸ　ＳＡＩＩＩ", "price_honntai": 498000, "price_total": 598000, "mileage_km": 84000, "shaken": "検2027年10月", "status": "掲載"}, "LA250S-0005147": {"car_name": "ダイハツ キャスト", "grade": "アクティバＸ　ＳＡＩＩ", "price_honntai": 578000, "price_total": 678000, "mileage_km": 50000, "shaken": "車検整備付", "status": "掲載"}, "JC1-1242701": {"car_name": "ホンダ ライフ", "grade": "ディーバスマートスタイル", "price_honntai": 198000, "price_total": 298000, "mileage_km": 105000, "shaken": "車検整備付", "status": "掲載"}, "LA150S-2115382": {"car_name": "ダイハツ ムーヴ", "grade": "ＸリミテッドＩＩ　ＳＡＩＩＩ", "price_honntai": 698000, "price_total": 798000, "mileage_km": 94000, "shaken": "車検整備付", "status": "掲載"}, "LA350S-0130640": {"car_name": "ダイハツ ミライース", "grade": "Ｘ　ＳＡＩＩＩ", "price_honntai": 598000, "price_total": 698000, "mileage_km": 16000, "shaken": "車検整備付", "status": "掲載"}, "MR31S-298541": {"car_name": "スズキ ハスラー", "grade": "Ｇ", "price_honntai": 398000, "price_total": 498000, "mileage_km": 103000, "shaken": "車検整備付", "status": "非掲載"}, "LA110S-0009912": {"car_name": "ダイハツ ムーヴ", "grade": "Ｌ", "price_honntai": 148000, "price_total": 248000, "mileage_km": 122000, "shaken": "車検整備付", "status": "掲載"}, "LA100S-0076832": {"car_name": "ダイハツ ムーヴ", "grade": "Ｌ", "price_honntai": 178000, "price_total": 278000, "mileage_km": 80000, "shaken": "車検整備付", "status": "掲載"}, "LA110S-0010044": {"car_name": "ダイハツ ムーヴ", "grade": "Ｌ", "price_honntai": 148000, "price_total": 248000, "mileage_km": 137000, "shaken": "車検整備付", "status": "掲載"}, "LA650S-1070524": {"car_name": "ダイハツ タント", "grade": "Ｘ", "price_honntai": 798000, "price_total": 898000, "mileage_km": 70000, "shaken": "車検整備付", "status": "掲載"}, "LA600S-0021715": {"car_name": "ダイハツ タント", "grade": "Ｘ　ＳＡ", "price_honntai": 398000, "price_total": 498000, "mileage_km": 120000, "shaken": "なし", "status": "掲載"}, "LA160S-1012901": {"car_name": "ダイハツ ムーヴ", "grade": "Ｘターボ　ＳＡＩＩＩ", "price_honntai": 498000, "price_total": 598000, "mileage_km": 97000, "shaken": "検2027年03月", "status": "掲載"}, "LA250S-0041710": {"car_name": "ダイハツ キャスト", "grade": "スタイルＧ　ＳＡＩＩ", "price_honntai": 398000, "price_total": 498000, "mileage_km": 136000, "shaken": "検2027年04月", "status": "掲載"}, "U62V-2201086": {"car_name": "三菱 ミニキャブバン", "grade": "ＣＬ", "price_honntai": 498000, "price_total": 598000, "mileage_km": 26000, "shaken": "検2027年02月", "status": "掲載"}, "LA110F-0000624": {"car_name": "スバル ステラ", "grade": "Ｌ", "price_honntai": 398000, "price_total": 498000, "mileage_km": 29000, "shaken": "車検整備付", "status": "掲載"}, "NHP10-2170218": {"car_name": "トヨタ アクア", "grade": "Ｓ", "price_honntai": 298000, "price_total": 398000, "mileage_km": 109000, "shaken": "車検整備付", "status": "掲載"}, "LA150F-0011622": {"car_name": "スバル ステラ", "grade": "Ｌ　スマートアシスト", "price_honntai": 498000, "price_total": 598000, "mileage_km": 51000, "shaken": "検2027年11月", "status": "掲載"}, "DA63T-470793": {"car_name": "スズキ キャリイトラック", "grade": "ＫＣエアコン・パワステ", "price_honntai": 498000, "price_total": 598000, "mileage_km": 16000, "shaken": "車検整備付", "status": "掲載"}, "U62T-0402487": {"car_name": "三菱 ミニキャブトラック", "grade": "Ｖタイプ", "price_honntai": 298000, "price_total": 398000, "mileage_km": 51000, "shaken": "車検整備付", "status": "掲載"}, "LA160S-0011045": {"car_name": "ダイハツ ムーヴ", "grade": "Ｌ　ＳＡＩＩ", "price_honntai": 498000, "price_total": 598000, "mileage_km": 93000, "shaken": "検2026年09月", "status": "掲載"}, "LA250S-0105700": {"car_name": "ダイハツ キャスト", "grade": "アクティバＧ　プライムコレクション　ＳＡＩＩ", "price_honntai": 498000, "price_total": 598000, "mileage_km": 123000, "shaken": "車検整備付", "status": "掲載"}, "JC1-1052091": {"car_name": "ホンダ ライフ", "grade": "パステル", "price_honntai": 98000, "price_total": 198000, "mileage_km": 181000, "shaken": "車検整備付", "status": "非掲載"}, "LA650S-0397320": {"car_name": "ダイハツ タント", "grade": "Ｘ", "price_honntai": 1298000, "price_total": 1398000, "mileage_km": 6000, "shaken": "検2027年03月", "status": "非掲載"}, "LA900S-0035560": {"car_name": "ダイハツ タフト", "grade": "Ｇ", "price_honntai": 1098000, "price_total": 1198000, "mileage_km": 44000, "shaken": "車検整備付", "status": "非掲載"}, "LA900S-0104497": {"car_name": "ダイハツ タフト", "grade": "Ｇ", "price_honntai": 1198000, "price_total": 1298000, "mileage_km": 50000, "shaken": "車検整備付", "status": "掲載"}, "JC2-1206008": {"car_name": "ホンダ ライフ", "grade": "Ｇスマートプラス", "price_honntai": 198000, "price_total": 298000, "mileage_km": 106000, "shaken": "車検整備付", "status": "非掲載"}, "ZWR80-0109372": {"car_name": "トヨタ ノア", "grade": "Ｘ　ディライトプラス", "price_honntai": 898000, "price_total": 998000, "mileage_km": 151000, "shaken": "検2027年04月", "status": "非掲載"}, "NHP10-6146424": {"car_name": "トヨタ アクア", "grade": "Ｓ", "price_honntai": 348000, "price_total": 448000, "mileage_km": 146000, "shaken": "車検整備付", "status": "掲載"}, "MXPK16-2011139": {"car_name": "トヨタ アクア", "grade": "Ｘ", "price_honntai": 1198000, "price_total": 1298000, "mileage_km": 87000, "shaken": "なし", "status": "掲載"}, "LA150S-2009695": {"car_name": "ダイハツ ムーヴ", "grade": "Ｌ　ＳＡＩＩＩ", "price_honntai": 698000, "price_total": 798000, "mileage_km": 54000, "shaken": "車検整備付", "status": "掲載"}, "JC1-1016369": {"car_name": "ホンダ ライフ", "grade": "Ｇ", "price_honntai": 148000, "price_total": 248000, "mileage_km": 63000, "shaken": "車検整備付", "status": "掲載"}, "LA260S-0012407": {"car_name": "ダイハツ キャスト", "grade": "スタイルＸ　ＳＡＩＩ", "price_honntai": 348000, "price_total": 448000, "mileage_km": 152000, "shaken": "検2027年06月", "status": "掲載"}, "AWS210-6001041": {"car_name": "トヨタ クラウンハイブリッド", "grade": "アスリート", "price_honntai": 1298000, "price_total": 1398000, "mileage_km": 164000, "shaken": "車検整備付", "status": "掲載"}, "LA650S-0115689": {"car_name": "ダイハツ タント", "grade": "Ｘ", "price_honntai": 698000, "price_total": 798000, "mileage_km": 107000, "shaken": "車検整備付", "status": "掲載"}, "LA650S-0126228": {"car_name": "ダイハツ タント", "grade": "カスタムＸ", "price_honntai": 798000, "price_total": 898000, "mileage_km": 111000, "shaken": "検2028年04月", "status": "掲載"}, "LA700S-0018691": {"car_name": "ダイハツ ウェイク", "grade": "Ｌ　ＳＡ", "price_honntai": 398000, "price_total": 498000, "mileage_km": 117000, "shaken": "検2028年04月", "status": "掲載"}, "LA250S-0102583": {"car_name": "ダイハツ キャスト", "grade": "アクティバＸ", "price_honntai": 678000, "price_total": 778000, "mileage_km": 51000, "shaken": "車検整備付", "status": "掲載"}, "JC1-1155939": {"car_name": "ホンダ ライフ", "grade": "Ｃ特別仕様車　コンフォートスペシャル", "price_honntai": 128000, "price_total": 228000, "mileage_km": 110000, "shaken": "車検整備付", "status": "掲載"}, "LA650S-0061975": {"car_name": "ダイハツ タント", "grade": "Ｘ", "price_honntai": 798000, "price_total": 898000, "mileage_km": 100000, "shaken": "車検整備付", "status": "掲載"}, "LA550S-0015532": {"car_name": "ダイハツ ミラトコット", "grade": "Ｌ　ＳＡＩＩＩ", "price_honntai": 698000, "price_total": 798000, "mileage_km": 8000, "shaken": "検2027年10月", "status": "掲載"}, "ZWR80-0097083": {"car_name": "トヨタ ノア", "grade": "ハイブリッドＧ", "price_honntai": 1098000, "price_total": 1198000, "mileage_km": 140000, "shaken": "車検整備付", "status": "掲載"}, "LA660F-0001385": {"car_name": "スバル シフォン", "grade": "カスタムＲＳ　スマートアシスト", "price_honntai": 798000, "price_total": 898000, "mileage_km": 130000, "shaken": "検2027年01月", "status": "非掲載"}, "NHP10-2259623": {"car_name": "トヨタ アクア", "grade": "Ｓ", "price_honntai": 348000, "price_total": 448000, "mileage_km": 102000, "shaken": "検2026年10月", "status": "非掲載"}, "HA35S-210491": {"car_name": "スズキ アルトエコ", "grade": "ＥＣＯ−Ｌ", "price_honntai": 298000, "price_total": 398000, "mileage_km": 29000, "shaken": "検2027年12月", "status": "非掲載"}, "LA310F-1502042": {"car_name": "スバル プレオプラス", "grade": "ＬＡ", "price_honntai": 298000, "price_total": 398000, "mileage_km": 79000, "shaken": "検2026年10月", "status": "掲載"}, "JE1-1143620": {"car_name": "ホンダ ゼスト", "grade": "Ｄ", "price_honntai": 248000, "price_total": 348000, "mileage_km": 19000, "shaken": "検2028年04月", "status": "掲載"}, "AXVH70-1009873": {"car_name": "トヨタ カムリ", "grade": "Ｇ", "price_honntai": 1798000, "price_total": 1898000, "mileage_km": 78000, "shaken": "検2026年10月", "status": "非掲載"}, "LA100S-0194910": {"car_name": "ダイハツ ムーヴ", "grade": "カスタム　Ｘ　ＳＡ", "price_honntai": 298000, "price_total": 398000, "mileage_km": 110000, "shaken": "車検整備付", "status": "掲載"}, "M900A-0254119": {"car_name": "トヨタ タンク", "grade": "Ｇ　Ｓ", "price_honntai": 598000, "price_total": 698000, "mileage_km": 95000, "shaken": "車検整備付", "status": "非掲載"}, "ZVW51-8005625": {"car_name": "トヨタ プリウス", "grade": "Ａ", "price_honntai": 998000, "price_total": 1098000, "mileage_km": 102000, "shaken": "検2027年03月", "status": "掲載"}, "JH1-1006200": {"car_name": "ホンダ Ｎ−ＷＧＮ", "grade": "Ｇ", "price_honntai": 398000, "price_total": 498000, "mileage_km": 14000, "shaken": "車検整備付", "status": "非掲載"}, "B11W-0205839": {"car_name": "三菱 ｅＫワゴン", "grade": "Ｍ　ｅ−アシスト", "price_honntai": 298000, "price_total": 398000, "mileage_km": 91000, "shaken": "検2026年12月", "status": "非掲載"}, "MH55S-102841": {"car_name": "スズキ ワゴンＲ", "grade": "ハイブリッドＦＺ", "price_honntai": 498000, "price_total": 598000, "mileage_km": 108000, "shaken": "検2028年04月", "status": "非掲載"}, "B43W-0038945": {"car_name": "日産 デイズ", "grade": "Ｘ", "price_honntai": 598000, "price_total": 698000, "mileage_km": 54000, "shaken": "車検整備付", "status": "非掲載"}, "LA700S-0155969": {"car_name": "ダイハツ ウェイク", "grade": "Ｌ　ＳＡＩＩＩ", "price_honntai": 698000, "price_total": 798000, "mileage_km": 101000, "shaken": "検2028年04月", "status": "掲載"}}, "quicknetwork": {"ZVW30-1584964": {"car_name": "トヨタ プリウス", "grade": "1.8 S ナビ Bカメラ スマートキーx2 ETC フルセグ", "price_gyohan": 390000, "price_kouri": 448000, "mileage_km": 137000, "shaken": "--.--", "status": "在庫"}, "LA100S-0194910": {"car_name": "ダイハツ ムーヴ", "grade": "660 カスタム X SA ナビ フルセグTV デジタルインナーミラー", "price_gyohan": 300000, "price_kouri": 298000, "mileage_km": 110000, "shaken": "--.--", "status": "在庫"}, "LA100S-0279917": {"car_name": "ダイハツ ムーヴ", "grade": "660 カスタム X ナビ　フルセグTV　スマートキー　プッシュ", "price_gyohan": null, "price_kouri": 148000, "mileage_km": 175000, "shaken": "R9.01", "status": "在庫"}, "LA100S-0253061": {"car_name": "ダイハツ ムーヴ", "grade": "660 X SA スマートキー　プッシュスタート", "price_gyohan": null, "price_kouri": 198000, "mileage_km": 84000, "shaken": "R10.07", "status": "在庫"}, "ZVW50-8006757": {"car_name": "トヨタ プリウス", "grade": "1.8 S ツーリングセレクション ナビ　バックカメラ　ワンセグTV　スマート", "price_gyohan": 850000, "price_kouri": 998000, "mileage_km": 109000, "shaken": "--.--", "status": "在庫"}, "ZWR80-0036895": {"car_name": "トヨタ ノア", "grade": "1.8 ハイブリッド X ナビ　バックカメラ　フリップダウンモニタ", "price_gyohan": 650000, "price_kouri": 798000, "mileage_km": 132000, "shaken": "--.--", "status": "在庫"}, "NHP10-2265677": {"car_name": "トヨタ アクア", "grade": "1.5 S ナビ バックカメラ スマートキー フルセグ", "price_gyohan": 600000, "price_kouri": 348000, "mileage_km": 112000, "shaken": "--.--", "status": "在庫"}, "NKE165-7001234": {"car_name": "トヨタ カローラフィールダー", "grade": "1.5 ハイブリッド G ナビ バックカメラ フルセグ スマートキー", "price_gyohan": 400000, "price_kouri": 598000, "mileage_km": 98000, "shaken": "--.--", "status": "在庫"}, "JC1-1017527": {"car_name": "ホンダ ライフ", "grade": "660 G バックカメラ　キーレス　ETC ベンチシート", "price_gyohan": null, "price_kouri": 148000, "mileage_km": 74000, "shaken": "--.--", "status": "在庫"}, "JC1-2000918": {"car_name": "ホンダ ライフ", "grade": "660 ディーバ ターボ スマートキー Aエアコン アルミホイール", "price_gyohan": null, "price_kouri": 148000, "mileage_km": 172000, "shaken": "--.--", "status": "在庫"}, "NHP10-2446214": {"car_name": "トヨタ アクア", "grade": "1.5 S ナビ バックカメラ ワンセグTV スマートキ", "price_gyohan": 400000, "price_kouri": 498000, "mileage_km": 113000, "shaken": "--.--", "status": "在庫"}, "ZVW51-8007216": {"car_name": "トヨタ プリウス", "grade": "1.8 A プレミアム ツーリングセレクション ナビ　バックカメラ　フルセグTV　ETC", "price_gyohan": 800000, "price_kouri": 898000, "mileage_km": 177000, "shaken": "--.--", "status": "在庫"}, "LA160S-0000822": {"car_name": "ダイハツ ムーヴ", "grade": "660 X SA 4WD 4WD スマートキー プッシュスタート ETC", "price_gyohan": null, "price_kouri": 198000, "mileage_km": 160000, "shaken": "--.--", "status": "在庫"}, "NHP10-2108378": {"car_name": "トヨタ アクア", "grade": "1.5 S ナビ　バックカメラ　フルセグTV　スマート", "price_gyohan": 300000, "price_kouri": 348000, "mileage_km": 113000, "shaken": "--.--", "status": "在庫"}, "ZWR80-0097782": {"car_name": "トヨタ ノア", "grade": "1.8 ハイブリッド G ナビ　バックカメラ　フルセグTV", "price_gyohan": 900000, "price_kouri": 1098000, "mileage_km": 93000, "shaken": "--.--", "status": "在庫"}, "ZVW51-8020085": {"car_name": "トヨタ プリウス", "grade": "1.8 A ナビ　フルセグTV　バックカメラ　スマート", "price_gyohan": 1100000, "price_kouri": 1298000, "mileage_km": 86000, "shaken": "--.--", "status": "在庫"}, "JC1-1218015": {"car_name": "ホンダ ライフ", "grade": "660 G キーレス　バックカメラ　パワーウインドウ", "price_gyohan": null, "price_kouri": 198000, "mileage_km": 69000, "shaken": "--.--", "status": "在庫"}, "LA350S-0131010": {"car_name": "ダイハツ ミライース", "grade": "660 L キーレス　パワーウインドウ　ABS", "price_gyohan": null, "price_kouri": 548000, "mileage_km": 21000, "shaken": "--.--", "status": "在庫"}, "JE2-1301272": {"car_name": "ホンダ ゼスト", "grade": "660 D 4WD スマートキー　オートエアコン　ETC", "price_gyohan": null, "price_kouri": 148000, "mileage_km": 62000, "shaken": "R9.04", "status": "在庫"}, "LA800S-0181613": {"car_name": "ダイハツ ムーヴキャンバス", "grade": "660 G メイクアップ リミテッド SAIII ナビ　バックカメラ　フルセグTV　ETC　ス", "price_gyohan": null, "price_kouri": 498000, "mileage_km": 145000, "shaken": "--.--", "status": "在庫"}, "LA350S-0074998": {"car_name": "ダイハツ ミライース", "grade": "660 L キーレス　パワーウインドウ　横滑り防止装", "price_gyohan": null, "price_kouri": 398000, "mileage_km": 89000, "shaken": "R9.04", "status": "在庫"}, "LA250S-0147194": {"car_name": "ダイハツ キャスト", "grade": "スタイル 660 X リミテッド SAIII ナビ バックカメラ フルセグTV シートヒー", "price_gyohan": 500000, "price_kouri": 498000, "mileage_km": 84000, "shaken": "R9.10", "status": "在庫"}, "LA150S-2115382": {"car_name": "ダイハツ ムーヴ", "grade": "660 X リミテッドII SAIII ナビ バックカメラ スマアシ ETC ドラレコ スマートキー シートヒーター", "price_gyohan": 630000, "price_kouri": 698000, "mileage_km": 94000, "shaken": "--.--", "status": "在庫"}, "JC1-1242701": {"car_name": "ホンダ ライフ", "grade": "660 ディーバ スマートスタイル スマートキー　オートエアコン　パワーウイ", "price_gyohan": null, "price_kouri": 198000, "mileage_km": 105000, "shaken": "--.--", "status": "在庫"}, "LA350S-0130640": {"car_name": "ダイハツ ミライース", "grade": "660 X SAIII スマートアシスト 障害物センサー キーレス", "price_gyohan": 550000, "price_kouri": 598000, "mileage_km": 16000, "shaken": "--.--", "status": "在庫"}, "LA110S-0009912": {"car_name": "ダイハツ ムーヴ", "grade": "660 L 4WD オートエアコン キーレス ETC ベンチシート", "price_gyohan": null, "price_kouri": 148000, "mileage_km": 122000, "shaken": "--.--", "status": "在庫"}, "MR31S-298541": {"car_name": "スズキ ハスラー", "grade": "660 G 5速MT シートヒーター ETC キーレス", "price_gyohan": null, "price_kouri": 398000, "mileage_km": 103000, "shaken": "--.--", "status": "在庫"}, "LA100S-0076832": {"car_name": "ダイハツ ムーヴ", "grade": "660 L オートエアコン キーレス フル装備", "price_gyohan": null, "price_kouri": 198000, "mileage_km": 80000, "shaken": "--.--", "status": "在庫"}, "LA110S-0010044": {"car_name": "ダイハツ ムーヴ", "grade": "660 L 4WD キーレス フル装備 オートエアコン 4WD", "price_gyohan": null, "price_kouri": 148000, "mileage_km": 137000, "shaken": "--.--", "status": "在庫"}, "LA650S-1070524": {"car_name": "ダイハツ タント", "grade": "660 X スマートキー　片側パワースライドドア　ス", "price_gyohan": 700000, "price_kouri": 798000, "mileage_km": 70000, "shaken": "--.--", "status": "在庫"}, "LA600S-0021715": {"car_name": "ダイハツ タント", "grade": "660 X SA バックカメラ ETC パワースライドドア", "price_gyohan": 350000, "price_kouri": 398000, "mileage_km": 120000, "shaken": "--.--", "status": "在庫"}, "LA160S-1012901": {"car_name": "ダイハツ ムーヴ", "grade": "660 Xターボ SAIII 4WD 喫煙車 ナビ バックカメラ スマアシ スマートキー", "price_gyohan": 450000, "price_kouri": 498000, "mileage_km": 97000, "shaken": "R9.03", "status": "在庫"}, "LA250S-0041710": {"car_name": "ダイハツ キャスト", "grade": "スタイル 660 G SAII ナビ バックカメラ スマートキー×2", "price_gyohan": 350000, "price_kouri": 398000, "mileage_km": 136000, "shaken": "R9.04", "status": "在庫"}, "U62V-2201086": {"car_name": "三菱 ミニキャブバン", "grade": "660 CL ハイルーフ 4WD アルミホイール エアコン キーレス", "price_gyohan": 400000, "price_kouri": 498000, "mileage_km": 26000, "shaken": "R9.02", "status": "在庫"}, "LA110F-0000624": {"car_name": "スバル ステラ", "grade": "660 L 4WD ナビ オートエアコン キーレス 4WD", "price_gyohan": null, "price_kouri": 398000, "mileage_km": 29000, "shaken": "--.--", "status": "在庫"}, "NHP10-2170218": {"car_name": "トヨタ アクア", "grade": "1.5 S キーレス ETC オートエアコン", "price_gyohan": 300000, "price_kouri": 348000, "mileage_km": 109000, "shaken": "--.--", "status": "在庫"}, "LA150F-0011622": {"car_name": "スバル ステラ", "grade": "660 L スマートアシスト キーレス　ETC　衝突被害軽減ブレーキ", "price_gyohan": 400000, "price_kouri": 498000, "mileage_km": 51000, "shaken": "R9.11", "status": "在庫"}, "LA160S-0011045": {"car_name": "ダイハツ ムーヴ", "grade": "660 L SAII 4WD ナビ バックカメラ スマアシ キレース", "price_gyohan": 400000, "price_kouri": 498000, "mileage_km": 93000, "shaken": "R8.09", "status": "在庫"}, "DA63T-470793": {"car_name": "スズキ キャリイトラック", "grade": "660 KCエアコン・パワステ 3方開 4WD エアコン　パワステ　5速M/T　4WD", "price_gyohan": 450000, "price_kouri": 498000, "mileage_km": 16000, "shaken": "R8.10", "status": "在庫"}, "U62T-0402487": {"car_name": "三菱 ミニキャブトラック", "grade": "660 Vタイプ エアコン付 4WD 5速マニュアル エアコン 3方開 4WD", "price_gyohan": null, "price_kouri": 198000, "mileage_km": 51000, "shaken": "--.--", "status": "在庫"}, "B21A-0313933": {"car_name": "日産 デイズルークス", "grade": "660 X スマートキー　ナビ　フルセグTV", "price_gyohan": null, "price_kouri": 498000, "mileage_km": 95000, "shaken": "--.--", "status": "在庫"}, "LA250S-0105700": {"car_name": "ダイハツ キャスト", "grade": "アクティバ 660 G プライムコレクション SAII ナビ Bカメラ スマアシ シートヒーター", "price_gyohan": 450000, "price_kouri": 498000, "mileage_km": 123000, "shaken": "--.--", "status": "在庫"}, "LA900S-0035560": {"car_name": "ダイハツ タフト", "grade": "660 G 大画面ナビ バックカメラ  フルセグTV スマートキー サンルーフ シートヒータースマートアシスト", "price_gyohan": 1050000, "price_kouri": 1098000, "mileage_km": 44000, "shaken": "--.--", "status": "在庫"}, "LA900S-0104497": {"car_name": "ダイハツ タフト", "grade": "660 G ナビ パノラマモニター ガラスルーフ スマートキー シートヒーター  スマートアシスト", "price_gyohan": 1100000, "price_kouri": 1198000, "mileage_km": 50000, "shaken": "--.--", "status": "在庫"}, "NHP10-6146424": {"car_name": "トヨタ アクア", "grade": "1.5 S ナビ　フルセグTV　スマートキー", "price_gyohan": 300000, "price_kouri": 348000, "mileage_km": 146000, "shaken": "--.--", "status": "在庫"}, "MXPK16-2011139": {"car_name": "トヨタ アクア", "grade": "1.5 X E-Four 4WD バックカメラ トヨタセーフティセンス アダ", "price_gyohan": 1100000, "price_kouri": 1198000, "mileage_km": 87000, "shaken": "--.--", "status": "在庫"}, "MXPK16-2010970": {"car_name": "トヨタ アクア", "grade": "1.5 X E-Four 4WD ナビ バックカメラ 追従クルーズコントロー", "price_gyohan": 1200000, "price_kouri": 1298000, "mileage_km": 82000, "shaken": "--.--", "status": "在庫"}, "LA150S-20009695": {"car_name": "ダイハツ ムーヴ", "grade": "660 L SAIII スマートアシスト オートハイビーム ETC", "price_gyohan": null, "price_kouri": 698000, "mileage_km": 54000, "shaken": "--.--", "status": "在庫"}, "JC1-1016369": {"car_name": "ホンダ ライフ", "grade": "660 G ナビ キーレス エアコン パワーウィンドウ", "price_gyohan": null, "price_kouri": 148000, "mileage_km": 63000, "shaken": "--.--", "status": "在庫"}, "LA260S-0012407": {"car_name": "ダイハツ キャスト", "grade": "アクティバ 660 X SAII 4WD スマートアシスト 禁煙車 スマートキー", "price_gyohan": 350000, "price_kouri": 298000, "mileage_km": 152000, "shaken": "R9.06", "status": "在庫"}, "AWS210-6001041": {"car_name": "トヨタ クラウン", "grade": "ハイブリッド 2.5 20inchアルミ ナビ バックカメラ 全塗装済", "price_gyohan": null, "price_kouri": 1298000, "mileage_km": 164000, "shaken": "--.--", "status": "在庫"}, "LA650S-0126228": {"car_name": "ダイハツ タント", "grade": "660 カスタム X 9インチナビ 全方位カメラ 両側パワスラ", "price_gyohan": 700000, "price_kouri": 798000, "mileage_km": 111000, "shaken": "--.--", "status": "在庫"}, "LA650S-0115689": {"car_name": "ダイハツ タント", "grade": "660 X パワースラ スマアシ ETC スマートキー×2", "price_gyohan": 600000, "price_kouri": 698000, "mileage_km": 107000, "shaken": "--.--", "status": "在庫"}, "LA700S-0018691": {"car_name": "ダイハツ ウェイク", "grade": "660 L SA スマアシ パワースライドドア スマートキー", "price_gyohan": 400000, "price_kouri": 498000, "mileage_km": 117000, "shaken": "--.--", "status": "在庫"}, "LA250S-0102583": {"car_name": "ダイハツ キャスト", "grade": "アクティバ 660 X ナビ 前後ドラレコ ETC バックカメラ", "price_gyohan": 550000, "price_kouri": 698000, "mileage_km": 51000, "shaken": "R8.06", "status": "在庫"}, "JC1-1155939": {"car_name": "ホンダ ライフ", "grade": "660 C コンフォートスペシャル ETC キーレス フル装備 エアコン パワステ", "price_gyohan": null, "price_kouri": 148000, "mileage_km": 110000, "shaken": "--.--", "status": "在庫"}, "1020311": {"car_name": "ホンダ ライフ", "grade": "660 G バックカメラ キーレス アルミホイール", "price_gyohan": null, "price_kouri": 148000, "mileage_km": 81000, "shaken": "--.--", "status": "在庫"}, "LA650S-0061975": {"car_name": "ダイハツ タント", "grade": "660 X パワスラ 前後ドラレコ スマートキーx2", "price_gyohan": 680000, "price_kouri": 798000, "mileage_km": 100000, "shaken": "--.--", "status": "在庫"}, "ZWE80-0097083": {"car_name": "トヨタ ノア", "grade": "1.8 ハイブリッド G モデリスタエアロ 9inchナビ 両側パワスラ", "price_gyohan": null, "price_kouri": 1098000, "mileage_km": 140000, "shaken": "--.--", "status": "在庫"}, "NHP10-2259623": {"car_name": "トヨタ アクア", "grade": "1.5 S ナビ アルミホイール ETC スマートキー", "price_gyohan": 350000, "price_kouri": 348000, "mileage_km": 100000, "shaken": "R8.10", "status": "在庫"}, "HA35S-210491": {"car_name": "スズキ アルト", "grade": "660 エコ L R06Aエンジン ABS 禁煙車 パワーウィンドウ", "price_gyohan": null, "price_kouri": 298000, "mileage_km": 29000, "shaken": "--.--", "status": "在庫"}, "LA310F-1502042": {"car_name": "スバル プレオプラス", "grade": "660 LA 4WD タイミングチェーン キーレス スペアキー", "price_gyohan": 350000, "price_kouri": 298000, "mileage_km": 79000, "shaken": "R8.10", "status": "在庫"}, "JE1-1143620": {"car_name": "ホンダ ゼスト", "grade": "660 D スペシャル HDDナビ バックカメラ スタッドレスタイヤ", "price_gyohan": 250000, "price_kouri": 198000, "mileage_km": 19000, "shaken": "--.--", "status": "在庫"}, "M900A-0254119": {"car_name": "トヨタ タンク", "grade": "1.0 G S クルコン 両側パワスラ バックカメラ ナビ", "price_gyohan": 500000, "price_kouri": 698000, "mileage_km": 95000, "shaken": "--.--", "status": "在庫"}, "ZWR80-0097083": {"car_name": "トヨタ ノア", "grade": "ハイブリッドＧ", "price_gyohan": 800000, "price_kouri": null, "mileage_km": 139900, "shaken": "--.--", "status": "在庫"}, "JE2-2000164": {"car_name": "ホンダ ゼスト", "grade": "660 スポーツG ターボ 4WD ポータブルナビ フォグライト キーレス", "price_gyohan": null, "price_kouri": 148000, "mileage_km": 82000, "shaken": "--.--", "status": "在庫"}, "JC1-1103274": {"car_name": "ホンダ ライフ", "grade": "660 パステル 4WD バックカメラ ETC　スマートキー", "price_gyohan": null, "price_kouri": 148000, "mileage_km": 96000, "shaken": "--.--", "status": "在庫"}, "S210P-0029081": {"car_name": "ダイハツ ハイゼットトラック", "grade": "660 エクストラ 3方開 4WD 車庫保管タイベル交換済 ホロ", "price_gyohan": null, "price_kouri": 298000, "mileage_km": 54000, "shaken": "--.--", "status": "在庫"}, "B43W-0038945": {"car_name": "日産 デイズ", "grade": "660 X ナビ バックカメラ エマブレ スマートキー", "price_gyohan": 640000, "price_kouri": 898000, "mileage_km": 51000, "shaken": "--.--", "status": "在庫"}, "LA700S-0155969": {"car_name": "ダイハツ ウェイク", "grade": "Ｌ ＳＡⅢ ナビ バックカメラ 両側パワースライド", "price_gyohan": 650000, "price_kouri": 798000, "mileage_km": 96000, "shaken": "R8.08", "status": "在庫"}}, "autoserver": {"AXVH70-1009873": {"car_name": "ﾄﾖﾀ ｶﾑﾘ", "grade": "2.5G", "price_gyohan": 1700000, "mileage_km": 78000, "shaken": "08/10", "status": "出品中", "viewers": "0社"}, "ZVW51-8020085": {"car_name": "ﾄﾖﾀ ﾌﾟﾘｳｽ", "grade": "A", "price_gyohan": 1100000, "mileage_km": 86000, "shaken": "", "status": "出品中", "viewers": "1社"}, "ZVW50-8006757": {"car_name": "ﾄﾖﾀ ﾌﾟﾘｳｽ", "grade": "Sﾂｰﾘﾝｸﾞｾﾚｸｼｮﾝ", "price_gyohan": 850000, "mileage_km": 109000, "shaken": "", "status": "出品中", "viewers": "0社"}, "NHP10-2446214": {"car_name": "ﾄﾖﾀ ｱｸｱ", "grade": "S", "price_gyohan": 400000, "mileage_km": 113000, "shaken": "", "status": "出品中", "viewers": "1社"}, "ZVW51-8007216": {"car_name": "ﾄﾖﾀ ﾌﾟﾘｳｽ", "grade": "Aﾌﾟﾚﾐｱﾑﾂｰﾘﾝｸﾞｾﾚｸｼ", "price_gyohan": 800000, "mileage_km": 177000, "shaken": "", "status": "出品中", "viewers": "2社"}, "ZWR80-0036895": {"car_name": "ﾄﾖﾀ ﾉｱ", "grade": "ﾊｲﾌﾞﾘｯﾄﾞX", "price_gyohan": 650000, "mileage_km": 132000, "shaken": "", "status": "出品中", "viewers": "3社"}, "NKE165-7001234": {"car_name": "ﾄﾖﾀ ｶﾛｰﾗﾌｨｰﾙﾀﾞｰ", "grade": "ﾊｲﾌﾞﾘｯﾄﾞG", "price_gyohan": 400000, "mileage_km": 98000, "shaken": "", "status": "出品中", "viewers": "4社"}, "SXE10-0047318": {"car_name": "ﾄﾖﾀ ｱﾙﾃｯﾂｧ", "grade": "RS200Zｴﾃﾞｨｼｮﾝ", "price_gyohan": 1000000, "mileage_km": 199000, "shaken": "09/01", "status": "出品中", "viewers": "11社"}, "ZWR80-0097782": {"car_name": "ﾄﾖﾀ ﾉｱ ﾊｲﾌﾞﾘｯﾄﾞ", "grade": "G", "price_gyohan": 900000, "mileage_km": 93000, "shaken": "", "status": "出品中", "viewers": "3社"}, "NHP10-2108378": {"car_name": "ﾄﾖﾀ ｱｸｱ", "grade": "S", "price_gyohan": 300000, "mileage_km": 113000, "shaken": "", "status": "出品中", "viewers": "2社"}, "NHP10-2170218": {"car_name": "ﾄﾖﾀ ｱｸｱ", "grade": "1.5 S", "price_gyohan": 300000, "mileage_km": 109000, "shaken": "", "status": "出品中", "viewers": "4社"}, "NHP10-6146424": {"car_name": "ﾄﾖﾀ ｱｸｱ", "grade": "S", "price_gyohan": 300000, "mileage_km": 146000, "shaken": "", "status": "出品中", "viewers": "4社"}, "LA250S-0147194": {"car_name": "ﾀﾞｲﾊﾂ ｷｬｽﾄｽﾀｲﾙ", "grade": "XLTDSAIII", "price_gyohan": 500000, "mileage_km": 84000, "shaken": "09/10", "status": "出品中", "viewers": "3社"}, "LA650S-0397320": {"car_name": "ﾀﾞｲﾊﾂ ﾀﾝﾄ", "grade": "X", "price_gyohan": 1250000, "mileage_km": 6000, "shaken": "09/03", "status": "出品中", "viewers": "2社"}, "JE1-1143620": {"car_name": "ﾎﾝﾀﾞ ｾﾞｽﾄ", "grade": "660Dｽﾍﾟｼｬﾙ", "price_gyohan": 250000, "mileage_km": 19000, "shaken": "", "status": "出品中", "viewers": "2社"}, "LA250S-0005147": {"car_name": "ﾀﾞｲﾊﾂ ｷｬｽﾄｱｸﾃｨﾊﾞ", "grade": "XSAII", "price_gyohan": 520000, "mileage_km": 50000, "shaken": "", "status": "出品中", "viewers": "4社"}, "LA550S-0015532": {"car_name": "ﾀﾞｲﾊﾂ ﾐﾗﾄｺｯﾄ", "grade": "L “SAⅢ”", "price_gyohan": 660000, "mileage_km": 8000, "shaken": "09/10", "status": "出品中", "viewers": "3社"}, "LA650S-0115689": {"car_name": "ﾀﾞｲﾊﾂ ﾀﾝﾄ", "grade": "X", "price_gyohan": 600000, "mileage_km": 107000, "shaken": "", "status": "出品中", "viewers": "3社"}, "LA700S-0155969": {"car_name": "ﾀﾞｲﾊﾂ ｳｪｲｸ", "grade": "LSAⅢ", "price_gyohan": 650000, "mileage_km": 102000, "shaken": "10/04", "status": "出品中", "viewers": "9社"}, "LA900S-0035560": {"car_name": "ﾀﾞｲﾊﾂ ﾀﾌﾄ", "grade": "G", "price_gyohan": 1050000, "mileage_km": 44000, "shaken": "", "status": "出品中", "viewers": "2社"}, "L260V-0008605": {"car_name": "ﾀﾞｲﾊﾂ ﾐﾗ ﾊﾞﾝ", "grade": "4WDA", "price_gyohan": 180000, "mileage_km": 37000, "shaken": "", "status": "出品中", "viewers": "11社"}, "U62V-2201086": {"car_name": "三菱 ﾐﾆｷｬﾌﾞ ﾊﾞﾝ", "grade": "4WDCL", "price_gyohan": 400000, "mileage_km": 26000, "shaken": "09/02", "status": "出品中", "viewers": "14社"}, "LA150S-2115382": {"car_name": "ﾀﾞｲﾊﾂ ﾑｰｳﾞ", "grade": "XLTDIISAIII", "price_gyohan": 630000, "mileage_km": 94000, "shaken": "", "status": "出品中", "viewers": "2社"}, "LA900S-0104497": {"car_name": "ﾀﾞｲﾊﾂ ﾀﾌﾄ", "grade": "G", "price_gyohan": 1100000, "mileage_km": 50000, "shaken": "", "status": "出品中", "viewers": "3社"}, "LA650S-1070524": {"car_name": "ﾀﾞｲﾊﾂ ﾀﾝﾄ", "grade": "X", "price_gyohan": 700000, "mileage_km": 70000, "shaken": "", "status": "出品中", "viewers": "6社"}, "LA600S-0021715": {"car_name": "ﾀﾞｲﾊﾂ ﾀﾝﾄ", "grade": "XSA", "price_gyohan": 350000, "mileage_km": 120000, "shaken": "", "status": "出品中", "viewers": "2社"}, "LA160S-1012901": {"car_name": "ﾀﾞｲﾊﾂ ﾑｰｳﾞ", "grade": "4WDXﾀｰﾎﾞSAIII", "price_gyohan": 450000, "mileage_km": 98000, "shaken": "09/03", "status": "出品中", "viewers": "10社"}, "LA150F-0011622": {"car_name": "ｽﾊﾞﾙ ｽﾃﾗ", "grade": "L ｽﾏｰﾄｱｼｽﾄ", "price_gyohan": 400000, "mileage_km": 51000, "shaken": "09/11", "status": "出品中", "viewers": "10社"}, "LA600S-0296657": {"car_name": "ﾀﾞｲﾊﾂ ﾀﾝﾄ", "grade": "GSA2", "price_gyohan": 350000, "mileage_km": 102000, "shaken": "", "status": "出品中", "viewers": "2社"}, "LA550S-0015709": {"car_name": "ﾀﾞｲﾊﾂ ﾐﾗ ﾄｺｯﾄ", "grade": "GSA3", "price_gyohan": 450000, "mileage_km": 124000, "shaken": "", "status": "出品中", "viewers": "7社"}, "LA160S-0011045": {"car_name": "ﾀﾞｲﾊﾂ ﾑｰｳﾞ", "grade": "4WDLSAII", "price_gyohan": 400000, "mileage_km": 93000, "shaken": "08/09", "status": "出品中", "viewers": "13社"}, "DA63T-470793": {"car_name": "ｽｽﾞｷ ｷｬﾘｨﾄﾗｯｸ", "grade": "4WDKC", "price_gyohan": 450000, "mileage_km": 16000, "shaken": "08/10", "status": "出品中", "viewers": "4社"}, "B43W-0038945": {"car_name": "日産 ﾃﾞｲｽﾞ", "grade": "X", "price_gyohan": 640000, "mileage_km": 54000, "shaken": "", "status": "出品中", "viewers": "9社"}, "MXPK16-2010970": {"car_name": "ﾄﾖﾀ ｱｸｱ", "grade": "X4WD", "price_gyohan": 1200000, "mileage_km": 82000, "shaken": "", "status": "出品中", "viewers": "27社"}, "MXPK16-2011139": {"car_name": "ﾄﾖﾀ ｱｸｱ", "grade": "X4WD", "price_gyohan": 1100000, "mileage_km": 87000, "shaken": "", "status": "出品中", "viewers": "22社"}, "LA260S-0012407": {"car_name": "ﾀﾞｲﾊﾂ ｷｬｽﾄｱｸﾃｨﾊﾞ", "grade": "4WDXSAII", "price_gyohan": 350000, "mileage_km": 152000, "shaken": "09/06", "status": "出品中", "viewers": "10社"}, "LA250S-0102583": {"car_name": "ﾀﾞｲﾊﾂ ｷｬｽﾄｱｸﾃｨﾊﾞ", "grade": "X", "price_gyohan": 550000, "mileage_km": 51000, "shaken": "08/06", "status": "出品中", "viewers": "14社"}, "LA700S-0018691": {"car_name": "ﾀﾞｲﾊﾂ ｳｪｲｸ", "grade": "LSA", "price_gyohan": 400000, "mileage_km": 117000, "shaken": "", "status": "出品中", "viewers": "5社"}, "LA650S-0126228": {"car_name": "ﾀﾞｲﾊﾂ ﾀﾝﾄ", "grade": "ｶｽﾀﾑX", "price_gyohan": 700000, "mileage_km": 111000, "shaken": "", "status": "出品中", "viewers": "11社"}, "LA650S-0061975": {"car_name": "ﾀﾞｲﾊﾂ ﾀﾝﾄ", "grade": "660 X", "price_gyohan": 680000, "mileage_km": 100000, "shaken": "", "status": "出品中", "viewers": "14社"}, "LA660F-0001385": {"car_name": "ｽﾊﾞﾙ ｼﾌｫﾝ", "grade": "660ｶｽﾀﾑRSｽﾏｰﾄｱｼｽﾄ", "price_gyohan": 800000, "mileage_km": 130000, "shaken": "09/01", "status": "出品中", "viewers": "9社"}, "LA700S-0005190": {"car_name": "ﾀﾞｲﾊﾂ ｳｪｲｸ", "grade": "660L", "price_gyohan": 400000, "mileage_km": 120000, "shaken": "", "status": "出品中", "viewers": "5社"}, "LA310F-1502042": {"car_name": "ｽﾊﾞﾙ ﾌﾟﾚｵﾌﾟﾗｽ", "grade": "660LA4WD", "price_gyohan": 350000, "mileage_km": 79000, "shaken": "08/10", "status": "出品中", "viewers": "3社"}, "LA100S-0194910": {"car_name": "ﾀﾞｲﾊﾂ ﾑｰｳﾞ", "grade": "660ｶｽﾀﾑXSA", "price_gyohan": 300000, "mileage_km": 111000, "shaken": "08/02", "status": "出品中", "viewers": "3社"}, "ZWR80-0097083": {"car_name": "ﾄﾖﾀ ﾉｱ", "grade": "ﾊｲﾌﾞﾘｯﾄﾞG", "price_gyohan": 800000, "mileage_km": 140000, "shaken": "", "status": "出品中", "viewers": "59社"}, "NHP10-2259623": {"car_name": "ﾄﾖﾀ ｱｸｱ", "grade": "1.5S", "price_gyohan": 350000, "mileage_km": 100000, "shaken": "08/10", "status": "出品中", "viewers": "7社"}, "M900A-0254119": {"car_name": "ﾄﾖﾀ ﾀﾝｸ", "grade": "GS", "price_gyohan": 500000, "mileage_km": 96000, "shaken": "", "status": "出品中", "viewers": "6社"}, "JH1-1006200": {"car_name": "ﾎﾝﾀﾞ N-WGN", "grade": "660G", "price_gyohan": 330000, "mileage_km": 14000, "shaken": "", "status": "出品中", "viewers": "11社"}}, "tanaoroshi": {"S330V-0024509": {"car_name": "ﾊｲｾﾞｯﾄｶｰｺﾞ", "color": "ｱｵ", "shaken": "平成28/04/27", "shiire_date": "平成28/03/23", "keiyaku_date": "", "uriage_date": ""}, "S330V-0008747": {"car_name": "ﾊｲｾﾞｯﾄｶｰｺﾞ", "color": "ｼﾛ", "shaken": "平成29/07/04", "shiire_date": "平成28/06/29", "keiyaku_date": "", "uriage_date": ""}, "L350S-0040880": {"car_name": "ﾀﾝﾄ", "color": "ﾑﾗｻｷ", "shaken": "平成29/05/31", "shiire_date": "平成28/12/07", "keiyaku_date": "", "uriage_date": ""}, "TV2-035863": {"car_name": "ｻﾝﾊﾞｰ", "color": "ｼﾙﾊﾞｰ", "shaken": "平成29/07/09", "shiire_date": "平成29/07/26", "keiyaku_date": "", "uriage_date": ""}, "JB2-8019019": {"car_name": "ﾗｲﾌ", "color": "ｸﾛ", "shaken": "令和03/12/27", "shiire_date": "平成29/12/13", "keiyaku_date": "", "uriage_date": ""}, "U61V-1003988": {"car_name": "ﾐﾆｷｬﾌﾞ", "color": "ｼﾙﾊﾞｰ", "shaken": "平成29/01/27", "shiire_date": "平成30/03/14", "keiyaku_date": "", "uriage_date": ""}, "JZX100-6055689": {"car_name": "ﾏｰｸⅡ", "color": "ｵﾚﾝｼﾞ", "shaken": "", "shiire_date": "平成30/03/21", "keiyaku_date": "", "uriage_date": ""}, "S330G-0003311": {"car_name": "ｱﾄﾚｰﾜｺﾞﾝ", "color": "ｸﾛ", "shaken": "平成30/08/03", "shiire_date": "平成30/04/04", "keiyaku_date": "", "uriage_date": ""}, "S210P-0029081": {"car_name": "ハイゼットトラック", "color": "ｼﾛ", "shaken": "平成29/08/08", "shiire_date": "平成30/05/29", "keiyaku_date": "", "uriage_date": ""}, "JC2-1106991": {"car_name": "ﾗｲﾌ", "color": "ｼﾙﾊﾞｰ", "shaken": "令和01/09/28", "shiire_date": "令和01/09/18", "keiyaku_date": "", "uriage_date": ""}, "U62V-1003120": {"car_name": "ﾐﾆｷｬﾌﾞ", "color": "ｼﾛ", "shaken": "令和01/10/05", "shiire_date": "令和01/12/18", "keiyaku_date": "", "uriage_date": ""}, "U72V-0303475": {"car_name": "ｸﾘｯﾊﾟｰ", "color": "ｼﾙﾊﾞｰ", "shaken": "令和05/07/26", "shiire_date": "令和02/01/29", "keiyaku_date": "", "uriage_date": ""}, "U62V-1201011": {"car_name": "ﾐﾆｷｬﾌﾞ", "color": "ｼﾛ", "shaken": "令和03/06/20", "shiire_date": "令和03/09/08", "keiyaku_date": "", "uriage_date": ""}, "TV2-088576": {"car_name": "ｻﾝﾊﾞｰ", "color": "ｼﾙﾊﾞｰ", "shaken": "令和04/03/27", "shiire_date": "令和03/11/24", "keiyaku_date": "", "uriage_date": ""}, "H81W-0914062": {"car_name": "eK-ACTIVE", "color": "ﾐﾄﾞﾘ", "shaken": "令和04/06/13", "shiire_date": "令和04/02/16", "keiyaku_date": "", "uriage_date": ""}, "TV2-127566": {"car_name": "ｻﾝﾊﾞｰ", "color": "ｱｵ", "shaken": "令和05/09/01", "shiire_date": "令和05/01/17", "keiyaku_date": "", "uriage_date": ""}, "NCP165-0042169": {"car_name": "ﾌﾟﾛﾎﾞｯｸｽ", "color": "ｼﾛ", "shaken": "", "shiire_date": "令和05/01/25", "keiyaku_date": "", "uriage_date": ""}, "SXE10-0043714": {"car_name": "ｱﾙﾃｯﾂｧ", "color": "ｲｴﾛｰ", "shaken": "令和04/03/23", "shiire_date": "令和05/10/06", "keiyaku_date": "", "uriage_date": ""}, "S330V-0014289": {"car_name": "ﾊｲｾﾞｯﾄｶｰｺﾞ", "color": "ｼﾙﾊﾞｰ", "shaken": "令和03/10/12", "shiire_date": "令和05/11/01", "keiyaku_date": "", "uriage_date": ""}, "LA150S-2009695": {"car_name": "ﾑｰｳﾞ", "color": "ｼﾙﾊﾞｰ", "shaken": "令和10/04/01", "shiire_date": "令和06/05/09", "keiyaku_date": "", "uriage_date": ""}, "LA700S-0155969": {"car_name": "ｳｪｲｸ", "color": "ｶﾞﾝﾒﾀ", "shaken": "令和08/08/19", "shiire_date": "令和06/06/11", "keiyaku_date": "", "uriage_date": ""}, "B43W-0038945": {"car_name": "ﾃﾞｲｽﾞ", "color": "ｱｵ", "shaken": "令和08/08/19", "shiire_date": "令和06/07/17", "keiyaku_date": "", "uriage_date": ""}, "MH55S-102841": {"car_name": "ﾜｺﾞﾝR", "color": "ｱｵ", "shaken": "令和10/04/02", "shiire_date": "令和06/08/23", "keiyaku_date": "", "uriage_date": ""}, "SXE10-0023760": {"car_name": "ｱﾙﾃｯﾂｧ", "color": "ｸﾛ", "shaken": "令和06/11/14", "shiire_date": "令和06/10/19", "keiyaku_date": "", "uriage_date": ""}, "S210P-0123060": {"car_name": "ﾊｲｾﾞｯﾄ", "color": "ｼﾛ", "shaken": "令和07/11/19", "shiire_date": "令和07/03/26", "keiyaku_date": "", "uriage_date": ""}, "B11W-0205839": {"car_name": "eK", "color": "ｱｶ", "shaken": "令和08/12/24", "shiire_date": "令和07/04/30", "keiyaku_date": "", "uriage_date": ""}, "JH1-1006200": {"car_name": "N-WGN", "color": "ｺﾝ", "shaken": "令和07/09/11", "shiire_date": "令和07/04/30", "keiyaku_date": "", "uriage_date": ""}, "ZVW51-8005625": {"car_name": "ﾌﾟﾘｳｽ", "color": "ｱｵ", "shaken": "令和09/03/23", "shiire_date": "令和07/06/27", "keiyaku_date": "", "uriage_date": ""}, "ZWR80-0097083": {"car_name": "ﾉｱ ﾊｲﾌﾞﾘｯﾄﾞ", "color": "ﾊﾟｰﾙ", "shaken": "", "shiire_date": "令和07/09/25", "keiyaku_date": "", "uriage_date": ""}, "HA7-1726260": {"car_name": "ｱｸﾃｨ", "color": "ｺﾞｰﾙﾄﾞ", "shaken": "令和09/04/18", "shiire_date": "令和07/10/21", "keiyaku_date": "", "uriage_date": ""}, "M900A-0254119": {"car_name": "ﾀﾝｸ", "color": "青", "shaken": "令和07/12/19", "shiire_date": "令和07/10/23", "keiyaku_date": "", "uriage_date": ""}, "AXVH70-1009873": {"car_name": "ｶﾑﾘ ﾊｲﾌﾞﾘｯﾄﾞ", "color": "ﾊﾟｰﾙ", "shaken": "令和08/10/16", "shiire_date": "令和07/10/29", "keiyaku_date": "", "uriage_date": ""}, "JE1-1143620": {"car_name": "ｾﾞｽﾄ", "color": "ﾐｽﾞｲﾛ", "shaken": "令和07/07/10", "shiire_date": "令和07/10/29", "keiyaku_date": "", "uriage_date": ""}, "LA310F-1502042": {"car_name": "ﾌﾟﾚｵ ﾌﾟﾗｽ", "color": "ﾋﾟﾝｸ", "shaken": "令和08/10/12", "shiire_date": "令和07/10/29", "keiyaku_date": "", "uriage_date": ""}, "LA100S-0194910": {"car_name": "ﾑｰｳﾞ", "color": "ｺﾝ", "shaken": "令和10/02/01", "shiire_date": "令和07/10/29", "keiyaku_date": "", "uriage_date": ""}, "NHP10-2259623": {"car_name": "ｱｸｱ", "color": "ｼﾙﾊﾞｰ", "shaken": "令和08/10/15", "shiire_date": "令和07/11/19", "keiyaku_date": "", "uriage_date": ""}, "HA35S-210491": {"car_name": "ｱﾙﾄｴｺ", "color": "ﾋﾟﾝｸ", "shaken": "令和09/12/03", "shiire_date": "令和07/11/22", "keiyaku_date": "", "uriage_date": ""}, "LA660F-0001385": {"car_name": "ｼﾌｫﾝ", "color": "ｸﾛ", "shaken": "", "shiire_date": "令和07/12/03", "keiyaku_date": "", "uriage_date": ""}, "LA250S-0005147": {"car_name": "ｷｬｽﾄ", "color": "ｱｵ", "shaken": "", "shiire_date": "令和07/12/10", "keiyaku_date": "", "uriage_date": ""}, "LA550S-0015532": {"car_name": "ﾐﾗﾄｺｯﾄ", "color": "ｱｶ", "shaken": "令和09/10/06", "shiire_date": "令和07/12/10", "keiyaku_date": "", "uriage_date": ""}, "ZWR80-0073265": {"car_name": "ｴｽｸｧｲｱ ﾊｲﾌﾞﾘｯﾄﾞ", "color": "黒", "shaken": "令和10/06/02", "shiire_date": "令和07/12/17", "keiyaku_date": "", "uriage_date": ""}, "LA650S-0061975": {"car_name": "ﾀﾝﾄ", "color": "ｸﾛ", "shaken": "令和10/04/01", "shiire_date": "令和07/12/17", "keiyaku_date": "", "uriage_date": ""}, "LA250S-0102583": {"car_name": "ｷｬｽﾄ", "color": "ｱｵ", "shaken": "令和08/06/19", "shiire_date": "令和08/01/07", "keiyaku_date": "", "uriage_date": ""}, "JC1-1155939": {"car_name": "ﾗｲﾌ", "color": "ﾊﾟｰﾙ", "shaken": "令和10/04/06", "shiire_date": "令和08/02/04", "keiyaku_date": "", "uriage_date": ""}, "LA650S-0115689": {"car_name": "ﾀﾝﾄ", "color": "ｼﾛ", "shaken": "令和10/04/02", "shiire_date": "令和08/02/05", "keiyaku_date": "", "uriage_date": ""}, "JC1-2000918": {"car_name": "ﾗｲﾌ", "color": "ﾊﾟｰﾙ", "shaken": "令和07/12/25", "shiire_date": "令和08/02/11", "keiyaku_date": "", "uriage_date": ""}, "MXPK16-2011139": {"car_name": "ｱｸｱ", "color": "ｼﾙﾊﾞｰ", "shaken": "", "shiire_date": "令和08/02/18", "keiyaku_date": "", "uriage_date": ""}, "MXPK16-2010970": {"car_name": "ｱｸｱ", "color": "ﾊﾟｰﾙ", "shaken": "", "shiire_date": "令和08/02/18", "keiyaku_date": "", "uriage_date": ""}, "LA700S-0018691": {"car_name": "ｳｪｲｸ", "color": "ｵﾚﾝｼﾞ", "shaken": "令和08/01/22", "shiire_date": "令和08/02/20", "keiyaku_date": "", "uriage_date": ""}, "AWS210-6001041": {"car_name": "ｸﾗｳﾝ", "color": "ｸﾛ", "shaken": "令和07/12/07", "shiire_date": "令和08/02/25", "keiyaku_date": "", "uriage_date": ""}, "LA650S-0126228": {"car_name": "ﾀﾝﾄ", "color": "ｱｶ", "shaken": "令和08/03/03", "shiire_date": "令和08/02/25", "keiyaku_date": "", "uriage_date": ""}, "SXE10-0047318": {"car_name": "ｱﾙﾃｯﾂｧ", "color": "灰", "shaken": "令和09/01/14", "shiire_date": "令和08/03/04", "keiyaku_date": "", "uriage_date": ""}, "LA260S-0012407": {"car_name": "ｷｬｽﾄ", "color": "ﾐﾄﾞﾘ", "shaken": "令和09/06/06", "shiire_date": "令和08/03/04", "keiyaku_date": "", "uriage_date": ""}, "ZVW51-8007216": {"car_name": "ﾌﾟﾘｳｽ", "color": "赤", "shaken": "令和09/04/06", "shiire_date": "令和08/03/18", "keiyaku_date": "", "uriage_date": ""}, "ZWR80-0109372": {"car_name": "ﾉｱ ﾊｲﾌﾞﾘｯﾄﾞ", "color": "黒", "shaken": "令和09/04/21", "shiire_date": "令和08/03/18", "keiyaku_date": "", "uriage_date": ""}, "NHP10-6146424": {"car_name": "ｱｸｱ", "color": "ｶﾞﾝﾒﾀ", "shaken": "令和08/03/26", "shiire_date": "令和08/03/18", "keiyaku_date": "", "uriage_date": ""}, "JC1-1016369": {"car_name": "ﾗｲﾌ", "color": "ｲｴﾛｰ", "shaken": "令和10/04/20", "shiire_date": "令和08/03/18", "keiyaku_date": "", "uriage_date": ""}, "JC1-1052091": {"car_name": "ﾗｲﾌ", "color": "ｸﾛ", "shaken": "令和08/05/29", "shiire_date": "令和08/03/28", "keiyaku_date": "", "uriage_date": ""}, "JC2-1206008": {"car_name": "ﾗｲﾌ", "color": "ﾋﾟﾝｸ", "shaken": "", "shiire_date": "令和08/04/08", "keiyaku_date": "", "uriage_date": ""}, "LA650S-1070524": {"car_name": "ﾀﾝﾄ", "color": "ﾊﾟｰﾙ", "shaken": "", "shiire_date": "令和08/04/08", "keiyaku_date": "", "uriage_date": ""}, "LA900S-0104497": {"car_name": "ﾀﾌﾄ", "color": "ﾐｽﾞｲﾛ", "shaken": "令和07/06/30", "shiire_date": "令和08/04/08", "keiyaku_date": "", "uriage_date": ""}, "LA900S-0035560": {"car_name": "ﾀﾌﾄ", "color": "ﾐﾄﾞﾘ", "shaken": "令和08/01/26", "shiire_date": "令和08/04/08", "keiyaku_date": "", "uriage_date": ""}, "NKE165-7001234": {"car_name": "ｶﾛｰﾗﾌｨｰﾙﾀﾞｰ", "color": "青", "shaken": "令和08/08/28", "shiire_date": "令和08/04/09", "keiyaku_date": "", "uriage_date": ""}, "ZWR80-0097782": {"car_name": "ﾉｱ ﾊｲﾌﾞﾘｯﾄﾞ", "color": "黒", "shaken": "令和08/03/16", "shiire_date": "令和08/04/15", "keiyaku_date": "", "uriage_date": ""}, "LA650S-0397320": {"car_name": "ﾀﾝﾄ", "color": "ｱｶ", "shaken": "令和09/03/05", "shiire_date": "令和08/04/17", "keiyaku_date": "", "uriage_date": ""}, "LA350S-0342085": {"car_name": "ﾐﾗｲｰｽ", "color": "ｸﾛ", "shaken": "令和08/04/11", "shiire_date": "令和08/04/17", "keiyaku_date": "", "uriage_date": ""}, "LA250S-0105700": {"car_name": "ｷｬｽﾄ", "color": "ﾊﾟｰﾙ", "shaken": "令和08/07/19", "shiire_date": "令和08/04/17", "keiyaku_date": "", "uriage_date": ""}, "LA350S-0130640": {"car_name": "ﾐﾗｲｰｽ", "color": "ｱｵ", "shaken": "", "shiire_date": "令和08/04/22", "keiyaku_date": "", "uriage_date": ""}, "U62T-0402487": {"car_name": "ﾐﾆｷｬﾌﾞ", "color": "ｼﾛ", "shaken": "", "shiire_date": "令和08/04/22", "keiyaku_date": "", "uriage_date": ""}, "DA63T-470793": {"car_name": "ｷｬﾘｲ", "color": "ｼﾛ", "shaken": "令和08/10/12", "shiire_date": "令和08/04/22", "keiyaku_date": "", "uriage_date": ""}, "LA160S-0011045": {"car_name": "ﾑｰｳﾞ", "color": "ｱｵ", "shaken": "令和08/09/23", "shiire_date": "令和08/04/22", "keiyaku_date": "", "uriage_date": ""}, "ZWR80-0036895": {"car_name": "ﾉｱ ﾊｲﾌﾞﾘｯﾄﾞ", "color": "ﾏﾙｰﾝ", "shaken": "", "shiire_date": "令和08/04/22", "keiyaku_date": "", "uriage_date": ""}, "NHP10-2170218": {"car_name": "ｱｸｱ", "color": "ｲｴﾛｰ", "shaken": "", "shiire_date": "令和08/04/22", "keiyaku_date": "", "uriage_date": ""}, "NHP10-2446214": {"car_name": "ｱｸｱ", "color": "ｺﾝ", "shaken": "令和08/03/30", "shiire_date": "令和08/04/29", "keiyaku_date": "", "uriage_date": ""}, "LA150F-0011622": {"car_name": "ｽﾃﾗ", "color": "ﾋﾟﾝｸ", "shaken": "令和09/11/10", "shiire_date": "令和08/04/29", "keiyaku_date": "", "uriage_date": ""}, "LA250S-0041710": {"car_name": "ｷｬｽﾄ", "color": "ﾊﾟｰﾙ", "shaken": "令和09/04/14", "shiire_date": "令和08/04/29", "keiyaku_date": "", "uriage_date": ""}, "U62V-2201086": {"car_name": "ﾐﾆｷｬﾌﾞ", "color": "ｼﾛ", "shaken": "令和09/02/27", "shiire_date": "令和08/04/29", "keiyaku_date": "", "uriage_date": ""}, "LA110S-0010044": {"car_name": "ﾑｰｳﾞ", "color": "ｸﾛ", "shaken": "", "shiire_date": "令和08/04/29", "keiyaku_date": "", "uriage_date": ""}, "JE2-1401317": {"car_name": "ｾﾞｽﾄｽﾊﾟｰｸ", "color": "ｸﾛ", "shaken": "令和08/11/24", "shiire_date": "令和08/04/29", "keiyaku_date": "", "uriage_date": ""}, "LA100S-0076832": {"car_name": "ﾑｰｳﾞ", "color": "ﾊﾟｰﾙ", "shaken": "", "shiire_date": "令和08/05/13", "keiyaku_date": "", "uriage_date": ""}, "LA110F-0000624": {"car_name": "ｽﾃﾗ", "color": "ｱｵ", "shaken": "", "shiire_date": "令和08/05/13", "keiyaku_date": "", "uriage_date": ""}, "LA160S-0000822": {"car_name": "ﾑｰｳﾞ", "color": "ﾐﾄﾞﾘ", "shaken": "", "shiire_date": "令和08/05/13", "keiyaku_date": "", "uriage_date": ""}, "MR31S-221012": {"car_name": "ﾊｽﾗｰ", "color": "ｱｵ", "shaken": "", "shiire_date": "令和08/05/13", "keiyaku_date": "", "uriage_date": ""}, "ZWR80-0059593": {"car_name": "ｳﾞｫｸｼｰ ﾊｲﾌﾞﾘｯﾄﾞ", "color": "黒", "shaken": "令和09/10/14", "shiire_date": "令和08/05/15", "keiyaku_date": "", "uriage_date": ""}, "LA600S-0021715": {"car_name": "タント", "color": "ﾊﾟｰﾙ", "shaken": "", "shiire_date": "令和08/05/22", "keiyaku_date": "", "uriage_date": ""}, "NHP10-2265677": {"car_name": "ｱｸｱ", "color": "青", "shaken": "令和08/10/30", "shiire_date": "令和08/05/22", "keiyaku_date": "", "uriage_date": ""}, "LA160S-1012901": {"car_name": "ムーヴ", "color": "ｸﾛ", "shaken": "", "shiire_date": "令和08/05/22", "keiyaku_date": "", "uriage_date": ""}, "JZS161-0031255": {"car_name": "ｱﾘｽﾄ", "color": "白", "shaken": "令和09/03/12", "shiire_date": "令和08/05/22", "keiyaku_date": "", "uriage_date": ""}, "LA110S-0009912": {"car_name": "ﾑｰｳﾞ", "color": "ｸﾛ", "shaken": "", "shiire_date": "令和08/05/27", "keiyaku_date": "", "uriage_date": ""}, "NHP10-2108378": {"car_name": "ｱｸｱ", "color": "青", "shaken": "令和09/09/23", "shiire_date": "令和08/05/29", "keiyaku_date": "", "uriage_date": ""}, "LA150S-2115382": {"car_name": "ﾑｰｳﾞ", "color": "ｼﾙﾊﾞｰ", "shaken": "令和08/03/31", "shiire_date": "令和08/06/03", "keiyaku_date": "", "uriage_date": ""}, "MR31S-298541": {"car_name": "ﾊｽﾗｰ", "color": "白", "shaken": "令和08/05/12", "shiire_date": "令和08/06/03", "keiyaku_date": "", "uriage_date": ""}, "JC1-1242701": {"car_name": "ﾗｲﾌ", "color": "ｸﾛ", "shaken": "令和09/01/28", "shiire_date": "令和08/06/03", "keiyaku_date": "", "uriage_date": ""}, "LA650S-0365208": {"car_name": "ﾀﾝﾄ", "color": "ｺﾝ", "shaken": "令和08/11/16", "shiire_date": "令和08/06/05", "keiyaku_date": "", "uriage_date": ""}, "JZX110-6034678": {"car_name": "ﾏｰｸⅡ", "color": "ｶﾞﾝﾒﾀ", "shaken": "令和09/08/17", "shiire_date": "令和08/06/08", "keiyaku_date": "", "uriage_date": ""}, "ZVW50-8006757": {"car_name": "ﾌﾟﾘｳｽ", "color": "ｱｶ", "shaken": "令和09/01/27", "shiire_date": "令和08/06/10", "keiyaku_date": "", "uriage_date": ""}, "ZVW51-8020085": {"car_name": "ﾌﾟﾘｳｽ", "color": "灰", "shaken": "令和09/07/14", "shiire_date": "令和08/06/10", "keiyaku_date": "", "uriage_date": ""}, "LA660S-0123616": {"car_name": "ﾀﾝﾄ", "color": "ｼﾛ", "shaken": "令和10/04/06", "shiire_date": "令和08/06/10", "keiyaku_date": "", "uriage_date": ""}, "LA800S-0181613": {"car_name": "ﾑｰｳﾞｷｬﾝﾊﾞｽ", "color": "ﾂｰﾄﾝ", "shaken": "", "shiire_date": "令和08/06/10", "keiyaku_date": "", "uriage_date": ""}, "LA600S-0245746": {"car_name": "ﾀﾝﾄ", "color": "ﾑﾗｻｷ", "shaken": "", "shiire_date": "令和08/06/10", "keiyaku_date": "", "uriage_date": ""}, "LA350S-0074998": {"car_name": "ﾐﾗｲｰｽ", "color": "ｼﾛ", "shaken": "令和09/04/24", "shiire_date": "令和08/06/10", "keiyaku_date": "", "uriage_date": ""}, "LA100S-0279917": {"car_name": "ﾑｰｳﾞ", "color": "ﾊﾟｰﾙ", "shaken": "令和09/01/07", "shiire_date": "令和08/06/10", "keiyaku_date": "", "uriage_date": ""}, "MXPK16-6008993": {"car_name": "ｱｸｱ", "color": "ｼﾙﾊﾞｰ", "shaken": "令和11/06/16", "shiire_date": "令和08/06/12", "keiyaku_date": "", "uriage_date": ""}, "ZWR80-0209244": {"car_name": "ｳﾞｫｸｼｰ ﾊｲﾌﾞﾘｯﾄﾞ", "color": "黒", "shaken": "令和09/08/24", "shiire_date": "令和08/06/17", "keiyaku_date": "", "uriage_date": ""}, "JC1-1218015": {"car_name": "ﾗｲﾌ", "color": "ﾊﾟｰﾙ", "shaken": "令和08/05/25", "shiire_date": "令和08/06/17", "keiyaku_date": "", "uriage_date": ""}, "LA250S-0147194": {"car_name": "ｷｬｽﾄ", "color": "ﾋﾟﾝｸ", "shaken": "令和09/10/15", "shiire_date": "令和08/06/17", "keiyaku_date": "", "uriage_date": ""}, "LA350S-0131010": {"car_name": "ﾐﾗｲｰｽ", "color": "白", "shaken": "令和08/04/24", "shiire_date": "令和08/06/17", "keiyaku_date": "", "uriage_date": ""}, "JE2-1301272": {"car_name": "ｾﾞｽﾄ", "color": "ﾑﾗｻｷ", "shaken": "令和09/04/14", "shiire_date": "令和08/06/17", "keiyaku_date": "", "uriage_date": ""}, "LA310S-1069758": {"car_name": "ﾐﾗｲｰｽ", "color": "", "shaken": "令和08/08/25", "shiire_date": "令和08/06/18", "keiyaku_date": "", "uriage_date": ""}, "ZRR70-0114263": {"car_name": "ｳﾞｫｸｼｰ", "color": "", "shaken": "令和09/12/21", "shiire_date": "令和08/06/21", "keiyaku_date": "", "uriage_date": ""}, "JG1-1076688": {"car_name": "N-ONE", "color": "", "shaken": "令和09/08/20", "shiire_date": "令和08/06/23", "keiyaku_date": "", "uriage_date": ""}, "JC1-1017527": {"car_name": "ﾗｲﾌ", "color": "黄", "shaken": "令和08/06/28", "shiire_date": "令和08/06/24", "keiyaku_date": "", "uriage_date": ""}, "MH23S-903727": {"car_name": "ﾜｺﾞﾝR", "color": "", "shaken": "令和09/02/09", "shiire_date": "令和08/06/26", "keiyaku_date": "", "uriage_date": ""}, "NSP135-2015355": {"car_name": "ｳﾞｨｯﾂ", "color": "", "shaken": "令和10/01/14", "shiire_date": "令和08/06/30", "keiyaku_date": "", "uriage_date": ""}, "LA100S-0253061": {"car_name": "ﾑｰｳﾞ", "color": "", "shaken": "令和08/07/09", "shiire_date": "令和08/07/05", "keiyaku_date": "", "uriage_date": ""}, "LA100F-0003009": {"car_name": "ｽﾃﾗ", "color": "ｼﾙﾊﾞｰ", "shaken": "令和08/07/28", "shiire_date": "令和08/07/08", "keiyaku_date": "", "uriage_date": ""}, "LA100S-0136863": {"car_name": "ﾑｰｳﾞ", "color": "黒", "shaken": "令和09/06/26", "shiire_date": "令和08/07/08", "keiyaku_date": "", "uriage_date": ""}, "JE1-1112132": {"car_name": "ｾﾞｽﾄ", "color": "ｼﾙﾊﾞｰ", "shaken": "令和08/09/28", "shiire_date": "令和08/07/08", "keiyaku_date": "", "uriage_date": ""}, "LA650S-1006507": {"car_name": "ﾀﾝﾄ", "color": "ﾜｲﾝﾚｯﾄﾞ", "shaken": "令和08/11/27", "shiire_date": "令和08/07/08", "keiyaku_date": "", "uriage_date": ""}, "NHP10-6282867": {"car_name": "ｱｸｱ", "color": "ｶﾞﾝﾒﾀ", "shaken": "令和09/03/30", "shiire_date": "令和08/07/08", "keiyaku_date": "", "uriage_date": ""}, "ZVW52-3027633": {"car_name": "ﾌﾟﾘｳｽPHV", "color": "ｲｴﾛｰ", "shaken": "令和08/05/24", "shiire_date": "令和08/07/08", "keiyaku_date": "", "uriage_date": ""}, "NHP10-6423951": {"car_name": "ｱｸｱ", "color": "黒", "shaken": "令和08/06/29", "shiire_date": "令和08/07/08", "keiyaku_date": "", "uriage_date": ""}, "H47V-1500468": {"car_name": "ﾐﾆｶ", "color": "ｼﾙﾊﾞｰ", "shaken": "令和08/08/22", "shiire_date": "令和08/07/09", "keiyaku_date": "", "uriage_date": ""}, "LA100S-1009827": {"car_name": "ﾑｰｳﾞ", "color": "ｸﾛ", "shaken": "令和09/10/09", "shiire_date": "令和08/07/09", "keiyaku_date": "", "uriage_date": ""}}}</script>
+<script id="loaded-json" type="application/json">"2026/07/21"</script>
+<script>
+let raw = JSON.parse(document.getElementById('data-json').textContent);
+let lastLoadedLabel = JSON.parse(document.getElementById('loaded-json').textContent);
+const SITES = ['carsensor','goonet','quicknetwork','autoserver'];
+const SITE_LABEL = {carsensor:'カーセンサー', goonet:'グーネット', quicknetwork:'QuickNetwork', autoserver:'オートサーバー'};
+
+/* ============ 表示ユーティリティ ============ */
+function fmtYen(v){ return v==null ? null : '¥'+v.toLocaleString(); }
+
+function isActive(site, d){
+  if(!d) return false;
+  if(site==='carsensor' || site==='goonet') return d.status === '掲載';
+  return true;
+}
+
+function normShaken(s){
+  if(!s) return null;
+  s = String(s).trim();
+  if(s.includes('整備付') || s.includes('車検整備')) return {label:'整備付(納車時更新)', ym:null};
+  if(s === '--.--' || s === '--/--' || s === '') return null;
+  let m;
+  if((m = s.match(/(\d{4})年(\d{1,2})月/))) return {label:`${m[1]}/${m[2].padStart(2,'0')}`, ym:parseInt(m[1])*12+parseInt(m[2])};
+  if((m = s.match(/R(\d{1,2})[.\/](\d{1,2})/))) { let y=2018+parseInt(m[1]); return {label:`${y}/${m[2].padStart(2,'0')}(R${m[1]})`, ym:y*12+parseInt(m[2])}; }
+  if((m = s.match(/^(\d{1,2})\/(\d{1,2})$/))) { let y=2018+parseInt(m[1]); return {label:`${y}/${m[2].padStart(2,'0')}(R${m[1]})`, ym:y*12+parseInt(m[2])}; }
+  return {label:s, ym:null};
+}
+
+/* ============ 行データ構築(CSV更新後も再利用) ============ */
+let rows = [];
+let total = 0;
+
+function recompute(){
+  const stockRecords = raw.tanaoroshi || {};
+  const stockVins = new Set(Object.keys(stockRecords));
+
+  const vinSet = new Set();
+  SITES.forEach(s => Object.keys(raw[s]||{}).forEach(v => vinSet.add(v)));
+
+  rows = [...vinSet].map(vin => {
+    const bySite = {};
+    SITES.forEach(s => bySite[s] = (raw[s]||{})[vin] || null);
+    const inStock = stockVins.has(vin);
+    const stockInfo = stockRecords[vin] || null;
+    const carName = (stockInfo||bySite.carsensor||bySite.goonet||bySite.quicknetwork||bySite.autoserver||{}).car_name || '';
+
+    const retailPrices = [bySite.carsensor?.price_total, bySite.goonet?.price_total].filter(v=>v!=null);
+    const gyohanPrices = [bySite.quicknetwork?.price_gyohan, bySite.autoserver?.price_gyohan].filter(v=>v!=null);
+    const retailMismatch = retailPrices.length>=2 && new Set(retailPrices).size>1;
+    const gyohanMismatch = gyohanPrices.length>=2 && new Set(gyohanPrices).size>1;
+    const priceMismatch = retailMismatch || gyohanMismatch;
+
+    const mileages = SITES.map(s=>bySite[s]?.mileage_km).filter(v=>v!=null);
+    const mileageMismatch = mileages.length>=2 && (Math.max(...mileages)-Math.min(...mileages) > 3000);
+
+    const shakenNorm = {};
+    SITES.forEach(s=>{ shakenNorm[s] = bySite[s] ? normShaken(bySite[s].shaken) : null; });
+    const shakenYms = SITES.map(s=>shakenNorm[s]?.ym).filter(v=>v!=null);
+    const shakenMismatch = shakenYms.length>=2 && new Set(shakenYms).size>1;
+
+    const activeSites = SITES.filter(s => isActive(s, bySite[s]));
+    const missingSitesAll = SITES.filter(s => !isActive(s, bySite[s]));
+    const missing = activeSites.length > 0 && activeSites.length < SITES.length;
+
+    const notInStock = !inStock;
+
+    const flagCount = (missing?1:0) + (notInStock?1:0) + (priceMismatch?1:0) + (mileageMismatch?1:0) + (shakenMismatch?1:0);
+
+    return {vin, carName, bySite, inStock, notInStock, retailMismatch, gyohanMismatch, priceMismatch,
+             mileages, mileageMismatch, shakenNorm, shakenMismatch,
+             missing, missingSites: missing ? missingSitesAll : [], flagCount};
+  });
+
+  total = rows.length;
+  renderSummary();
+  applyFilters();
+}
+
+function renderSummary(){
+  const missingCount = rows.filter(r=>r.missing).length;
+  const notInStockCount = rows.filter(r=>r.notInStock).length;
+  const priceMismatchCount = rows.filter(r=>r.priceMismatch).length;
+  const mileageMismatchCount = rows.filter(r=>r.mileageMismatch).length;
+  const shakenMismatchCount = rows.filter(r=>r.shakenMismatch).length;
+  const cleanCount = rows.filter(r=>!r.missing && !r.priceMismatch && !r.mileageMismatch && !r.shakenMismatch).length;
+
+  document.getElementById('summary').innerHTML = `
+    <div class="card" data-filter="all"><p class="label">対象車両数(4サイト合算)</p><p class="value">${total}台</p></div>
+    <div class="card danger" data-filter="missing"><p class="label">掲載漏れ(サイト間)</p><p class="value">${missingCount}台</p></div>
+    <div class="card warn" data-filter="notinstock"><p class="label">棚卸に該当なし(要確認)</p><p class="value">${notInStockCount}台</p></div>
+    <div class="card warn" data-filter="price"><p class="label">価格ずれ</p><p class="value">${priceMismatchCount}台</p></div>
+    <div class="card warn" data-filter="mileage"><p class="label">走行距離ずれ</p><p class="value">${mileageMismatchCount}台</p></div>
+    <div class="card warn" data-filter="shaken"><p class="label">車検ずれ</p><p class="value">${shakenMismatchCount}台</p></div>
+    <div class="card" data-filter="clean"><p class="label">全項目一致</p><p class="value">${cleanCount}台</p></div>
+  `;
+  document.querySelectorAll('.card[data-filter]').forEach(c=>{
+    c.classList.toggle('active-card', c.dataset.filter === currentFilter && currentFilter !== 'all');
+  });
+}
+
+/* ============ セル表示 ============ */
+function siteCell(site, r){
+  const d = r.bySite[site];
+  if(!d) return '<span class="miss">未掲載</span>';
+  if(site==='carsensor' || site==='goonet'){
+    const v = fmtYen(d.price_total);
+    return v ? `<span class="${r.retailMismatch?'mismatch':''}">${v}</span>` : '<span class="subtle">―</span>';
+  }
+  const v = fmtYen(d.price_gyohan);
+  return v ? `<span class="${r.gyohanMismatch?'mismatch':''}">${v}</span>` : '<span class="subtle">―</span>';
+}
+
+function mileageCell(r){
+  const parts = SITES.map(s=>{
+    const d = r.bySite[s];
+    if(!d || d.mileage_km==null) return null;
+    return `${SITE_LABEL[s]}:${d.mileage_km.toLocaleString()}km`;
+  }).filter(Boolean);
+  return `<span class="${r.mileageMismatch?'mismatch':''}">${parts.join(' / ')}</span>`;
+}
+
+function shakenCell(r){
+  const parts = SITES.map(s=>{
+    const n = r.shakenNorm[s];
+    if(!n) return null;
+    return `${SITE_LABEL[s]}:${n.label}`;
+  }).filter(Boolean);
+  return `<span class="${r.shakenMismatch?'mismatch':''}">${parts.join(' / ')}</span>`;
+}
+
+function flagBadges(r){
+  const b = [];
+  if(r.missing) b.push(`<span class="badge miss">掲載漏れ: ${r.missingSites.map(s=>SITE_LABEL[s]).join('・')}</span>`);
+  if(r.notInStock) b.push(`<span class="badge warn">棚卸に該当なし(要確認)</span>`);
+  if(r.priceMismatch) b.push('<span class="badge warn">価格ずれ</span>');
+  if(r.mileageMismatch) b.push('<span class="badge warn">走行距離ずれ</span>');
+  if(r.shakenMismatch) b.push('<span class="badge warn">車検ずれ</span>');
+  if(!b.length) b.push('<span class="badge ok">一致</span>');
+  return b.join('');
+}
+
+/* ============ フィルター・検索・ソート ============ */
+let currentFilter = 'all';
+let currentSearch = '';
+let sortKey = null;
+let sortDir = 1;
+
+function getSortValue(r, key){
+  switch(key){
+    case 'vin': return r.vin;
+    case 'carname': return r.carName;
+    case 'carsensor': return r.bySite.carsensor?.price_total ?? -1;
+    case 'goonet': return r.bySite.goonet?.price_total ?? -1;
+    case 'quicknetwork': return r.bySite.quicknetwork?.price_gyohan ?? -1;
+    case 'autoserver': return r.bySite.autoserver?.price_gyohan ?? -1;
+    case 'mileage': return r.mileages.length ? Math.max(...r.mileages) : -1;
+    case 'shaken': {
+      const yms = SITES.map(s=>r.shakenNorm[s]?.ym).filter(v=>v!=null);
+      return yms.length ? Math.max(...yms) : -1;
+    }
+    case 'flags': return r.flagCount;
+    default: return 0;
+  }
+}
+
+function applyFilters(){
+  let filtered = rows;
+  if(currentFilter==='missing') filtered = filtered.filter(r=>r.missing);
+  if(currentFilter==='notinstock') filtered = filtered.filter(r=>r.notInStock);
+  if(currentFilter==='price') filtered = filtered.filter(r=>r.priceMismatch);
+  if(currentFilter==='mileage') filtered = filtered.filter(r=>r.mileageMismatch);
+  if(currentFilter==='shaken') filtered = filtered.filter(r=>r.shakenMismatch);
+  if(currentFilter==='clean') filtered = filtered.filter(r=>!r.missing && !r.priceMismatch && !r.mileageMismatch && !r.shakenMismatch);
+  if(currentSearch){
+    const q = currentSearch.toLowerCase();
+    filtered = filtered.filter(r => r.vin.toLowerCase().includes(q) || r.carName.toLowerCase().includes(q));
+  }
+  if(sortKey){
+    filtered = [...filtered].sort((a,b)=>{
+      const va = getSortValue(a, sortKey), vb = getSortValue(b, sortKey);
+      if(typeof va === 'string') return va.localeCompare(vb) * sortDir;
+      return (va - vb) * sortDir;
+    });
+  }
+  render(filtered);
+}
+
+function render(list){
+  document.getElementById('countHint').textContent = `${list.length}件表示中（全${total}件）`;
+  document.getElementById('tbody').innerHTML = list.map(r => `
+    <tr>
+      <td class="vin">${r.vin}</td>
+      <td>${r.inStock ? '<span class="badge ok">該当あり</span>' : '<span class="badge warn">該当なし</span>'}</td>
+      <td><div class="carname">${r.carName}</div></td>
+      <td class="site-col">${siteCell('carsensor', r)}</td>
+      <td>${siteCell('goonet', r)}</td>
+      <td class="site-col">${siteCell('quicknetwork', r)}</td>
+      <td>${siteCell('autoserver', r)}</td>
+      <td class="site-col">${mileageCell(r)}</td>
+      <td>${shakenCell(r)}</td>
+      <td>${flagBadges(r)}</td>
+    </tr>
+  `).join('');
+}
+
+function setFilter(key){
+  currentFilter = (currentFilter === key) ? 'all' : key;
+  document.querySelectorAll('.filterbtn').forEach(b=>{
+    b.classList.toggle('active', b.dataset.filter === currentFilter);
+  });
+  document.querySelectorAll('.card[data-filter]').forEach(c=>{
+    c.classList.toggle('active-card', c.dataset.filter === currentFilter && currentFilter !== 'all');
+  });
+  applyFilters();
+}
+
+document.querySelectorAll('.filterbtn').forEach(btn=>{
+  btn.addEventListener('click', ()=> setFilter(btn.dataset.filter));
+});
+document.getElementById('summary').addEventListener('click', (e)=>{
+  const card = e.target.closest('.card[data-filter]');
+  if(card) setFilter(card.dataset.filter);
+});
+document.getElementById('searchBox').addEventListener('input', (e)=>{
+  currentSearch = e.target.value;
+  applyFilters();
+});
+document.querySelectorAll('th.sortable').forEach(th=>{
+  th.addEventListener('click', ()=>{
+    const key = th.dataset.sort;
+    if(sortKey === key){ sortDir = -sortDir; } else { sortKey = key; sortDir = 1; }
+    document.querySelectorAll('th.sortable').forEach(t=>{
+      t.classList.remove('sort-active');
+      const arrow = t.querySelector('.arrow');
+      if(arrow) arrow.textContent = '↕';
+    });
+    th.classList.add('sort-active');
+    th.querySelector('.arrow').textContent = sortDir===1 ? '▲' : '▼';
+    applyFilters();
+  });
+});
+
+/* ============ CSVアップロード & 再パース ============ */
+function normVin(v){ return (v||'').replace(/\s+/g,'').toUpperCase(); }
+
+function decodeAuto(buf){
+  let txt = new TextDecoder('utf-8', {fatal:false}).decode(buf);
+  if(txt.includes('\uFFFD')){
+    txt = new TextDecoder('shift_jis', {fatal:false}).decode(buf);
+  }
+  if(txt.charCodeAt(0) === 0xFEFF) txt = txt.slice(1);
+  return txt;
+}
+
+function parseCSV(text){
+  const rowsOut = [];
+  let i=0, field='', row=[], inQuotes=false;
+  const n=text.length;
+  while(i<n){
+    const c=text[i];
+    if(inQuotes){
+      if(c==='"'){
+        if(text[i+1]==='"'){ field+='"'; i+=2; continue; }
+        inQuotes=false; i++; continue;
+      }
+      field+=c; i++; continue;
+    } else {
+      if(c==='"'){ inQuotes=true; i++; continue; }
+      if(c===','){ row.push(field); field=''; i++; continue; }
+      if(c==='\r'){ i++; continue; }
+      if(c==='\n'){ row.push(field); rowsOut.push(row); row=[]; field=''; i++; continue; }
+      field+=c; i++; continue;
+    }
+  }
+  if(field.length || row.length){ row.push(field); rowsOut.push(row); }
+  return rowsOut;
+}
+
+function manYenToInt(s){
+  if(!s) return null;
+  const m = String(s).trim().match(/^([\d.]+)万円$/);
+  return m ? Math.round(parseFloat(m[1])*10000) : null;
+}
+function yenCommaToInt(s){
+  if(!s) return null;
+  const t = String(s).replace(/,/g,'').replace(/円/g,'').trim();
+  return /^\d+$/.test(t) ? parseInt(t,10) : null;
+}
+function kmAnyToInt(s){
+  if(!s) return null;
+  s = String(s).trim();
+  let m = s.match(/^(\d+)km$/); if(m) return parseInt(m[1],10);
+  m = s.match(/^([\d.]+)万[kK]$/); if(m) return Math.round(parseFloat(m[1])*10000);
+  m = s.match(/^(\d+)$/); if(m) return parseInt(m[1],10);
+  return null;
+}
+function senyenToYen(s){
+  if(!s) return null;
+  const t = String(s).replace(/,/g,'').trim();
+  return /^\d+$/.test(t) ? parseInt(t,10)*1000 : null;
+}
+
+function parseCarsensorCSV(text){
+  const rowsArr = parseCSV(text);
+  const hIdx = rowsArr.findIndex(r => r[0] === 'メーカー');
+  if(hIdx === -1) throw new Error('カーセンサーCSVのヘッダー行(メーカー)が見つかりません');
+  const header = rowsArr[hIdx];
+  const idx = {}; header.forEach((h,i)=>idx[h]=i);
+  const out = {};
+  for(const r of rowsArr.slice(hIdx+1)){
+    if(r.length < header.length) continue;
+    const vin = normVin(r[idx['車台番号']]);
+    if(!vin) continue;
+    const honntai = r[idx['本体価格検索用']], total = r[idx['支払総額検索用']], mileage = r[idx['走行距離検索用']];
+    out[vin] = {
+      car_name: `${r[idx['メーカー']]||''} ${r[idx['車種']]||''}`.trim(),
+      grade: (r[idx['グレード']]||'').trim(),
+      price_honntai: /^\d+$/.test(honntai) ? parseInt(honntai,10) : null,
+      price_total: /^\d+$/.test(total) ? parseInt(total,10) : null,
+      mileage_km: /^\d+$/.test(mileage) ? parseInt(mileage,10) : null,
+      shaken: (r[idx['車検']]||'').trim(),
+      status: (r[idx['掲載状況']]||'').trim(),
+    };
+  }
+  return out;
+}
+
+function parseGoonetCSV(text){
+  const rowsArr = parseCSV(text);
+  const header = rowsArr[3];
+  if(!header || !header.includes('車台番号（全桁）')) throw new Error('グーネットCSVのヘッダー行(4行目)が想定形式と異なります');
+  const idx = {}; header.forEach((h,i)=>idx[h]=i);
+  const out = {};
+  for(const r of rowsArr.slice(4)){
+    if(r.length < header.length) continue;
+    const vin = normVin(r[idx['車台番号（全桁）']]);
+    if(!vin) continue;
+    out[vin] = {
+      car_name: `${r[idx['ブランド']]||''} ${r[idx['車種']]||''}`.trim(),
+      grade: (r[idx['グレード']]||'').trim(),
+      price_honntai: manYenToInt(r[idx['車両本体価格']]),
+      price_total: manYenToInt(r[idx['支払総額']]),
+      mileage_km: kmAnyToInt(r[idx['走行']]),
+      shaken: (r[idx['車検']]||'').trim(),
+      status: (r[idx['グーネット中古車掲載']]||'').trim(),
+    };
+  }
+  return out;
+}
+
+function parseQuickNetworkCSV(text){
+  const rowsArr = parseCSV(text);
+  const header = rowsArr[0];
+  if(!header || !header.includes('業販価格')) throw new Error('QuickNetwork CSVのヘッダー行が想定形式と異なります');
+  const idx = {}; header.forEach((h,i)=>idx[h]=i);
+  const out = {};
+  for(const r of rowsArr.slice(1)){
+    if(r.length < header.length) continue;
+    const vin = normVin(r[idx['車台番号']]);
+    if(!vin) continue;
+    out[vin] = {
+      car_name: `${r[idx['メーカー']]||''} ${r[idx['車名']]||''}`.trim(),
+      grade: (r[idx['グレード']]||'').trim(),
+      price_gyohan: yenCommaToInt(r[idx['業販価格']]),
+      price_kouri: yenCommaToInt(r[idx['小売価格']]),
+      mileage_km: kmAnyToInt(r[idx['走行距離']]),
+      shaken: (r[idx['車検']]||'').trim(),
+      status: (r[idx['状況']]||'').trim(),
+    };
+  }
+  return out;
+}
+
+function parseAutoserverText(text){
+  const lines = text.split(/\r\n|\n/);
+  const dateIdxs = [];
+  lines.forEach((l,i)=>{ if(/^\d{4}\/\d{2}\/\d{2}$/.test(l.trim())) dateIdxs.push(i); });
+  if(!dateIdxs.length) throw new Error('オートサーバーのテキストから日付行が見つかりません');
+  const out = {};
+  for(let i=0;i<dateIdxs.length;i++){
+    const start = dateIdxs[i], end = (i+1<dateIdxs.length) ? dateIdxs[i+1] : lines.length;
+    let block = lines.slice(start,end).filter(l=>l.trim() !== '');
+    block = block.slice(1); // 日付を除去
+    if(block[0] && block[0].trim().endsWith('経過')) block = block.slice(1);
+    block = block.slice(1); // 準備中を除去
+    if(block.length < 8) continue;
+    const f2 = block[2].split('\t');
+    const f3 = block[3].split('\t');
+    const f4 = block[4].split('\t');
+    const f5 = block[5].split('\t');
+    const f6 = block[6].split('\t');
+    const vin = normVin(f4[0]);
+    if(!vin) continue;
+    out[vin] = {
+      car_name: (f2[2]||'').trim(),
+      grade: (f3[0]||'').trim(),
+      price_gyohan: senyenToYen((f5[3]||'').trim()),
+      mileage_km: /^\d+$/.test((f5[0]||'').trim()) ? parseInt(f5[0].trim(),10)*1000 : null,
+      shaken: (f4[1]||'').trim(),
+      status: (f6[1]||'').trim(),
+    };
+  }
+  return out;
+}
+
+function parseTanaoroshiCSV(text){
+  const rowsArr = parseCSV(text);
+  const hIdx = rowsArr.findIndex(r => r.includes('車台番号') && r.includes('車名'));
+  if(hIdx === -1) throw new Error('棚卸CSVのヘッダー行が見つかりません');
+  const header = rowsArr[hIdx];
+  const idx = {}; header.forEach((h,i)=>idx[h]=i);
+  const out = {};
+  for(const r of rowsArr.slice(hIdx+1)){
+    if(r.length <= idx['車台番号']) continue;
+    const vin = normVin(r[idx['車台番号']]);
+    if(!vin) continue;
+    out[vin] = {
+      car_name: (r[idx['車名']]||'').trim(),
+      color: (r[idx['色']]||'').trim(),
+      shaken: (r[idx['車検期限']]||'').trim(),
+    };
+  }
+  return out;
+}
+
+const PARSERS = {
+  carsensor: parseCarsensorCSV,
+  goonet: parseGoonetCSV,
+  quicknetwork: parseQuickNetworkCSV,
+  autoserver: parseAutoserverText,
+  tanaoroshi: parseTanaoroshiCSV,
+};
+
+function setStatus(key, msg, cls){
+  const el = document.getElementById('status-'+key);
+  el.textContent = msg;
+  el.className = 'uploadStatus' + (cls ? ' '+cls : '');
+}
+
+function readFileAsText(file){
+  return new Promise((resolve,reject)=>{
+    const fr = new FileReader();
+    fr.onload = ()=> resolve(decodeAuto(fr.result));
+    fr.onerror = ()=> reject(fr.error);
+    fr.readAsArrayBuffer(file);
+  });
+}
+
+document.getElementById('updateDataBtn').addEventListener('click', async ()=>{
+  const keys = ['carsensor','goonet','quicknetwork','autoserver','tanaoroshi'];
+  let anyLoaded = false;
+  for(const key of keys){
+    const input = document.getElementById('file-'+key);
+    const file = input.files[0];
+    if(!file) continue;
+    try{
+      const text = await readFileAsText(file);
+      const parsed = PARSERS[key](text);
+      raw[key] = parsed;
+      setStatus(key, `読込OK: ${Object.keys(parsed).length}件`, 'ok');
+      anyLoaded = true;
+    } catch(err){
+      setStatus(key, 'エラー: ' + err.message, 'err');
+    }
+  }
+  if(anyLoaded){
+    const now = new Date();
+    lastLoadedLabel = now.getFullYear()+'/'+String(now.getMonth()+1).padStart(2,'0')+'/'+String(now.getDate()).padStart(2,'0')+' '+String(now.getHours()).padStart(2,'0')+':'+String(now.getMinutes()).padStart(2,'0');
+    document.getElementById('lastUpdated').textContent = '最終更新: ' + lastLoadedLabel + '（このブラウザでの表示のみ。ファイルに保存するには別途「保存」操作が必要です）';
+    recompute();
+  } else {
+    document.getElementById('lastUpdated').textContent = 'ファイルが選択されていません。';
+  }
+});
+
+/* ============ 初期表示 ============ */
+document.getElementById('lastUpdated').textContent = lastLoadedLabel ? ('データ基準日: ' + lastLoadedLabel) : '';
+recompute();
+</script>
+</body>
+</html>
