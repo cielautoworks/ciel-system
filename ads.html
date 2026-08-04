@@ -3,6 +3,15 @@
 <head>
 <meta charset="UTF-8">
 <title>広告掲載状況ダッシュボード | シエルオートワークス</title>
+<script>
+// ダークモードの初期適用(画面のちらつき防止のため、CSS読み込み前に実行する)。
+// index.html(ハブページ)と同じキー名(ciel-theme)を使うことで、設定を共有する。
+(function(){
+  var t = localStorage.getItem('ciel-theme');
+  if(t !== 'light' && t !== 'dark') t = 'dark'; // 初期設定はダークモード
+  document.documentElement.setAttribute('data-theme', t);
+})();
+</script>
 <style>
 :root{
   --sky:#4AABCF; --pink:#D97A9A;
@@ -11,7 +20,23 @@
   --danger-bg:#fbeaea; --danger-text:#a32d2d; --danger-border:#e9b9b9;
   --warn-bg:#fbf1de; --warn-text:#8a5a0a; --warn-border:#eecf9d;
   --ok-bg:#e9f4ea; --ok-text:#2c6b34;
+  --rowwarn-bg:#fff6d6; --rowwarn-bg-hover:#ffefb8;
+  --toggle-on-bg:#e9f4ea; --toggle-on-text:#2c6b34; --toggle-on-border:#2c6b34;
+  --toggle-off-bg:#fbeaea; --toggle-off-text:#a32d2d; --toggle-off-border:#a32d2d;
 }
+html[data-theme="dark"]{
+  --bg:#1b1d1f; --card:#25282b; --border:#3a3d40;
+  --text:#e8e8e6; --text-sub:#aaaaa5; --text-muted:#7d7d78;
+  --danger-bg:#3a2323; --danger-text:#e08080; --danger-border:#5a3232;
+  --warn-bg:#3a3220; --warn-text:#e0b45a; --warn-border:#5a4a2a;
+  --ok-bg:#1f3a24; --ok-text:#7fce8c;
+  --rowwarn-bg:#3a3220; --rowwarn-bg-hover:#4a4028;
+  --toggle-on-bg:#1f3a24; --toggle-on-text:#7fce8c; --toggle-on-border:#7fce8c;
+  --toggle-off-bg:#3a2323; --toggle-off-text:#e08080; --toggle-off-border:#e08080;
+}
+html[data-theme="dark"] .debugBox{background:#20221f;}
+html[data-theme="dark"] thead th.subhead{background:#20221f;}
+
 *{box-sizing:border-box;}
 body{margin:0;font-family:"Hiragino Kaku Gothic ProN","Yu Gothic",sans-serif;background:var(--bg);color:var(--text);}
 header{background:linear-gradient(90deg,var(--sky),#3d8fae);color:#fff;padding:20px 28px;}
@@ -59,11 +84,11 @@ tbody tr:hover{background:#fafbfc;}
 .site-col{border-left:2px solid var(--border);}
 .numcol{text-align:right;white-space:nowrap;}
 .togglecol{text-align:center;}
-.toggleBtn{font-size:11px;padding:4px 8px;border:1px solid var(--border);border-radius:6px;background:#fff;color:var(--text-sub);cursor:pointer;white-space:nowrap;}
-.toggleBtn.on{background:#eef6ee;border-color:var(--ok-text);color:var(--ok-text);}
+.toggleBtn{font-size:11.5px;font-weight:600;padding:4px 10px;border:1px solid var(--toggle-on-border);border-radius:6px;background:var(--toggle-on-bg);color:var(--toggle-on-text);cursor:pointer;white-space:nowrap;}
+.toggleBtn.off{background:var(--toggle-off-bg);color:var(--toggle-off-text);border-color:var(--toggle-off-border);}
 .toggleBtn:hover{opacity:0.8;}
-tr.rowNotInStock{background:#fff6d6;}
-tr.rowNotInStock:hover{background:#ffefb8;}
+tr.rowNotInStock{background:var(--rowwarn-bg);}
+tr.rowNotInStock:hover{background:var(--rowwarn-bg-hover);}
 .subtle{color:var(--text-muted);font-size:11px;}
 .tablewrap{overflow-x:auto;border:1px solid var(--border);border-radius:10px;}
 .legend{font-size:11.5px;color:var(--text-sub);margin:10px 0 4px;}
@@ -71,6 +96,14 @@ tr.rowNotInStock:hover{background:#ffefb8;}
 .uploadPanel{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:14px 16px;margin-bottom:16px;}
 .uploadPanel summary{cursor:pointer;font-weight:600;font-size:13.5px;color:var(--text);}
 .uploadGrid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-top:12px;}
+.uploadGrid2col{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:12px;}
+@media (max-width:760px){ .uploadGrid2col{grid-template-columns:1fr;} }
+.dropZone{margin-top:12px;padding:22px;border:2px dashed var(--sky);border-radius:10px;text-align:center;color:var(--text-sub);background:var(--bg);cursor:pointer;transition:background .15s,border-color .15s;}
+.dropZone p{margin:0;font-size:13px;}
+.dropZone.dragover{background:var(--ok-bg);border-color:var(--ok-text);}
+body:not(.debugMode) .debugOnly{display:none !important;}
+.settingsPanel{background:var(--card);border-bottom:1px solid var(--border);padding:12px 28px;display:flex;gap:24px;flex-wrap:wrap;}
+.settingsRow label{font-size:13px;color:var(--text);display:flex;align-items:center;gap:6px;cursor:pointer;}
 .uploadItem label{display:block;font-size:12px;color:var(--text-sub);margin-bottom:4px;}
 .uploadItem input[type=file]{width:100%;font-size:11.5px;}
 .uploadStatus{font-size:11.5px;color:var(--text-muted);margin-top:4px;min-height:14px;}
@@ -91,17 +124,36 @@ tr.rowNotInStock:hover{background:#ffefb8;}
 <header>
 <div class="header-row">
   <div>
-    <h1>広告掲載状況ダッシュボード <span style="font-size:12px;font-weight:400;opacity:.75;">v1.13</span></h1>
+    <h1>広告掲載状況ダッシュボード <span style="font-size:12px;font-weight:400;opacity:.75;">v1.14</span></h1>
     <p>カーセンサー ／ グーネット ／ QuickNetwork（業販） ／ オートサーバー（業販） ／ JUテントリ（業販） の5サイト突合(棚卸一覧は参考照合用)　※データはFirebaseで共有されます</p>
   </div>
-  <button class="updateBtn headerRefreshBtn" id="refreshBtn">🔄 最新を取得</button>
+  <div style="display:flex;gap:8px;flex-shrink:0;">
+    <button class="updateBtn headerRefreshBtn" id="refreshBtn">🔄 最新を取得</button>
+    <button class="updateBtn headerRefreshBtn" id="settingsBtn">⚙ 設定</button>
+  </div>
 </div>
 </header>
+
+<div class="settingsPanel" id="settingsPanel" style="display:none;">
+  <div class="settingsRow">
+    <label><input type="checkbox" id="darkModeToggle"> ダークモード</label>
+  </div>
+  <div class="settingsRow">
+    <label><input type="checkbox" id="debugModeToggle"> デバッグモード(CSVを個別に選択するボタンや、解析結果のプレビューを表示します)</label>
+  </div>
+</div>
+
 <div class="wrap">
 
 <details class="uploadPanel" id="uploadPanel">
 <summary>📂 CSVを読み込んでデータを更新</summary>
-<div class="uploadGrid">
+
+<div class="dropZone" id="dropZone">
+  <p>📥 カーセンサー・グーネット・QuickNetwork・棚卸のCSVをまとめてドラッグ&ドロップ<br><span class="subtle">ファイルの内容から自動で振り分けます</span></p>
+</div>
+<div class="uploadStatus" id="status-dropzone"></div>
+
+<div class="uploadGrid debugOnly" id="individualPickers">
   <div class="uploadItem">
     <label>カーセンサー(torokubukken*.csv)</label>
     <input type="file" id="file-carsensor" accept=".csv,.txt">
@@ -117,34 +169,38 @@ tr.rowNotInStock:hover{background:#ffefb8;}
     <input type="file" id="file-quicknetwork" accept=".csv,.txt">
     <div class="uploadStatus" id="status-quicknetwork"></div>
   </div>
-  <div class="uploadItem" style="grid-column:1/-1;">
-    <label>オートサーバー(明細をコピーしてそのまま貼り付け)</label>
-    <textarea id="text-autoserver" rows="5" placeholder="オートサーバーの一覧をコピーしてここに貼り付け" style="width:100%;font-size:11.5px;font-family:monospace;padding:8px;border:1px solid var(--border);border-radius:8px;resize:vertical;box-sizing:border-box;"></textarea>
-    <div class="uploadStatus" id="status-autoserver"></div>
-    <button type="button" class="debugBtn" onclick="window.__debugPreviewParse('autoserver')">🔍 プレビュー(保存せず解析結果だけ確認)</button>
-    <div class="debugBox" id="debug-autoserver" style="display:none;">
-      <p class="debugSummary"></p>
-      <textarea class="debugDump" readonly rows="8" style="width:100%;font-size:10.5px;font-family:monospace;padding:6px;border:1px solid var(--border);border-radius:6px;box-sizing:border-box;"></textarea>
-      <button type="button" class="debugBtn" onclick="window.__downloadDebugDump('autoserver')">⬇ このテキストをダウンロード</button>
-    </div>
-  </div>
-  <div class="uploadItem" style="grid-column:1/-1;">
-    <label>JUテントリ(一覧をコピーしてそのまま貼り付け)</label>
-    <textarea id="text-jutentori" rows="5" placeholder="JUテントリの一覧をコピーしてここに貼り付け" style="width:100%;font-size:11.5px;font-family:monospace;padding:8px;border:1px solid var(--border);border-radius:8px;resize:vertical;box-sizing:border-box;"></textarea>
-    <div class="uploadStatus" id="status-jutentori"></div>
-    <button type="button" class="debugBtn" onclick="window.__debugPreviewParse('jutentori')">🔍 プレビュー(保存せず解析結果だけ確認)</button>
-    <div class="debugBox" id="debug-jutentori" style="display:none;">
-      <p class="debugSummary"></p>
-      <textarea class="debugDump" readonly rows="8" style="width:100%;font-size:10.5px;font-family:monospace;padding:6px;border:1px solid var(--border);border-radius:6px;box-sizing:border-box;"></textarea>
-      <button type="button" class="debugBtn" onclick="window.__downloadDebugDump('jutentori')">⬇ このテキストをダウンロード</button>
-    </div>
-  </div>
   <div class="uploadItem">
     <label>車両棚卸一覧(*.csv・任意)</label>
     <input type="file" id="file-tanaoroshi" accept=".csv,.txt">
     <div class="uploadStatus" id="status-tanaoroshi"></div>
   </div>
 </div>
+
+<div class="uploadGrid2col">
+  <div class="uploadItem">
+    <label>オートサーバー(明細をコピーしてそのまま貼り付け)</label>
+    <textarea id="text-autoserver" rows="6" placeholder="オートサーバーの一覧をコピーしてここに貼り付け" style="width:100%;font-size:11.5px;font-family:monospace;padding:8px;border:1px solid var(--border);border-radius:8px;resize:vertical;box-sizing:border-box;"></textarea>
+    <div class="uploadStatus" id="status-autoserver"></div>
+    <button type="button" class="debugBtn debugOnly" onclick="window.__debugPreviewParse('autoserver')">🔍 プレビュー(保存せず解析結果だけ確認)</button>
+    <div class="debugBox debugOnly" id="debug-autoserver" style="display:none;">
+      <p class="debugSummary"></p>
+      <textarea class="debugDump" readonly rows="8" style="width:100%;font-size:10.5px;font-family:monospace;padding:6px;border:1px solid var(--border);border-radius:6px;box-sizing:border-box;"></textarea>
+      <button type="button" class="debugBtn" onclick="window.__downloadDebugDump('autoserver')">⬇ このテキストをダウンロード</button>
+    </div>
+  </div>
+  <div class="uploadItem">
+    <label>JUテントリ(一覧をコピーしてそのまま貼り付け)</label>
+    <textarea id="text-jutentori" rows="6" placeholder="JUテントリの一覧をコピーしてここに貼り付け" style="width:100%;font-size:11.5px;font-family:monospace;padding:8px;border:1px solid var(--border);border-radius:8px;resize:vertical;box-sizing:border-box;"></textarea>
+    <div class="uploadStatus" id="status-jutentori"></div>
+    <button type="button" class="debugBtn debugOnly" onclick="window.__debugPreviewParse('jutentori')">🔍 プレビュー(保存せず解析結果だけ確認)</button>
+    <div class="debugBox debugOnly" id="debug-jutentori" style="display:none;">
+      <p class="debugSummary"></p>
+      <textarea class="debugDump" readonly rows="8" style="width:100%;font-size:10.5px;font-family:monospace;padding:6px;border:1px solid var(--border);border-radius:6px;box-sizing:border-box;"></textarea>
+      <button type="button" class="debugBtn" onclick="window.__downloadDebugDump('jutentori')">⬇ このテキストをダウンロード</button>
+    </div>
+  </div>
+</div>
+
 <button class="updateBtn" id="updateDataBtn">選択したデータをFirebaseに保存</button>
 <div class="lastUpdated" id="lastUpdated"></div>
 <div class="lastUpdated" id="syncStatus"></div>
@@ -170,13 +226,13 @@ tr.rowNotInStock:hover{background:#ffefb8;}
 <thead>
 <tr>
   <th class="sortable" data-sort="vin" rowspan="2">車台番号<span class="arrow">↕</span></th>
-  <th rowspan="2">業販不要<br><span class="subtle">Quick/AS/テントリ</span></th>
+  <th rowspan="2">業販不要</th>
   <th class="sortable" data-sort="carname" rowspan="2">車両<span class="arrow">↕</span></th>
-  <th class="site-col sortable" data-sort="carsensor" rowspan="2">CS<span class="arrow">↕</span><br><span class="subtle">支払総額(千円)</span></th>
-  <th class="sortable" data-sort="goonet" rowspan="2">goo<span class="arrow">↕</span><br><span class="subtle">支払総額(千円)</span></th>
-  <th class="site-col sortable" data-sort="quicknetwork" rowspan="2">Quick<span class="arrow">↕</span><br><span class="subtle">業販価格(千円)</span></th>
-  <th class="sortable" data-sort="autoserver" rowspan="2">AS<span class="arrow">↕</span><br><span class="subtle">業販価格(千円)</span></th>
-  <th class="sortable" data-sort="jutentori" rowspan="2">テントリ<span class="arrow">↕</span><br><span class="subtle">業販価格(千円)</span></th>
+  <th class="site-col sortable" data-sort="carsensor" rowspan="2">CS<span class="arrow">↕</span></th>
+  <th class="sortable" data-sort="goonet" rowspan="2">goo<span class="arrow">↕</span></th>
+  <th class="site-col sortable" data-sort="quicknetwork" rowspan="2">Quick<span class="arrow">↕</span></th>
+  <th class="sortable" data-sort="autoserver" rowspan="2">AS<span class="arrow">↕</span></th>
+  <th class="sortable" data-sort="jutentori" rowspan="2">テントリ<span class="arrow">↕</span></th>
   <th class="site-col sortable" data-sort="mileage" colspan="5">走行距離<span class="arrow">↕</span></th>
   <th class="sortable" data-sort="shaken" colspan="5">車検<span class="arrow">↕</span></th>
   <th class="sortable" data-sort="flags" rowspan="2">フラグ<span class="arrow">↕</span></th>
@@ -559,7 +615,7 @@ function render(list){
   document.getElementById('tbody').innerHTML = list.map(r => `
     <tr class="${r.notInStock ? 'rowNotInStock' : ''}">
       <td class="vin">${r.vin}</td>
-      <td class="togglecol"><button type="button" class="toggleBtn ${r.skipGyohan?'on':''}" data-vin="${r.vin}">${r.skipGyohan ? '✅ 対象外' : '☐ 対象'}</button></td>
+      <td class="togglecol"><button type="button" class="toggleBtn ${r.skipGyohan?'off':''}" data-vin="${r.vin}">${r.skipGyohan ? '不要' : '対象'}</button></td>
       <td><div class="carname">${r.carName}</div></td>
       <td class="site-col">${siteCell('carsensor', r)}</td>
       <td>${siteCell('goonet', r)}</td>
@@ -935,11 +991,12 @@ function clearUploadInputs(){
     if(ta) ta.value = '';
     setStatus(key, '', '');
   });
+  const dz = document.getElementById('status-dropzone');
+  if(dz) dz.textContent = '';
 }
 
 document.getElementById('updateDataBtn').addEventListener('click', async ()=>{
   const fileKeys = ['carsensor','goonet','quicknetwork','tanaoroshi'];
-  let anyLoaded = false;
   for(const key of fileKeys){
     const input = document.getElementById('file-'+key);
     const file = input.files[0];
@@ -949,7 +1006,6 @@ document.getElementById('updateDataBtn').addEventListener('click', async ()=>{
       const parsed = PARSERS[key](text);
       raw[key] = parsed;
       setStatus(key, `読込OK: ${Object.keys(parsed).length}件`, 'ok');
-      anyLoaded = true;
     } catch(err){
       setStatus(key, 'エラー: ' + err.message, 'err');
     }
@@ -962,20 +1018,16 @@ document.getElementById('updateDataBtn').addEventListener('click', async ()=>{
       const parsed = PARSERS[key](text);
       raw[key] = parsed;
       setStatus(key, `読込OK: ${Object.keys(parsed).length}件`, 'ok');
-      anyLoaded = true;
     } catch(err){
       setStatus(key, 'エラー: ' + err.message, 'err');
     }
   }
-  if(anyLoaded){
-    recompute();
-    const ok = await saveAdsData();
-    if(ok){
-      clearUploadInputs();
-      document.getElementById('uploadPanel').open = false;
-    }
-  } else {
-    setSyncStatus('ファイルが選択されていません。保存は行われませんでした。', 'err');
+  // ドラッグ&ドロップで既にrawへ読み込まれているデータも含めて、現在の内容を保存する
+  recompute();
+  const ok = await saveAdsData();
+  if(ok){
+    clearUploadInputs();
+    document.getElementById('uploadPanel').open = false;
   }
 });
 
@@ -987,6 +1039,78 @@ document.getElementById('tbody').addEventListener('click', e=>{
   const btn = e.target.closest('.toggleBtn');
   if(!btn) return;
   toggleNoGyohan(btn.dataset.vin);
+});
+
+/* ============ 設定パネル(ダークモード・デバッグモード) ============ */
+const settingsBtn = document.getElementById('settingsBtn');
+const settingsPanel = document.getElementById('settingsPanel');
+const darkModeToggle = document.getElementById('darkModeToggle');
+const debugModeToggle = document.getElementById('debugModeToggle');
+
+settingsBtn.addEventListener('click', ()=>{
+  settingsPanel.style.display = settingsPanel.style.display === 'none' ? 'flex' : 'none';
+});
+
+// 現在のテーマ・デバッグモード状態をチェックボックスに反映
+darkModeToggle.checked = document.documentElement.getAttribute('data-theme') === 'dark';
+darkModeToggle.addEventListener('change', ()=>{
+  const theme = darkModeToggle.checked ? 'dark' : 'light';
+  document.documentElement.setAttribute('data-theme', theme);
+  localStorage.setItem('ciel-theme', theme);
+});
+
+const savedDebugMode = localStorage.getItem('ciel-debug-mode') === '1';
+debugModeToggle.checked = savedDebugMode;
+document.body.classList.toggle('debugMode', savedDebugMode);
+debugModeToggle.addEventListener('change', ()=>{
+  document.body.classList.toggle('debugMode', debugModeToggle.checked);
+  localStorage.setItem('ciel-debug-mode', debugModeToggle.checked ? '1' : '0');
+});
+
+/* ============ CSVのドラッグ&ドロップ一括振り分け ============ */
+const CSV_AUTO_KEYS = ['carsensor','goonet','quicknetwork','tanaoroshi'];
+async function handleDroppedFiles(fileList){
+  const results = [];
+  for(const file of fileList){
+    let text;
+    try{
+      text = await readFileAsText(file);
+    } catch(err){
+      results.push(`「${file.name}」を読み込めませんでした: ${err.message}`);
+      continue;
+    }
+    let matchedKey = null, parsed = null;
+    for(const key of CSV_AUTO_KEYS){
+      try{
+        parsed = PARSERS[key](text);
+        matchedKey = key;
+        break;
+      } catch(err){ /* このパーサーには一致しない。次を試す */ }
+    }
+    if(matchedKey){
+      raw[matchedKey] = parsed;
+      setStatus(matchedKey, `📥 ドロップで読込OK: ${Object.keys(parsed).length}件 (${file.name})`, 'ok');
+      results.push(`「${file.name}」→ ${matchedKey} として${Object.keys(parsed).length}件読込`);
+    } else {
+      results.push(`⚠「${file.name}」はどの形式にも一致しませんでした(デバッグモードから個別選択で確認してください)`);
+    }
+  }
+  recompute();
+  document.getElementById('status-dropzone').textContent = results.join(' / ');
+}
+
+const dropZone = document.getElementById('dropZone');
+['dragenter','dragover'].forEach(evt=>dropZone.addEventListener(evt, e=>{
+  e.preventDefault();
+  dropZone.classList.add('dragover');
+}));
+['dragleave','drop'].forEach(evt=>dropZone.addEventListener(evt, e=>{
+  e.preventDefault();
+  dropZone.classList.remove('dragover');
+}));
+dropZone.addEventListener('drop', e=>{
+  const files = Array.from(e.dataTransfer.files || []);
+  if(files.length) handleDroppedFiles(files);
 });
 
 /* ============ 初期表示 ============ */
