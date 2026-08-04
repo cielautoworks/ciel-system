@@ -176,20 +176,71 @@ function normShaken(s){
   return {label:s, ym:null};
 }
 
+/* ============ 車台番号の表記ゆれ吸収 ============ */
+// 型式(ハイフンより左)の末尾に、システムによって付いたり付かなかったりする文字がある場合がある
+// (例: ZWR80-XXXXXXX と ZWR80G-XXXXXXX は同一車両)。
+// 同じ製造番号(ハイフンより右)を持つ車台番号同士で、型式の一方が他方の先頭一致(前方一致)なら
+// 同一車両とみなし、短い方(より基本的な型式)を正規の表記として採用する。
+function buildCanonicalVinMap(rawData){
+  const allVins = new Set();
+  SITES.forEach(s => Object.keys(rawData[s]||{}).forEach(v => allVins.add(v)));
+  Object.keys(rawData.tanaoroshi||{}).forEach(v => allVins.add(v));
+
+  const bySerial = {};
+  allVins.forEach(vin=>{
+    const i = vin.lastIndexOf('-');
+    const prefix = i>=0 ? vin.slice(0,i) : '';
+    const serial = i>=0 ? vin.slice(i+1) : vin;
+    (bySerial[serial] = bySerial[serial] || []).push({vin, prefix});
+  });
+
+  const canonicalOf = {};
+  Object.entries(bySerial).forEach(([serial, group])=>{
+    if(group.length === 1){ canonicalOf[group[0].vin] = group[0].vin; return; }
+    const clusters = [];
+    group.forEach(item=>{
+      const cluster = clusters.find(c => c.some(o =>
+        o.prefix && item.prefix && (o.prefix.startsWith(item.prefix) || item.prefix.startsWith(o.prefix))
+      ));
+      if(cluster) cluster.push(item); else clusters.push([item]);
+    });
+    clusters.forEach(cluster=>{
+      const canon = cluster.reduce((a,b)=> a.prefix.length<=b.prefix.length ? a : b);
+      const canonVin = canon.prefix ? (canon.prefix+'-'+serial) : serial;
+      cluster.forEach(item=>{ canonicalOf[item.vin] = canonVin; });
+    });
+  });
+  return canonicalOf;
+}
+
+function applyCanonicalVins(rawData){
+  const canonicalOf = buildCanonicalVinMap(rawData);
+  const out = {};
+  SITES.concat(['tanaoroshi']).forEach(s=>{
+    out[s] = {};
+    Object.entries(rawData[s]||{}).forEach(([vin,rec])=>{
+      const cv = canonicalOf[vin] || vin;
+      if(!out[s][cv]) out[s][cv] = rec;
+    });
+  });
+  return out;
+}
+
 /* ============ 行データ構築(CSV更新後も再利用) ============ */
 let rows = [];
 let total = 0;
 
 function recompute(){
-  const stockRecords = raw.tanaoroshi || {};
+  const rawCanon = applyCanonicalVins(raw);
+  const stockRecords = rawCanon.tanaoroshi || {};
   const stockVins = new Set(Object.keys(stockRecords));
 
   const vinSet = new Set();
-  SITES.forEach(s => Object.keys(raw[s]||{}).forEach(v => vinSet.add(v)));
+  SITES.forEach(s => Object.keys(rawCanon[s]||{}).forEach(v => vinSet.add(v)));
 
   rows = [...vinSet].map(vin => {
     const bySite = {};
-    SITES.forEach(s => bySite[s] = (raw[s]||{})[vin] || null);
+    SITES.forEach(s => bySite[s] = (rawCanon[s]||{})[vin] || null);
     const inStock = stockVins.has(vin);
     const stockInfo = stockRecords[vin] || null;
     const carName = (stockInfo||bySite.carsensor||bySite.goonet||bySite.quicknetwork||bySite.autoserver||{}).car_name || '';
