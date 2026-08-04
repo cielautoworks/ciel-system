@@ -85,7 +85,7 @@ tbody tr:hover{background:#fafbfc;}
 <header>
 <div class="header-row">
   <div>
-    <h1>広告掲載状況ダッシュボード <span style="font-size:12px;font-weight:400;opacity:.75;">v1.10</span></h1>
+    <h1>広告掲載状況ダッシュボード <span style="font-size:12px;font-weight:400;opacity:.75;">v1.11</span></h1>
     <p>カーセンサー ／ グーネット ／ QuickNetwork（業販） ／ オートサーバー（業販） ／ JUテントリ（業販） の5サイト突合(棚卸一覧は参考照合用)　※データはFirebaseで共有されます</p>
   </div>
   <button class="updateBtn headerRefreshBtn" id="refreshBtn">🔄 最新を取得</button>
@@ -778,23 +778,27 @@ function parseTanaoroshiCSV(text){
 }
 
 // JUテントリ: CSVエクスポートがなく、サイト上の一覧表をコピー&ペーストしたテキストを解析する。
-// 各行のレイアウトは項目によって行数が変わる(車検が空の車両は車検の行自体が無い等)ため、
-// 固定の行オフセットではなく「型式(英数字)の行の直後に車台番号(数字のみ)の行が続く」という
-// 組み合わせを目印(アンカー)にして、そこから前後の項目を読み取る方式にしている。
+// 実際のコピー結果を調査したところ、タブ区切りの項目が改行をまたいで混在しており、
+// さらに「型式」と「車台番号」の間に区切り文字が全く無く1つのトークンとして連結されている
+// (例: "LA800S0181613")ことが判明した。そのため、
+//   1) タブも改行として扱い、1項目1行に正規化してから空行を除去する
+//   2) 「英字を含む文字列＋末尾7桁の数字」というパターンを型式+車台番号の連結とみなし、
+//      末尾7桁を車台番号(製造番号)、それより前を型式として分割する
+// という方式で解析している。
 function parseJuTentoriText(text){
-  const lines = text.split(/\r\n|\n/).map(l=>l.trim());
+  const lines = text.replace(/\t/g, '\n').split(/\r\n|\r|\n/).map(l=>l.trim()).filter(l=>l !== '');
   const out = {};
-  const modelRe = /^(?=.*[A-Z])(?=.*\d)[A-Z0-9]{4,8}$/; // 型式: 英字と数字を含む4〜8桁
-  const serialRe = /^\d{5,8}$/;                          // 車台番号(製造番号部分): 数字5〜8桁
-  for(let i=1;i<lines.length-1;i++){
-    const model = lines[i];
-    const serial = lines[i+1];
-    if(!modelRe.test(model) || !serialRe.test(serial)) continue;
+  const vinRe = /^([A-Z0-9]*[A-Z][A-Z0-9]*)(\d{7})$/; // 型式+車台番号(末尾7桁)の連結トークン
+  for(let i=0;i<lines.length;i++){
+    const m = lines[i].match(vinRe);
+    if(!m) continue;
+    const model = m[1], serial = m[2];
 
-    const carName = lines[i-2] || '';
-    const grade = lines[i-1] || '';
+    // 直前行が車名/グレード。「鑑定書ロゴ」等の画像alt文字列が末尾に連結されている場合があるため除去する。
+    // 車名とグレードの間には区切り文字が無く分離できないため、1つの文字列としてまとめて保持する。
+    const carName = (lines[i-1] || '').replace(/鑑定書ロゴ$/, '');
 
-    let j = i+2;
+    let j = i+1;
     j++; // 車歴(自家用等)の行はスキップ
     let shaken = '';
     if(/^R\d{1,2}\/\d{1,2}$/.test(lines[j]||'')){ shaken = lines[j]; j++; }
@@ -810,7 +814,7 @@ function parseJuTentoriText(text){
 
     out[vin] = {
       car_name: carName,
-      grade: grade,
+      grade: '',
       price_gyohan: price_gyohan,
       mileage_km: mMile ? parseInt(mMile[1],10) : null,
       shaken: shaken,
