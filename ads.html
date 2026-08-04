@@ -81,7 +81,7 @@ tbody tr:hover{background:#fafbfc;}
 <header>
 <div class="header-row">
   <div>
-    <h1>広告掲載状況ダッシュボード <span style="font-size:12px;font-weight:400;opacity:.75;">v1.08</span></h1>
+    <h1>広告掲載状況ダッシュボード <span style="font-size:12px;font-weight:400;opacity:.75;">v1.09</span></h1>
     <p>カーセンサー ／ グーネット ／ QuickNetwork（業販） ／ オートサーバー（業販） ／ JUテントリ（業販） の5サイト突合(棚卸一覧は参考照合用)　※データはFirebaseで共有されます</p>
   </div>
   <button class="updateBtn headerRefreshBtn" id="refreshBtn">🔄 最新を取得</button>
@@ -176,7 +176,7 @@ tbody tr:hover{background:#fafbfc;}
 </table>
 </div>
 
-<p class="legend">※掲載漏れ＝いずれかのサイトで掲載中なのに別サイトで非掲載・未掲載　／　棚卸に該当なし＝車両棚卸一覧にVINが見当たらない車両（売約済みの可能性がありますが棚卸には非売品も混在するため断定はできません。要確認の参考情報です）　／　価格ずれ＝小売2サイト間または業販2サイト間で金額不一致　／　走行距離ずれ＝サイト間最大差1,000km以上　／　車検ずれ＝有効期限(年月)がサイト間で不一致</p>
+<p class="legend">※掲載漏れ＝いずれかのサイトで掲載中なのに別サイトで非掲載・未掲載　／　棚卸に該当なし＝車両棚卸一覧にVINが見当たらない車両（売約済みの可能性がありますが棚卸には非売品も混在するため断定はできません。要確認の参考情報です）　／　価格ずれ＝小売2サイト間または業販2サイト間で金額不一致　／　走行距離ずれ＝サイト間最大差1,000km以上　／　車検ずれ＝有効期限(年月)がサイト間で不一致。「整備付」と空欄は同じ「日付なし」として扱い、日付ありのサイトと混在する場合はずれとして検知</p>
 
 </div>
 
@@ -359,8 +359,14 @@ function recompute(){
 
     const shakenNorm = {};
     SITES.forEach(s=>{ shakenNorm[s] = bySite[s] ? normShaken(bySite[s].shaken) : null; });
-    const shakenYms = SITES.map(s=>shakenNorm[s]?.ym).filter(v=>v!=null);
-    const shakenMismatch = shakenYms.length>=2 && new Set(shakenYms).size>1;
+    // 「整備付」と空欄(--.--等)は同じ「具体的な日付なし」として扱い、日付ありとの間はずれ扱いにする。
+    // そのサイト自体に掲載がない(bySite[s]がnull)場合のみ比較対象から除外する。
+    const shakenSignatures = SITES.map(s=>{
+      if(!bySite[s]) return null;
+      const n = shakenNorm[s];
+      return (n && n.ym != null) ? n.ym : 'NODATE';
+    }).filter(v=>v!=null);
+    const shakenMismatch = shakenSignatures.length>=2 && new Set(shakenSignatures).size>1;
 
     const activeSites = SITES.filter(s => isActive(s, bySite[s]));
     const missingSitesAll = SITES.filter(s => !isActive(s, bySite[s]));
