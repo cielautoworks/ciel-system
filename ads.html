@@ -33,9 +33,9 @@ html[data-theme="dark"]{
   --text:#f0f0f0; --text-sub:#a9adb8; --text-muted:#6e7280;
   --danger-bg:#20142a; --danger-text:#ff45d0; --danger-border:#ff45d0;
   --warn-bg:#1c1f10; --warn-text:#e8ff4d; --warn-border:#e8ff4d;
-  --ok-bg:#0f1f1c; --ok-text:#2dffb3;
+  --ok-bg:#0f1f14; --ok-text:#33ff6e;
   --rowwarn-bg:#1c1f10; --rowwarn-bg-hover:#262a15;
-  --toggle-on-bg:#0f1f1c; --toggle-on-text:#2dffb3; --toggle-on-border:#2dffb3;
+  --toggle-on-bg:#0f1f14; --toggle-on-text:#33ff6e; --toggle-on-border:#33ff6e;
   --toggle-off-bg:#20142a; --toggle-off-text:#ff45d0; --toggle-off-border:#ff45d0;
   --header-bg:#12141a; --header-text:#f0f0f0;
   --thead-bg:#181a20; --hover-bg:#20232b;
@@ -113,6 +113,26 @@ html[data-theme="dark"] .card.warn{box-shadow:0 0 10px rgba(255,194,51,.2);}
 .toggleBtn{font-size:11.5px;font-weight:600;padding:4px 10px;border:2px solid var(--toggle-on-border);border-radius:6px;background:var(--toggle-on-bg);color:var(--toggle-on-text);cursor:pointer;white-space:nowrap;}
 .toggleBtn.off{background:var(--toggle-off-bg);color:var(--toggle-off-text);border-color:var(--toggle-off-border);}
 .toggleBtn:hover{opacity:0.8;}
+.aaBtn{font-size:11.5px;font-weight:600;padding:4px 10px;border:2px solid var(--sky);border-radius:6px;background:transparent;color:var(--sky);cursor:pointer;white-space:nowrap;}
+.aaBtn:hover{background:rgba(74,171,207,0.12);box-shadow:0 0 8px var(--sky);}
+
+.aaModalPanel{background:var(--card);border:2px solid var(--border);border-radius:14px;padding:22px 24px;width:640px;max-width:92vw;max-height:88vh;overflow-y:auto;}
+.aaModalPanel h3{margin:0 0 4px;font-size:15px;font-weight:600;color:var(--text);}
+.aaModalPanel .aaVinLabel{font-size:12px;color:var(--text-muted);margin:0 0 16px;}
+.aaImagesRow{display:flex;gap:14px;justify-content:center;flex-wrap:wrap;min-height:120px;align-items:flex-start;}
+.aaSlot{display:flex;flex-direction:column;align-items:center;gap:8px;width:260px;}
+.aaSlot img{width:100%;border-radius:8px;border:1px solid var(--border);display:block;}
+.aaSlotBtns{display:flex;gap:8px;width:100%;}
+.aaSlotBtns button{flex:1;font-size:11.5px;padding:6px 8px;border-radius:6px;border:2px solid var(--border);background:var(--card);color:var(--text-sub);cursor:pointer;}
+.aaSlotBtns button:hover{background:var(--hover-bg);}
+.aaSlotBtns button.aaDeleteBtn{border-color:var(--danger-border);color:var(--danger-text);}
+.aaDropZone{width:260px;min-height:140px;border:2px dashed var(--sky);border-radius:10px;display:flex;align-items:center;justify-content:center;text-align:center;color:var(--text-sub);font-size:12.5px;padding:12px;cursor:pointer;}
+.aaDropZone.dragover{background:rgba(74,171,207,0.12);}
+.aaModalStatus{font-size:12px;color:var(--text-sub);margin-top:12px;min-height:16px;}
+.aaModalStatus.ok{color:var(--ok-text);}
+.aaModalStatus.err{color:var(--danger-text);}
+.aaModalCloseBtn{margin-top:16px;width:100%;padding:8px;background:transparent;border:2px solid var(--sky);color:var(--sky);border-radius:8px;font-size:13px;cursor:pointer;font-weight:600;}
+.aaModalCloseBtn:hover{background:rgba(74,171,207,0.12);box-shadow:0 0 8px var(--sky);}
 tr.rowNotInStock{background:var(--rowwarn-bg);}
 tr.rowNotInStock:hover{background:var(--rowwarn-bg-hover);}
 .subtle{color:var(--text-muted);font-size:11px;}
@@ -162,10 +182,11 @@ body:not(.debugMode) .debugOnly{display:none !important;}
 <header>
 <div class="header-row">
   <div>
-    <h1>広告掲載状況ダッシュボード <span style="font-size:12px;font-weight:400;opacity:.75;">v1.17</span></h1>
+    <h1>広告掲載状況ダッシュボード <span style="font-size:12px;font-weight:400;opacity:.75;">v1.19</span></h1>
     <p>カーセンサー ／ グーネット ／ QuickNetwork（業販） ／ オートサーバー（業販） ／ JUテントリ（業販） の5サイト突合(棚卸一覧は参考照合用)　※データはFirebaseで共有されます</p>
   </div>
   <div style="display:flex;gap:8px;flex-shrink:0;">
+    <a class="updateBtn headerRefreshBtn" href="./index.html" style="text-decoration:none;display:inline-flex;align-items:center;">🏠 一覧へ</a>
     <button class="updateBtn headerRefreshBtn" id="refreshBtn">🔄 最新を取得</button>
     <button class="updateBtn headerRefreshBtn" id="settingsBtn">⚙ 設定</button>
   </div>
@@ -184,6 +205,16 @@ body:not(.debugMode) .debugOnly{display:none !important;}
       <label class="switch"><input type="checkbox" id="debugModeToggle"><span class="slider"></span></label>
     </div>
     <button class="settingsCloseBtn" id="settingsCloseBtn">閉じる</button>
+  </div>
+</div>
+
+<div class="settingsOverlay" id="aaOverlay" style="display:none;">
+  <div class="aaModalPanel">
+    <h3>出品票(AA画像)</h3>
+    <p class="aaVinLabel" id="aaVinLabel"></p>
+    <div class="aaImagesRow" id="aaImagesRow"></div>
+    <div class="aaModalStatus" id="aaModalStatus"></div>
+    <button class="aaModalCloseBtn" id="aaModalCloseBtn">閉じる</button>
   </div>
 </div>
 
@@ -261,6 +292,7 @@ body:not(.debugMode) .debugOnly{display:none !important;}
   <button class="filterbtn w" data-filter="price">価格ずれのみ</button>
   <button class="filterbtn w" data-filter="mileage">走行距離ずれ</button>
   <button class="filterbtn w" data-filter="shaken">車検ずれ</button>
+  <button class="filterbtn" id="resetSortBtn">並び替え解除</button>
 </div>
 
 <p class="count-hint" id="countHint"></p>
@@ -269,8 +301,10 @@ body:not(.debugMode) .debugOnly{display:none !important;}
 <table>
 <thead>
 <tr>
+  <th class="sortable" data-sort="shiire" rowspan="2">仕入日<span class="arrow">↕</span></th>
   <th class="sortable" data-sort="vin" rowspan="2">車台番号<span class="arrow">↕</span></th>
   <th rowspan="2">業販不要</th>
+  <th rowspan="2">出品票</th>
   <th class="sortable" data-sort="carname" rowspan="2">車両<span class="arrow">↕</span></th>
   <th class="site-col sortable" data-sort="carsensor" rowspan="2">CS<span class="arrow">↕</span></th>
   <th class="sortable" data-sort="goonet" rowspan="2">goo<span class="arrow">↕</span></th>
@@ -389,6 +423,145 @@ async function toggleNoGyohan(vin){
   }
 }
 
+/* ============ AA出品票画像(車台番号ごと最大2枚) ============
+   通信量を抑えるため、車両一覧の読み込み/保存(adsData配下)には一切含めず、
+   完全に別のパス(aaPhotos/{VIN})に保存し、モーダルを開いた時にその車両分だけ取得する。
+   画像はブラウザ側でリサイズ・JPEG圧縮してからBase64で保存する(Firebase Storageは
+   2026年2月よりSparkプランで使えなくなったため、Realtime Databaseに保存する方式)。 */
+let currentAaVin = null;
+
+function compressImageFile(file){
+  return new Promise((resolve, reject)=>{
+    const reader = new FileReader();
+    reader.onerror = ()=>reject(new Error('ファイルの読み込みに失敗しました'));
+    reader.onload = ()=>{
+      const img = new Image();
+      img.onerror = ()=>reject(new Error('画像として読み込めませんでした'));
+      img.onload = ()=>{
+        const maxSide = 1200;
+        let w = img.width, h = img.height;
+        if(w > h && w > maxSide){ h = Math.round(h * maxSide / w); w = maxSide; }
+        else if(h > maxSide){ w = Math.round(w * maxSide / h); h = maxSide; }
+        const canvas = document.createElement('canvas');
+        canvas.width = w; canvas.height = h;
+        canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+        resolve(canvas.toDataURL('image/jpeg', 0.72));
+      };
+      img.src = reader.result;
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+function setAaStatus(msg, cls){
+  const el = document.getElementById('aaModalStatus');
+  el.textContent = msg;
+  el.className = 'aaModalStatus' + (cls ? ' '+cls : '');
+}
+
+function renderAaSlots(data){
+  const row = document.getElementById('aaImagesRow');
+  const imgs = [data?.img1, data?.img2].filter(Boolean);
+  let html = '';
+  imgs.forEach((src, i)=>{
+    const slot = i===0 ? 'img1' : 'img2';
+    html += `<div class="aaSlot">
+      <img src="${src}">
+      <div class="aaSlotBtns">
+        <button type="button" class="aaChangeBtn" data-slot="${slot}">変更</button>
+        <button type="button" class="aaDeleteBtn" data-slot="${slot}">削除</button>
+      </div>
+    </div>`;
+  });
+  if(imgs.length < 2){
+    const nextSlot = imgs.length === 0 ? 'img1' : 'img2';
+    html += `<div class="aaDropZone" id="aaDropZone" data-slot="${nextSlot}">
+      📥 画像をドラッグ&ドロップ<br>またはクリックして選択<br><span class="subtle">(${imgs.length===0?'1枚目':'2枚目'})</span>
+    </div>`;
+  }
+  row.innerHTML = html;
+
+  const dz = document.getElementById('aaDropZone');
+  if(dz){
+    dz.addEventListener('click', ()=>{
+      const input = document.createElement('input');
+      input.type = 'file';
+      input.accept = 'image/*';
+      input.addEventListener('change', ()=>{
+        if(input.files[0]) handleAaUpload(dz.dataset.slot, input.files[0]);
+      });
+      input.click();
+    });
+    ['dragenter','dragover'].forEach(evt=>dz.addEventListener(evt, e=>{ e.preventDefault(); dz.classList.add('dragover'); }));
+    ['dragleave','drop'].forEach(evt=>dz.addEventListener(evt, e=>{ e.preventDefault(); dz.classList.remove('dragover'); }));
+    dz.addEventListener('drop', e=>{
+      const file = e.dataTransfer.files && e.dataTransfer.files[0];
+      if(file) handleAaUpload(dz.dataset.slot, file);
+    });
+  }
+  row.querySelectorAll('.aaChangeBtn').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const input = document.createElement('input');
+      input.type = 'file';
+      input.accept = 'image/*';
+      input.addEventListener('change', ()=>{
+        if(input.files[0]) handleAaUpload(btn.dataset.slot, input.files[0]);
+      });
+      input.click();
+    });
+  });
+  row.querySelectorAll('.aaDeleteBtn').forEach(btn=>{
+    btn.addEventListener('click', ()=> handleAaDelete(btn.dataset.slot));
+  });
+}
+
+async function handleAaUpload(slot, file){
+  if(!file.type.startsWith('image/')){
+    setAaStatus('画像ファイルを選択してください', 'err');
+    return;
+  }
+  setAaStatus('圧縮・保存中…');
+  try{
+    const dataUrl = await compressImageFile(file);
+    await set(ref(db, `aaPhotos/${currentAaVin}/${slot}`), dataUrl);
+    const snap = await get(ref(db, `aaPhotos/${currentAaVin}`));
+    renderAaSlots(snap.val() || {});
+    setAaStatus('● 保存しました', 'ok');
+  } catch(err){
+    console.error('handleAaUpload error:', err);
+    setAaStatus('● 保存エラー: ' + err.message, 'err');
+  }
+}
+
+async function handleAaDelete(slot){
+  setAaStatus('削除中…');
+  try{
+    await set(ref(db, `aaPhotos/${currentAaVin}/${slot}`), null);
+    const snap = await get(ref(db, `aaPhotos/${currentAaVin}`));
+    renderAaSlots(snap.val() || {});
+    setAaStatus('● 削除しました', 'ok');
+  } catch(err){
+    console.error('handleAaDelete error:', err);
+    setAaStatus('● 削除エラー: ' + err.message, 'err');
+  }
+}
+
+async function openAaModal(vin){
+  currentAaVin = vin;
+  document.getElementById('aaVinLabel').textContent = vin;
+  document.getElementById('aaImagesRow').innerHTML = '<p class="subtle">読み込み中…</p>';
+  setAaStatus('');
+  document.getElementById('aaOverlay').style.display = 'flex';
+  try{
+    const snap = await get(ref(db, `aaPhotos/${vin}`));
+    renderAaSlots(snap.val() || {});
+  } catch(err){
+    console.error('openAaModal error:', err);
+    document.getElementById('aaImagesRow').innerHTML = '';
+    setAaStatus('● 読み込みエラー: ' + err.message, 'err');
+  }
+}
+
 let raw = {carsensor:{}, goonet:{}, quicknetwork:{}, autoserver:{}, jutentori:{}, tanaoroshi:{}};
 let noGyohanVins = {};
 let lastLoadedLabel = null;
@@ -403,6 +576,24 @@ function isActive(site, d){
   if(!d) return false;
   if(site==='carsensor' || site==='goonet') return d.status === '掲載';
   return true;
+}
+
+// 仕入日(棚卸CSVのA列)。「令和08/07/29」のような表記を想定し、R{令和年}/MM/DD形式に整える。
+function normShiireDate(s){
+  if(!s) return null;
+  s = String(s).trim();
+  let m = s.match(/令和(\d{1,2})[.\/](\d{1,2})[.\/](\d{1,2})/);
+  if(m){
+    const reiwa = parseInt(m[1],10), month = parseInt(m[2],10), day = parseInt(m[3],10);
+    const year = 2018 + reiwa;
+    return {label:`R${reiwa}/${String(month).padStart(2,'0')}/${String(day).padStart(2,'0')}`, sortKey: year*372+month*31+day};
+  }
+  m = s.match(/(\d{4})[年\/.](\d{1,2})[月\/.](\d{1,2})/);
+  if(m){
+    const year=parseInt(m[1],10), month=parseInt(m[2],10), day=parseInt(m[3],10);
+    return {label:`${year}/${String(month).padStart(2,'0')}/${String(day).padStart(2,'0')}`, sortKey:year*372+month*31+day};
+  }
+  return {label:s, sortKey:null};
 }
 
 function normShaken(s){
@@ -487,6 +678,7 @@ function recompute(){
     const inStock = stockVins.has(vin);
     const stockInfo = stockRecords[vin] || null;
     const carName = (stockInfo||bySite.carsensor||bySite.goonet||bySite.quicknetwork||bySite.autoserver||{}).car_name || '';
+    const shiireDate = normShiireDate(stockInfo?.shiire_date);
 
     const retailPrices = [bySite.carsensor?.price_total, bySite.goonet?.price_total].filter(v=>v!=null);
     const gyohanPrices = [bySite.quicknetwork?.price_gyohan, bySite.autoserver?.price_gyohan, bySite.jutentori?.price_gyohan].filter(v=>v!=null);
@@ -519,7 +711,7 @@ function recompute(){
     const flagCount = (missing?1:0) + (notInStock?1:0) + (priceMismatch?1:0) + (mileageMismatch?1:0) + (shakenMismatch?1:0);
 
     return {vin, carName, bySite, inStock, notInStock, retailMismatch, gyohanMismatch, priceMismatch,
-             mileages, mileageMismatch, shakenNorm, shakenMismatch, skipGyohan,
+             mileages, mileageMismatch, shakenNorm, shakenMismatch, skipGyohan, shiireDate,
              missing, missingSites: missing ? missingSitesAll : [], flagCount};
   });
 
@@ -610,6 +802,7 @@ let sortDir = 1;
 
 function getSortValue(r, key){
   switch(key){
+    case 'shiire': return r.shiireDate?.sortKey ?? -1;
     case 'vin': return r.vin;
     case 'carname': return r.carName;
     case 'carsensor': return r.bySite.carsensor?.price_total ?? -1;
@@ -658,8 +851,10 @@ function render(list){
   document.getElementById('countHint').textContent = `${list.length}件表示中（全${total}件）`;
   document.getElementById('tbody').innerHTML = list.map(r => `
     <tr class="${r.notInStock ? 'rowNotInStock' : ''}">
+      <td class="numcol">${r.shiireDate ? r.shiireDate.label : '<span class="subtle">―</span>'}</td>
       <td class="vin">${r.vin}</td>
       <td class="togglecol"><button type="button" class="toggleBtn ${r.skipGyohan?'off':''}" data-vin="${r.vin}">${r.skipGyohan ? '不要' : '対象'}</button></td>
+      <td class="togglecol"><button type="button" class="aaBtn" data-vin="${r.vin}">AA</button></td>
       <td><div class="carname">${r.carName}</div></td>
       <td class="site-col">${siteCell('carsensor', r)}</td>
       <td>${siteCell('goonet', r)}</td>
@@ -720,6 +915,16 @@ document.querySelectorAll('th.sortable').forEach(th=>{
     th.querySelector('.arrow').textContent = sortDir===1 ? '▲' : '▼';
     applyFilters();
   });
+});
+document.getElementById('resetSortBtn').addEventListener('click', ()=>{
+  sortKey = null;
+  sortDir = 1;
+  document.querySelectorAll('th.sortable').forEach(t=>{
+    t.classList.remove('sort-active');
+    const arrow = t.querySelector('.arrow');
+    if(arrow) arrow.textContent = '↕';
+  });
+  applyFilters();
 });
 
 /* ============ CSVアップロード & 再パース ============ */
@@ -903,6 +1108,7 @@ function parseTanaoroshiCSV(text){
       car_name: (r[idx['車名']]||'').trim(),
       color: (r[idx['色']]||'').trim(),
       shaken: (r[idx['車検期限']]||'').trim(),
+      shiire_date: (r[idx['仕入日']]||'').trim(),
     };
   }
   return out;
@@ -1080,9 +1286,21 @@ document.getElementById('refreshBtn').addEventListener('click', ()=>{
 });
 
 document.getElementById('tbody').addEventListener('click', e=>{
-  const btn = e.target.closest('.toggleBtn');
-  if(!btn) return;
-  toggleNoGyohan(btn.dataset.vin);
+  const toggleBtn = e.target.closest('.toggleBtn');
+  if(toggleBtn){ toggleNoGyohan(toggleBtn.dataset.vin); return; }
+  const aaBtn = e.target.closest('.aaBtn');
+  if(aaBtn){ openAaModal(aaBtn.dataset.vin); return; }
+});
+
+document.getElementById('aaModalCloseBtn').addEventListener('click', ()=>{
+  document.getElementById('aaOverlay').style.display = 'none';
+  currentAaVin = null;
+});
+document.getElementById('aaOverlay').addEventListener('click', e=>{
+  if(e.target.id === 'aaOverlay'){
+    document.getElementById('aaOverlay').style.display = 'none';
+    currentAaVin = null;
+  }
 });
 
 /* ============ 設定パネル(ダークモード・デバッグモード) ============ */
