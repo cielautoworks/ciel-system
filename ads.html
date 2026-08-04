@@ -31,36 +31,43 @@ html[data-theme="dark"]{
   /* car-appの配色(ダーク背景+ネオンボーダー)に合わせた配色。黄み・茶みを避け、青みがかったニュートラルな暗色を基調にする */
   --bg:#0e0f13; --card:#181a20; --border:#2e313a;
   --text:#f0f0f0; --text-sub:#a9adb8; --text-muted:#6e7280;
-  --danger-bg:#1f1418; --danger-text:#ff5c6e; --danger-border:#ff5c6e;
-  --warn-bg:#1f1a10; --warn-text:#ffc233; --warn-border:#ffc233;
-  --ok-bg:#0f2318; --ok-text:#3ddc84;
-  --rowwarn-bg:#1f1a10; --rowwarn-bg-hover:#2a2414;
-  --toggle-on-bg:#0f2318; --toggle-on-text:#3ddc84; --toggle-on-border:#3ddc84;
-  --toggle-off-bg:#1f1418; --toggle-off-text:#ff5c6e; --toggle-off-border:#ff5c6e;
+  --danger-bg:#20142a; --danger-text:#ff45d0; --danger-border:#ff45d0;
+  --warn-bg:#1c1f10; --warn-text:#e8ff4d; --warn-border:#e8ff4d;
+  --ok-bg:#0f1f1c; --ok-text:#2dffb3;
+  --rowwarn-bg:#1c1f10; --rowwarn-bg-hover:#262a15;
+  --toggle-on-bg:#0f1f1c; --toggle-on-text:#2dffb3; --toggle-on-border:#2dffb3;
+  --toggle-off-bg:#20142a; --toggle-off-text:#ff45d0; --toggle-off-border:#ff45d0;
   --header-bg:#12141a; --header-text:#f0f0f0;
   --thead-bg:#181a20; --hover-bg:#20232b;
   --filterbtn-bg:#181a20; --filterbtn-active-bg:transparent;
 }
-/* ダークモード時、カード(danger/warn)は塗りではなく黒背景+ネオンボーダーで表現する(car-appと同じ見た目) */
+/* ダークモード時、カード(danger/warn)は塗りではなく黒背景+ネオンボーダーで表現する(car-appと同じ見た目)。
+   選択中(active-card)の時だけ、自分の色を薄く敷いた背景+強い光彩を付ける。通常時は光らない。 */
 html[data-theme="dark"] .card.danger,
 html[data-theme="dark"] .card.warn{background:var(--card);}
-html[data-theme="dark"] .filterbtn.active{background:transparent;color:var(--sky);box-shadow:0 0 8px var(--sky);}
-html[data-theme="dark"] .filterbtn.active.d{box-shadow:0 0 8px var(--danger-text);}
-html[data-theme="dark"] .filterbtn.active.w{box-shadow:0 0 8px var(--warn-text);}
+html[data-theme="dark"] .card.danger.active-card{background:rgba(255,69,208,0.2);box-shadow:0 0 26px 4px rgba(255,69,208,.8);}
+html[data-theme="dark"] .card.warn.active-card{background:rgba(232,255,77,0.2);box-shadow:0 0 26px 4px rgba(232,255,77,.8);}
+html[data-theme="dark"] .card.active-card{outline:none;}
+/* 絞込ボタンは通常時は光らず、押した(active)時だけ自分の色で光る */
+html[data-theme="dark"] .filterbtn.active{background:rgba(74,171,207,0.12);color:var(--sky);box-shadow:0 0 8px var(--sky);}
+html[data-theme="dark"] .filterbtn.active.d{background:rgba(255,69,208,0.12);box-shadow:0 0 8px var(--danger-text);}
+html[data-theme="dark"] .filterbtn.active.w{background:rgba(232,255,77,0.12);box-shadow:0 0 8px var(--warn-text);}
 html[data-theme="dark"] tr.rowNotInStock{box-shadow:inset 3px 0 0 0 var(--warn-text);}
 
 *{box-sizing:border-box;}
 body{margin:0;font-family:"Hiragino Kaku Gothic ProN","Yu Gothic",sans-serif;background:var(--bg);color:var(--text);}
 header{background:var(--header-bg);color:var(--header-text);padding:20px 28px;}
 .header-row{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;}
-.headerRefreshBtn{background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.6);color:#fff;flex-shrink:0;}
-.headerRefreshBtn:hover{background:rgba(255,255,255,0.25);}
+.updateBtn.headerRefreshBtn{background:transparent;border:2px solid rgba(255,255,255,0.7);color:#fff;flex-shrink:0;}
+.updateBtn.headerRefreshBtn:hover{background:rgba(255,255,255,0.12);box-shadow:0 0 8px rgba(255,255,255,0.7);}
+html[data-theme="dark"] .updateBtn.headerRefreshBtn{border-color:var(--sky);color:var(--sky);}
+html[data-theme="dark"] .updateBtn.headerRefreshBtn:hover{background:rgba(74,171,207,0.12);box-shadow:0 0 8px var(--sky);}
 header h1{margin:0;font-size:20px;font-weight:600;}
 header p{margin:4px 0 0;font-size:13px;opacity:.9;}
 .wrap{padding:20px 28px 60px;max-width:1440px;margin:0 auto;}
 .summary{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:18px;}
 #summarySites{margin-top:-8px;}
-.card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:14px 16px;cursor:pointer;transition:box-shadow .1s;}
+.card{background:var(--card);border:2px solid var(--border);border-radius:10px;padding:14px 16px;cursor:pointer;transition:box-shadow .1s,background .1s;}
 .card:hover{box-shadow:0 2px 8px rgba(0,0,0,.06);}
 html[data-theme="dark"] .card:hover{box-shadow:0 2px 10px rgba(0,0,0,.5);}
 .card.active-card{outline:2px solid var(--sky);outline-offset:-2px;}
@@ -73,7 +80,7 @@ html[data-theme="dark"] .card:hover{box-shadow:0 2px 10px rgba(0,0,0,.5);}
 .toolbar{display:flex;gap:8px;align-items:center;margin-bottom:14px;flex-wrap:wrap;}
 .toolbar input[type=text]{flex:1;min-width:200px;padding:8px 12px;border:1px solid var(--border);border-radius:8px;font-size:13px;background:var(--card);color:var(--text);}
 input[type="file"]{color:var(--text-sub);}
-.filterbtn{font-size:12.5px;padding:6px 12px;border-radius:20px;border:1px solid var(--border);background:var(--filterbtn-bg);cursor:pointer;color:var(--text-sub);}
+.filterbtn{font-size:12.5px;padding:6px 12px;border-radius:20px;border:2px solid var(--border);background:var(--filterbtn-bg);cursor:pointer;color:var(--text-sub);}
 .filterbtn.active{background:var(--filterbtn-active-bg);color:#fff;border-color:var(--sky);}
 .filterbtn.active.d{background:var(--filterbtn-active-bg);color:var(--danger-text);border-color:var(--danger-text);}
 .filterbtn.active.w{background:var(--filterbtn-active-bg);color:var(--warn-text);border-color:var(--warn-text);}
@@ -91,19 +98,19 @@ tbody tr:hover{background:var(--hover-bg);}
 .grade{color:var(--text-sub);font-size:11.5px;}
 .miss{color:var(--danger-text);font-weight:600;}
 .mismatch{color:var(--warn-text);font-weight:600;}
-.badge{display:inline-block;font-size:11px;padding:2px 8px;border-radius:20px;margin:1px 2px 1px 0;}
+.badge{display:inline-block;font-size:11px;padding:2px 8px;border-radius:20px;margin:1px 2px 1px 0;border:2px solid transparent;}
 .badge.ok{background:var(--ok-bg);color:var(--ok-text);}
 .badge.miss{background:var(--danger-bg);color:var(--danger-text);}
 .badge.warn{background:var(--warn-bg);color:var(--warn-text);}
-html[data-theme="dark"] .badge.ok{border:1px solid var(--ok-text);}
-html[data-theme="dark"] .badge.miss{border:1px solid var(--danger-text);}
-html[data-theme="dark"] .badge.warn{border:1px solid var(--warn-text);}
+html[data-theme="dark"] .badge.ok{border-color:var(--ok-text);}
+html[data-theme="dark"] .badge.miss{border-color:var(--danger-text);}
+html[data-theme="dark"] .badge.warn{border-color:var(--warn-text);}
 html[data-theme="dark"] .card.danger{box-shadow:0 0 10px rgba(255,92,110,.2);}
 html[data-theme="dark"] .card.warn{box-shadow:0 0 10px rgba(255,194,51,.2);}
 .site-col{border-left:2px solid var(--border);}
 .numcol{text-align:right;white-space:nowrap;}
 .togglecol{text-align:center;}
-.toggleBtn{font-size:11.5px;font-weight:600;padding:4px 10px;border:1px solid var(--toggle-on-border);border-radius:6px;background:var(--toggle-on-bg);color:var(--toggle-on-text);cursor:pointer;white-space:nowrap;}
+.toggleBtn{font-size:11.5px;font-weight:600;padding:4px 10px;border:2px solid var(--toggle-on-border);border-radius:6px;background:var(--toggle-on-bg);color:var(--toggle-on-text);cursor:pointer;white-space:nowrap;}
 .toggleBtn.off{background:var(--toggle-off-bg);color:var(--toggle-off-text);border-color:var(--toggle-off-border);}
 .toggleBtn:hover{opacity:0.8;}
 tr.rowNotInStock{background:var(--rowwarn-bg);}
@@ -121,8 +128,20 @@ tr.rowNotInStock:hover{background:var(--rowwarn-bg-hover);}
 .dropZone p{margin:0;font-size:13px;}
 .dropZone.dragover{background:var(--ok-bg);border-color:var(--ok-text);}
 body:not(.debugMode) .debugOnly{display:none !important;}
-.settingsPanel{background:var(--card);border-bottom:1px solid var(--border);padding:12px 28px;display:flex;gap:24px;flex-wrap:wrap;}
-.settingsRow label{font-size:13px;color:var(--text);display:flex;align-items:center;gap:6px;cursor:pointer;}
+.settingsOverlay{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.55);display:flex;align-items:center;justify-content:center;z-index:100;}
+.settingsPanel{background:var(--card);border:2px solid var(--border);border-radius:14px;padding:22px 24px;width:340px;max-width:90vw;}
+.settingsPanel h3{margin:0 0 16px;font-size:15px;font-weight:600;color:var(--text);}
+.settingsRow{display:flex;justify-content:space-between;align-items:center;padding:12px 0;border-bottom:1px solid var(--border);}
+.settingsRow:last-of-type{border-bottom:none;}
+.settingsRow span{font-size:13px;color:var(--text);}
+.settingsCloseBtn{margin-top:16px;width:100%;padding:8px;background:transparent;border:2px solid var(--sky);color:var(--sky);border-radius:8px;font-size:13px;cursor:pointer;font-weight:600;}
+.settingsCloseBtn:hover{background:rgba(74,171,207,0.12);box-shadow:0 0 8px var(--sky);}
+.switch{position:relative;display:inline-block;width:46px;height:26px;flex-shrink:0;}
+.switch input{opacity:0;width:0;height:0;}
+.switch .slider{position:absolute;top:0;left:0;right:0;bottom:0;background:var(--border);border-radius:26px;transition:.2s;cursor:pointer;}
+.switch .slider:before{position:absolute;content:"";height:20px;width:20px;left:3px;top:3px;background:#fff;border-radius:50%;transition:.2s;box-shadow:0 1px 2px rgba(0,0,0,.3);}
+.switch input:checked + .slider{background:var(--sky);box-shadow:0 0 8px var(--sky);}
+.switch input:checked + .slider:before{transform:translateX(20px);}
 .uploadItem label{display:block;font-size:12px;color:var(--text-sub);margin-bottom:4px;}
 .uploadItem input[type=file]{width:100%;font-size:11.5px;}
 .uploadStatus{font-size:11.5px;color:var(--text-muted);margin-top:4px;min-height:14px;}
@@ -143,7 +162,7 @@ body:not(.debugMode) .debugOnly{display:none !important;}
 <header>
 <div class="header-row">
   <div>
-    <h1>広告掲載状況ダッシュボード <span style="font-size:12px;font-weight:400;opacity:.75;">v1.15</span></h1>
+    <h1>広告掲載状況ダッシュボード <span style="font-size:12px;font-weight:400;opacity:.75;">v1.17</span></h1>
     <p>カーセンサー ／ グーネット ／ QuickNetwork（業販） ／ オートサーバー（業販） ／ JUテントリ（業販） の5サイト突合(棚卸一覧は参考照合用)　※データはFirebaseで共有されます</p>
   </div>
   <div style="display:flex;gap:8px;flex-shrink:0;">
@@ -153,12 +172,18 @@ body:not(.debugMode) .debugOnly{display:none !important;}
 </div>
 </header>
 
-<div class="settingsPanel" id="settingsPanel" style="display:none;">
-  <div class="settingsRow">
-    <label><input type="checkbox" id="darkModeToggle"> ダークモード</label>
-  </div>
-  <div class="settingsRow">
-    <label><input type="checkbox" id="debugModeToggle"> デバッグモード(CSVを個別に選択するボタンや、解析結果のプレビューを表示します)</label>
+<div class="settingsOverlay" id="settingsOverlay" style="display:none;">
+  <div class="settingsPanel">
+    <h3>設定</h3>
+    <div class="settingsRow">
+      <span>ダークモード</span>
+      <label class="switch"><input type="checkbox" id="darkModeToggle"><span class="slider"></span></label>
+    </div>
+    <div class="settingsRow">
+      <span>デバッグモード<br><span class="subtle">CSVの個別選択ボタンや解析結果のプレビューを表示します</span></span>
+      <label class="switch"><input type="checkbox" id="debugModeToggle"><span class="slider"></span></label>
+    </div>
+    <button class="settingsCloseBtn" id="settingsCloseBtn">閉じる</button>
   </div>
 </div>
 
@@ -1062,12 +1087,19 @@ document.getElementById('tbody').addEventListener('click', e=>{
 
 /* ============ 設定パネル(ダークモード・デバッグモード) ============ */
 const settingsBtn = document.getElementById('settingsBtn');
-const settingsPanel = document.getElementById('settingsPanel');
+const settingsOverlay = document.getElementById('settingsOverlay');
+const settingsCloseBtn = document.getElementById('settingsCloseBtn');
 const darkModeToggle = document.getElementById('darkModeToggle');
 const debugModeToggle = document.getElementById('debugModeToggle');
 
 settingsBtn.addEventListener('click', ()=>{
-  settingsPanel.style.display = settingsPanel.style.display === 'none' ? 'flex' : 'none';
+  settingsOverlay.style.display = 'flex';
+});
+settingsCloseBtn.addEventListener('click', ()=>{
+  settingsOverlay.style.display = 'none';
+});
+settingsOverlay.addEventListener('click', e=>{
+  if(e.target === settingsOverlay) settingsOverlay.style.display = 'none';
 });
 
 // 現在のテーマ・デバッグモード状態をチェックボックスに反映
