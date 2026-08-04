@@ -4,11 +4,28 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Ciel System | シエルオートワークス</title>
+<script>
+// ダークモードの初期適用(画面のちらつき防止のため、CSS読み込み前に実行する)。
+// ads.htmlと同じキー名(ciel-theme)を使うことで、設定を共有する。
+(function(){
+  var t = localStorage.getItem('ciel-theme');
+  if(t !== 'light' && t !== 'dark') t = 'dark'; // 初期設定はダークモード
+  document.documentElement.setAttribute('data-theme', t);
+})();
+</script>
 <style>
 :root{
   --sky:#4AABCF; --pink:#D97A9A;
   --bg:#f5f6f4; --card:#ffffff; --border:#e2e2de;
   --text:#232320; --text-sub:#6b6b65; --text-muted:#9a9a92;
+  --tag-ok-bg:#e9f4ea; --tag-ok-text:#2c6b34;
+  --tag-soon-bg:#f1efe8; --tag-soon-text:#6b6b65;
+}
+html[data-theme="dark"]{
+  --bg:#1b1d1f; --card:#25282b; --border:#3a3d40;
+  --text:#e8e8e6; --text-sub:#aaaaa5; --text-muted:#7d7d78;
+  --tag-ok-bg:#1f3a24; --tag-ok-text:#7fce8c;
+  --tag-soon-bg:#2f3134; --tag-soon-text:#9a9a95;
 }
 *{box-sizing:border-box;}
 body{margin:0;font-family:"Hiragino Kaku Gothic ProN","Yu Gothic",sans-serif;background:var(--bg);color:var(--text);}
@@ -22,18 +39,31 @@ header p{margin:6px 0 0;font-size:13px;opacity:.9;}
 .tool .icon{font-size:26px;margin-bottom:10px;display:block;}
 .tool h2{margin:0 0 6px;font-size:16px;font-weight:600;}
 .tool p{margin:0;font-size:12.5px;color:var(--text-sub);line-height:1.6;}
-.tool .tag{display:inline-block;margin-top:12px;font-size:11px;padding:3px 10px;border-radius:20px;background:#e9f4ea;color:#2c6b34;}
+.tool .tag{display:inline-block;margin-top:12px;font-size:11px;padding:3px 10px;border-radius:20px;background:var(--tag-ok-bg);color:var(--tag-ok-text);}
 .tool.soon{opacity:.55;cursor:default;pointer-events:none;}
-.tool.soon .tag{background:#f1efe8;color:#6b6b65;}
+.tool.soon .tag{background:var(--tag-soon-bg);color:var(--tag-soon-text);}
 .section-label{font-size:12px;color:var(--text-muted);margin:28px 0 4px;letter-spacing:.02em;}
 footer{font-size:11.5px;color:var(--text-muted);margin-top:32px;}
+.header-row{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;}
+.settingsBtn{background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.6);color:#fff;border-radius:8px;padding:8px 16px;font-size:13px;cursor:pointer;font-weight:600;flex-shrink:0;}
+.settingsBtn:hover{background:rgba(255,255,255,0.25);}
+.settingsPanel{background:var(--card);border-bottom:1px solid var(--border);padding:12px 28px;display:flex;gap:24px;flex-wrap:wrap;}
+.settingsPanel label{font-size:13px;color:var(--text);display:flex;align-items:center;gap:6px;cursor:pointer;}
 </style>
 </head>
 <body>
 <header>
-<h1>Ciel System</h1>
-<p>シエルオートワークス 業務ツール一覧</p>
+<div class="header-row">
+  <div>
+    <h1>Ciel System</h1>
+    <p>シエルオートワークス 業務ツール一覧</p>
+  </div>
+  <button class="settingsBtn" id="settingsBtn">⚙ 設定</button>
+</div>
 </header>
+<div class="settingsPanel" id="settingsPanel" style="display:none;">
+  <label><input type="checkbox" id="darkModeToggle"> ダークモード</label>
+</div>
 <div class="wrap">
 
 <div class="section-label">稼働中のツール</div>
@@ -47,7 +77,7 @@ footer{font-size:11.5px;color:var(--text-muted);margin-top:32px;}
   <a class="tool" href="./ads.html">
     <span class="icon">📊</span>
     <h2>広告掲載状況ダッシュボード</h2>
-    <p>カーセンサー・グーネット・QuickNetwork・オートサーバーの4サイトを車台番号で突合し、掲載漏れ・価格ずれ・走行距離ずれ・車検ずれを一覧表示。</p>
+    <p>カーセンサー・グーネット・QuickNetwork・オートサーバー・JUテントリの5サイトを車台番号で突合し、掲載漏れ・価格ずれ・走行距離ずれ・車検ずれを一覧表示。</p>
     <span class="tag">稼働中</span>
   </a>
 </div>
@@ -70,5 +100,21 @@ footer{font-size:11.5px;color:var(--text-muted);margin-top:32px;}
 
 <footer>このページはリンク集です。各ツールは個別に動作しており、データは連携していません。</footer>
 </div>
+<script>
+const settingsBtn = document.getElementById('settingsBtn');
+const settingsPanel = document.getElementById('settingsPanel');
+const darkModeToggle = document.getElementById('darkModeToggle');
+
+settingsBtn.addEventListener('click', ()=>{
+  settingsPanel.style.display = settingsPanel.style.display === 'none' ? 'flex' : 'none';
+});
+
+darkModeToggle.checked = document.documentElement.getAttribute('data-theme') === 'dark';
+darkModeToggle.addEventListener('change', ()=>{
+  const theme = darkModeToggle.checked ? 'dark' : 'light';
+  document.documentElement.setAttribute('data-theme', theme);
+  localStorage.setItem('ciel-theme', theme);
+});
+</script>
 </body>
 </html>
