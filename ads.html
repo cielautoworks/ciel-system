@@ -58,6 +58,10 @@ tbody tr:hover{background:#fafbfc;}
 .badge.warn{background:var(--warn-bg);color:var(--warn-text);}
 .site-col{border-left:2px solid var(--border);}
 .numcol{text-align:right;white-space:nowrap;}
+.togglecol{text-align:center;}
+.toggleBtn{font-size:11px;padding:4px 8px;border:1px solid var(--border);border-radius:6px;background:#fff;color:var(--text-sub);cursor:pointer;white-space:nowrap;}
+.toggleBtn.on{background:#eef6ee;border-color:var(--ok-text);color:var(--ok-text);}
+.toggleBtn:hover{opacity:0.8;}
 .subtle{color:var(--text-muted);font-size:11px;}
 .tablewrap{overflow-x:auto;border:1px solid var(--border);border-radius:10px;}
 .legend{font-size:11.5px;color:var(--text-sub);margin:10px 0 4px;}
@@ -85,7 +89,7 @@ tbody tr:hover{background:#fafbfc;}
 <header>
 <div class="header-row">
   <div>
-    <h1>広告掲載状況ダッシュボード <span style="font-size:12px;font-weight:400;opacity:.75;">v1.11</span></h1>
+    <h1>広告掲載状況ダッシュボード <span style="font-size:12px;font-weight:400;opacity:.75;">v1.12</span></h1>
     <p>カーセンサー ／ グーネット ／ QuickNetwork（業販） ／ オートサーバー（業販） ／ JUテントリ（業販） の5サイト突合(棚卸一覧は参考照合用)　※データはFirebaseで共有されます</p>
   </div>
   <button class="updateBtn headerRefreshBtn" id="refreshBtn">🔄 最新を取得</button>
@@ -174,6 +178,7 @@ tbody tr:hover{background:#fafbfc;}
   <th class="site-col sortable" data-sort="mileage" colspan="5">走行距離<span class="arrow">↕</span></th>
   <th class="sortable" data-sort="shaken" colspan="5">車検<span class="arrow">↕</span></th>
   <th class="sortable" data-sort="flags" rowspan="2">フラグ<span class="arrow">↕</span></th>
+  <th rowspan="2">業販不要<br><span class="subtle">QN/AS/JU</span></th>
 </tr>
 <tr>
   <th class="site-col subhead">CS</th>
@@ -192,7 +197,7 @@ tbody tr:hover{background:#fafbfc;}
 </table>
 </div>
 
-<p class="legend">※掲載漏れ＝いずれかのサイトで掲載中なのに別サイトで非掲載・未掲載　／　棚卸に該当なし＝車両棚卸一覧にVINが見当たらない車両（売約済みの可能性がありますが棚卸には非売品も混在するため断定はできません。要確認の参考情報です）　／　価格ずれ＝小売2サイト間または業販2サイト間で金額不一致　／　走行距離ずれ＝サイト間最大差1,000km以上　／　車検ずれ＝有効期限(年月)がサイト間で不一致。「整備付」と空欄は同じ「日付なし」として扱い、日付ありのサイトと混在する場合はずれとして検知</p>
+<p class="legend">※掲載漏れ＝いずれかのサイトで掲載中なのに別サイトで非掲載・未掲載　／　棚卸に該当なし＝車両棚卸一覧にVINが見当たらない車両（売約済みの可能性がありますが棚卸には非売品も混在するため断定はできません。要確認の参考情報です）　／　価格ずれ＝小売2サイト間または業販2サイト間で金額不一致　／　走行距離ずれ＝サイト間最大差1,000km以上　／　車検ずれ＝有効期限(年月)がサイト間で不一致。「整備付」と空欄は同じ「日付なし」として扱い、日付ありのサイトと混在する場合はずれとして検知　／　「業販不要」をONにした車両は、QuickNetwork・オートサーバー・JUテントリの未掲載チェックから除外</p>
 
 </div>
 
@@ -236,6 +241,7 @@ async function loadAdsData(){
     const snap = await get(ref(db, 'adsData'));
     const data = snap.val() || {};
     ADS_SITES_KEYS.forEach(k => { raw[k] = data[k] || {}; });
+    noGyohanVins = data.noGyohanVins || {};
     lastLoadedLabel = data.lastUpdated || null;
     document.getElementById('lastUpdated').textContent = lastLoadedLabel ? ('データ基準日: ' + lastLoadedLabel) : 'データがまだ保存されていません。CSVを読み込んで保存してください。';
     setSyncStatus('● 同期済み', 'ok');
@@ -255,6 +261,7 @@ async function saveAdsData(){
     const payload = {};
     ADS_SITES_KEYS.forEach(k => { payload[k] = raw[k] || {}; });
     payload.lastUpdated = label;
+    payload.noGyohanVins = noGyohanVins || {}; // 業販不要フラグは上書きせず保持する
     await set(ref(db, 'adsData'), payload);
     lastLoadedLabel = label;
     document.getElementById('lastUpdated').textContent = 'データ基準日: ' + label;
@@ -267,9 +274,25 @@ async function saveAdsData(){
   }
 }
 
+// 業販3サイト(QuickNetwork/オートサーバー/JUテントリ)への掲載が不要な車両の「対象外」フラグをON/OFFする。
+// このフラグ単体だけをFirebaseの該当パスに書き込むので、CSV全体の保存より通信量が少ない。
+async function toggleNoGyohan(vin){
+  if(noGyohanVins[vin]) delete noGyohanVins[vin];
+  else noGyohanVins[vin] = true;
+  recompute();
+  try{
+    await set(ref(db, 'adsData/noGyohanVins'), noGyohanVins);
+  } catch(err){
+    console.error('toggleNoGyohan error:', err);
+    setSyncStatus('● 保存エラー: ' + err.message, 'err');
+  }
+}
+
 let raw = {carsensor:{}, goonet:{}, quicknetwork:{}, autoserver:{}, jutentori:{}, tanaoroshi:{}};
+let noGyohanVins = {};
 let lastLoadedLabel = null;
 const SITES = ['carsensor','goonet','quicknetwork','autoserver','jutentori'];
+const GYOHAN_ONLY_SITES = ['quicknetwork','autoserver','jutentori'];
 const SITE_LABEL = {carsensor:'カーセンサー', goonet:'グーネット', quicknetwork:'QuickNetwork', autoserver:'オートサーバー', jutentori:'JUテントリ'};
 
 /* ============ 表示ユーティリティ ============ */
@@ -384,16 +407,18 @@ function recompute(){
     }).filter(v=>v!=null);
     const shakenMismatch = shakenSignatures.length>=2 && new Set(shakenSignatures).size>1;
 
-    const activeSites = SITES.filter(s => isActive(s, bySite[s]));
-    const missingSitesAll = SITES.filter(s => !isActive(s, bySite[s]));
-    const missing = activeSites.length > 0 && activeSites.length < SITES.length;
+    const skipGyohan = !!noGyohanVins[vin]; // 業販3サイトへの掲載が不要な車両は未掲載チェックから除外
+    const checkSites = skipGyohan ? SITES.filter(s=>!GYOHAN_ONLY_SITES.includes(s)) : SITES;
+    const activeSites = checkSites.filter(s => isActive(s, bySite[s]));
+    const missingSitesAll = checkSites.filter(s => !isActive(s, bySite[s]));
+    const missing = activeSites.length > 0 && activeSites.length < checkSites.length;
 
     const notInStock = !inStock;
 
     const flagCount = (missing?1:0) + (notInStock?1:0) + (priceMismatch?1:0) + (mileageMismatch?1:0) + (shakenMismatch?1:0);
 
     return {vin, carName, bySite, inStock, notInStock, retailMismatch, gyohanMismatch, priceMismatch,
-             mileages, mileageMismatch, shakenNorm, shakenMismatch,
+             mileages, mileageMismatch, shakenNorm, shakenMismatch, skipGyohan,
              missing, missingSites: missing ? missingSitesAll : [], flagCount};
   });
 
@@ -411,9 +436,9 @@ function renderSummary(){
   const cleanCount = rows.filter(r=>!r.missing && !r.priceMismatch && !r.mileageMismatch && !r.shakenMismatch).length;
   const missCarsensorCount = rows.filter(r=>!isActive('carsensor', r.bySite.carsensor)).length;
   const missGoonetCount = rows.filter(r=>!isActive('goonet', r.bySite.goonet)).length;
-  const missQuicknetworkCount = rows.filter(r=>!isActive('quicknetwork', r.bySite.quicknetwork)).length;
-  const missAutoserverCount = rows.filter(r=>!isActive('autoserver', r.bySite.autoserver)).length;
-  const missJutentoriCount = rows.filter(r=>!isActive('jutentori', r.bySite.jutentori)).length;
+  const missQuicknetworkCount = rows.filter(r=>!r.skipGyohan && !isActive('quicknetwork', r.bySite.quicknetwork)).length;
+  const missAutoserverCount = rows.filter(r=>!r.skipGyohan && !isActive('autoserver', r.bySite.autoserver)).length;
+  const missJutentoriCount = rows.filter(r=>!r.skipGyohan && !isActive('jutentori', r.bySite.jutentori)).length;
 
   document.getElementById('summary').innerHTML = `
     <div class="card" data-filter="all"><p class="label">対象車両数(4サイト合算)</p><p class="value">${total}台</p></div>
@@ -502,9 +527,9 @@ function applyFilters(){
   if(currentFilter==='notinstock') filtered = filtered.filter(r=>r.notInStock);
   if(currentFilter==='miss_carsensor') filtered = filtered.filter(r=>!isActive('carsensor', r.bySite.carsensor));
   if(currentFilter==='miss_goonet') filtered = filtered.filter(r=>!isActive('goonet', r.bySite.goonet));
-  if(currentFilter==='miss_quicknetwork') filtered = filtered.filter(r=>!isActive('quicknetwork', r.bySite.quicknetwork));
-  if(currentFilter==='miss_autoserver') filtered = filtered.filter(r=>!isActive('autoserver', r.bySite.autoserver));
-  if(currentFilter==='miss_jutentori') filtered = filtered.filter(r=>!isActive('jutentori', r.bySite.jutentori));
+  if(currentFilter==='miss_quicknetwork') filtered = filtered.filter(r=>!r.skipGyohan && !isActive('quicknetwork', r.bySite.quicknetwork));
+  if(currentFilter==='miss_autoserver') filtered = filtered.filter(r=>!r.skipGyohan && !isActive('autoserver', r.bySite.autoserver));
+  if(currentFilter==='miss_jutentori') filtered = filtered.filter(r=>!r.skipGyohan && !isActive('jutentori', r.bySite.jutentori));
   if(currentFilter==='price') filtered = filtered.filter(r=>r.priceMismatch);
   if(currentFilter==='mileage') filtered = filtered.filter(r=>r.mileageMismatch);
   if(currentFilter==='shaken') filtered = filtered.filter(r=>r.shakenMismatch);
@@ -546,6 +571,7 @@ function render(list){
       <td class="numcol">${shakenSiteCell('autoserver', r)}</td>
       <td class="numcol">${shakenSiteCell('jutentori', r)}</td>
       <td>${flagBadges(r)}</td>
+      <td class="togglecol"><button type="button" class="toggleBtn ${r.skipGyohan?'on':''}" data-vin="${r.vin}">${r.skipGyohan ? '✅ 対象外' : '☐ 対象'}</button></td>
     </tr>
   `).join('');
 }
@@ -950,6 +976,12 @@ document.getElementById('updateDataBtn').addEventListener('click', async ()=>{
 
 document.getElementById('refreshBtn').addEventListener('click', ()=>{
   loadAdsData();
+});
+
+document.getElementById('tbody').addEventListener('click', e=>{
+  const btn = e.target.closest('.toggleBtn');
+  if(!btn) return;
+  toggleNoGyohan(btn.dataset.vin);
 });
 
 /* ============ 初期表示 ============ */
