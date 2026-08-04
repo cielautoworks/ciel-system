@@ -15,6 +15,9 @@
 *{box-sizing:border-box;}
 body{margin:0;font-family:"Hiragino Kaku Gothic ProN","Yu Gothic",sans-serif;background:var(--bg);color:var(--text);}
 header{background:linear-gradient(90deg,var(--sky),#3d8fae);color:#fff;padding:20px 28px;}
+.header-row{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;}
+.headerRefreshBtn{background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.6);color:#fff;flex-shrink:0;}
+.headerRefreshBtn:hover{background:rgba(255,255,255,0.25);}
 header h1{margin:0;font-size:20px;font-weight:600;}
 header p{margin:4px 0 0;font-size:13px;opacity:.9;}
 .wrap{padding:20px 28px 60px;max-width:1440px;margin:0 auto;}
@@ -41,6 +44,7 @@ thead th.sortable{cursor:pointer;user-select:none;}
 thead th.sortable:hover{color:var(--sky);}
 thead th .arrow{font-size:10px;color:var(--text-muted);margin-left:2px;}
 thead th.sort-active .arrow{color:var(--sky);}
+thead th.subhead{font-size:10.5px;font-weight:600;color:var(--text-muted);text-align:center;padding:4px 2px;background:#fafaf8;cursor:default;}
 tbody td{padding:8px;border-bottom:1px solid #eeeeea;vertical-align:top;white-space:nowrap;}
 tbody tr:hover{background:#fafbfc;}
 .vin{font-family:monospace;color:var(--text-muted);font-size:11.5px;}
@@ -53,6 +57,7 @@ tbody tr:hover{background:#fafbfc;}
 .badge.miss{background:var(--danger-bg);color:var(--danger-text);}
 .badge.warn{background:var(--warn-bg);color:var(--warn-text);}
 .site-col{border-left:2px solid var(--border);}
+.numcol{text-align:right;white-space:nowrap;}
 .subtle{color:var(--text-muted);font-size:11px;}
 .tablewrap{overflow-x:auto;border:1px solid var(--border);border-radius:10px;}
 .legend{font-size:11.5px;color:var(--text-sub);margin:10px 0 4px;}
@@ -74,12 +79,17 @@ tbody tr:hover{background:#fafbfc;}
 </head>
 <body>
 <header>
-<h1>広告掲載状況ダッシュボード <span style="font-size:12px;font-weight:400;opacity:.75;">v1.04</span></h1>
-<p>カーセンサー ／ グーネット ／ QuickNetwork（業販） ／ オートサーバー（業販） の4サイト突合(棚卸一覧は参考照合用)　※データはFirebaseで共有されます</p>
+<div class="header-row">
+  <div>
+    <h1>広告掲載状況ダッシュボード <span style="font-size:12px;font-weight:400;opacity:.75;">v1.08</span></h1>
+    <p>カーセンサー ／ グーネット ／ QuickNetwork（業販） ／ オートサーバー（業販） ／ JUテントリ（業販） の5サイト突合(棚卸一覧は参考照合用)　※データはFirebaseで共有されます</p>
+  </div>
+  <button class="updateBtn headerRefreshBtn" id="refreshBtn">🔄 最新を取得</button>
+</div>
 </header>
 <div class="wrap">
 
-<details class="uploadPanel">
+<details class="uploadPanel" id="uploadPanel">
 <summary>📂 CSVを読み込んでデータを更新</summary>
 <div class="uploadGrid">
   <div class="uploadItem">
@@ -102,6 +112,11 @@ tbody tr:hover{background:#fafbfc;}
     <textarea id="text-autoserver" rows="5" placeholder="オートサーバーの一覧をコピーしてここに貼り付け" style="width:100%;font-size:11.5px;font-family:monospace;padding:8px;border:1px solid var(--border);border-radius:8px;resize:vertical;box-sizing:border-box;"></textarea>
     <div class="uploadStatus" id="status-autoserver"></div>
   </div>
+  <div class="uploadItem" style="grid-column:1/-1;">
+    <label>JUテントリ(一覧をコピーしてそのまま貼り付け)</label>
+    <textarea id="text-jutentori" rows="5" placeholder="JUテントリの一覧をコピーしてここに貼り付け" style="width:100%;font-size:11.5px;font-family:monospace;padding:8px;border:1px solid var(--border);border-radius:8px;resize:vertical;box-sizing:border-box;"></textarea>
+    <div class="uploadStatus" id="status-jutentori"></div>
+  </div>
   <div class="uploadItem">
     <label>車両棚卸一覧(*.csv・任意)</label>
     <input type="file" id="file-tanaoroshi" accept=".csv,.txt">
@@ -109,7 +124,6 @@ tbody tr:hover{background:#fafbfc;}
   </div>
 </div>
 <button class="updateBtn" id="updateDataBtn">選択したデータをFirebaseに保存</button>
-<button class="updateBtn" id="refreshBtn" style="background:var(--text-muted);margin-left:8px;">🔄 最新を取得（他の人の更新を確認）</button>
 <div class="lastUpdated" id="lastUpdated"></div>
 <div class="lastUpdated" id="syncStatus"></div>
 </details>
@@ -133,23 +147,36 @@ tbody tr:hover{background:#fafbfc;}
 <table>
 <thead>
 <tr>
-  <th class="sortable" data-sort="vin">車台番号<span class="arrow">↕</span></th>
-  <th>棚卸</th>
-  <th class="sortable" data-sort="carname">車両<span class="arrow">↕</span></th>
-  <th class="site-col sortable" data-sort="carsensor">カーセンサー<span class="arrow">↕</span><br><span class="subtle">支払総額</span></th>
-  <th class="sortable" data-sort="goonet">グーネット<span class="arrow">↕</span><br><span class="subtle">支払総額</span></th>
-  <th class="site-col sortable" data-sort="quicknetwork">QuickNetwork<span class="arrow">↕</span><br><span class="subtle">業販価格</span></th>
-  <th class="sortable" data-sort="autoserver">オートサーバー<span class="arrow">↕</span><br><span class="subtle">業販価格</span></th>
-  <th class="site-col sortable" data-sort="mileage">走行距離<span class="arrow">↕</span></th>
-  <th class="sortable" data-sort="shaken">車検<span class="arrow">↕</span></th>
-  <th class="sortable" data-sort="flags">フラグ<span class="arrow">↕</span></th>
+  <th class="sortable" data-sort="vin" rowspan="2">車台番号<span class="arrow">↕</span></th>
+  <th rowspan="2">棚卸</th>
+  <th class="sortable" data-sort="carname" rowspan="2">車両<span class="arrow">↕</span></th>
+  <th class="site-col sortable" data-sort="carsensor" rowspan="2">カーセンサー<span class="arrow">↕</span><br><span class="subtle">支払総額</span></th>
+  <th class="sortable" data-sort="goonet" rowspan="2">グーネット<span class="arrow">↕</span><br><span class="subtle">支払総額</span></th>
+  <th class="site-col sortable" data-sort="quicknetwork" rowspan="2">QuickNetwork<span class="arrow">↕</span><br><span class="subtle">業販価格</span></th>
+  <th class="sortable" data-sort="autoserver" rowspan="2">オートサーバー<span class="arrow">↕</span><br><span class="subtle">業販価格</span></th>
+  <th class="sortable" data-sort="jutentori" rowspan="2">JUテントリ<span class="arrow">↕</span><br><span class="subtle">業販価格</span></th>
+  <th class="site-col sortable" data-sort="mileage" colspan="5">走行距離<span class="arrow">↕</span></th>
+  <th class="sortable" data-sort="shaken" colspan="5">車検<span class="arrow">↕</span></th>
+  <th class="sortable" data-sort="flags" rowspan="2">フラグ<span class="arrow">↕</span></th>
+</tr>
+<tr>
+  <th class="site-col subhead">CS</th>
+  <th class="subhead">グー</th>
+  <th class="subhead">Q</th>
+  <th class="subhead">AS</th>
+  <th class="subhead">JU</th>
+  <th class="site-col subhead">CS</th>
+  <th class="subhead">グー</th>
+  <th class="subhead">Q</th>
+  <th class="subhead">AS</th>
+  <th class="subhead">JU</th>
 </tr>
 </thead>
 <tbody id="tbody"></tbody>
 </table>
 </div>
 
-<p class="legend">※掲載漏れ＝いずれかのサイトで掲載中なのに別サイトで非掲載・未掲載　／　棚卸に該当なし＝車両棚卸一覧にVINが見当たらない車両（売約済みの可能性がありますが棚卸には非売品も混在するため断定はできません。要確認の参考情報です）　／　価格ずれ＝小売2サイト間または業販2サイト間で金額不一致　／　走行距離ずれ＝サイト間最大差3,000km超　／　車検ずれ＝有効期限(年月)がサイト間で不一致</p>
+<p class="legend">※掲載漏れ＝いずれかのサイトで掲載中なのに別サイトで非掲載・未掲載　／　棚卸に該当なし＝車両棚卸一覧にVINが見当たらない車両（売約済みの可能性がありますが棚卸には非売品も混在するため断定はできません。要確認の参考情報です）　／　価格ずれ＝小売2サイト間または業販2サイト間で金額不一致　／　走行距離ずれ＝サイト間最大差1,000km以上　／　車検ずれ＝有効期限(年月)がサイト間で不一致</p>
 
 </div>
 
@@ -176,7 +203,7 @@ const fbApp = initializeApp(firebaseConfig);
 const db    = getDatabase(fbApp);
 const auth  = getAuth(fbApp);
 
-const ADS_SITES_KEYS = ['carsensor','goonet','quicknetwork','autoserver','tanaoroshi'];
+const ADS_SITES_KEYS = ['carsensor','goonet','quicknetwork','autoserver','jutentori','tanaoroshi'];
 
 function setSyncStatus(msg, cls){
   const el = document.getElementById('syncStatus');
@@ -216,16 +243,18 @@ async function saveAdsData(){
     lastLoadedLabel = label;
     document.getElementById('lastUpdated').textContent = 'データ基準日: ' + label;
     setSyncStatus('● 保存完了(Firebaseに反映されました)', 'ok');
+    return true;
   } catch(err){
     console.error('saveAdsData error:', err);
     setSyncStatus('● 保存エラー: ' + err.message, 'err');
+    return false;
   }
 }
 
-let raw = {carsensor:{}, goonet:{}, quicknetwork:{}, autoserver:{}, tanaoroshi:{}};
+let raw = {carsensor:{}, goonet:{}, quicknetwork:{}, autoserver:{}, jutentori:{}, tanaoroshi:{}};
 let lastLoadedLabel = null;
-const SITES = ['carsensor','goonet','quicknetwork','autoserver'];
-const SITE_LABEL = {carsensor:'カーセンサー', goonet:'グーネット', quicknetwork:'QuickNetwork', autoserver:'オートサーバー'};
+const SITES = ['carsensor','goonet','quicknetwork','autoserver','jutentori'];
+const SITE_LABEL = {carsensor:'カーセンサー', goonet:'グーネット', quicknetwork:'QuickNetwork', autoserver:'オートサーバー', jutentori:'JUテントリ'};
 
 /* ============ 表示ユーティリティ ============ */
 function fmtYen(v){ return v==null ? null : '¥'+v.toLocaleString(); }
@@ -239,13 +268,15 @@ function isActive(site, d){
 function normShaken(s){
   if(!s) return null;
   s = String(s).trim();
-  if(s.includes('整備付') || s.includes('車検整備')) return {label:'整備付(納車時更新)', ym:null};
+  if(s.includes('整備付') || s.includes('車検整備')) return {label:'整備付', ym:null};
   if(s === '--.--' || s === '--/--' || s === '') return null;
-  let m;
-  if((m = s.match(/(\d{4})年(\d{1,2})月/))) return {label:`${m[1]}/${m[2].padStart(2,'0')}`, ym:parseInt(m[1])*12+parseInt(m[2])};
-  if((m = s.match(/R(\d{1,2})[.\/](\d{1,2})/))) { let y=2018+parseInt(m[1]); return {label:`${y}/${m[2].padStart(2,'0')}(R${m[1]})`, ym:y*12+parseInt(m[2])}; }
-  if((m = s.match(/^(\d{1,2})\/(\d{1,2})$/))) { let y=2018+parseInt(m[1]); return {label:`${y}/${m[2].padStart(2,'0')}(R${m[1]})`, ym:y*12+parseInt(m[2])}; }
-  return {label:s, ym:null};
+  let year, month, m;
+  if((m = s.match(/(\d{4})年(\d{1,2})月/))) { year=parseInt(m[1]); month=parseInt(m[2]); }
+  else if((m = s.match(/R(\d{1,2})[.\/](\d{1,2})/))) { year=2018+parseInt(m[1]); month=parseInt(m[2]); }
+  else if((m = s.match(/^(\d{1,2})\/(\d{1,2})$/))) { year=2018+parseInt(m[1]); month=parseInt(m[2]); }
+  else { return {label:s, ym:null}; }
+  const reiwa = year - 2018;
+  return {label:`R${reiwa}/${String(month).padStart(2,'0')}`, ym: year*12+month};
 }
 
 /* ============ 車台番号の表記ゆれ吸収 ============ */
@@ -318,13 +349,13 @@ function recompute(){
     const carName = (stockInfo||bySite.carsensor||bySite.goonet||bySite.quicknetwork||bySite.autoserver||{}).car_name || '';
 
     const retailPrices = [bySite.carsensor?.price_total, bySite.goonet?.price_total].filter(v=>v!=null);
-    const gyohanPrices = [bySite.quicknetwork?.price_gyohan, bySite.autoserver?.price_gyohan].filter(v=>v!=null);
+    const gyohanPrices = [bySite.quicknetwork?.price_gyohan, bySite.autoserver?.price_gyohan, bySite.jutentori?.price_gyohan].filter(v=>v!=null);
     const retailMismatch = retailPrices.length>=2 && new Set(retailPrices).size>1;
     const gyohanMismatch = gyohanPrices.length>=2 && new Set(gyohanPrices).size>1;
     const priceMismatch = retailMismatch || gyohanMismatch;
 
     const mileages = SITES.map(s=>bySite[s]?.mileage_km).filter(v=>v!=null);
-    const mileageMismatch = mileages.length>=2 && (Math.max(...mileages)-Math.min(...mileages) > 3000);
+    const mileageMismatch = mileages.length>=2 && (Math.max(...mileages)-Math.min(...mileages) >= 1000);
 
     const shakenNorm = {};
     SITES.forEach(s=>{ shakenNorm[s] = bySite[s] ? normShaken(bySite[s].shaken) : null; });
@@ -360,6 +391,7 @@ function renderSummary(){
   const missGoonetCount = rows.filter(r=>!isActive('goonet', r.bySite.goonet)).length;
   const missQuicknetworkCount = rows.filter(r=>!isActive('quicknetwork', r.bySite.quicknetwork)).length;
   const missAutoserverCount = rows.filter(r=>!isActive('autoserver', r.bySite.autoserver)).length;
+  const missJutentoriCount = rows.filter(r=>!isActive('jutentori', r.bySite.jutentori)).length;
 
   document.getElementById('summary').innerHTML = `
     <div class="card" data-filter="all"><p class="label">対象車両数(4サイト合算)</p><p class="value">${total}台</p></div>
@@ -375,6 +407,7 @@ function renderSummary(){
     <div class="card danger" data-filter="miss_goonet"><p class="label">グーネット未掲載</p><p class="value">${missGoonetCount}台</p></div>
     <div class="card danger" data-filter="miss_quicknetwork"><p class="label">QuickNetwork未掲載</p><p class="value">${missQuicknetworkCount}台</p></div>
     <div class="card danger" data-filter="miss_autoserver"><p class="label">オートサーバー未掲載</p><p class="value">${missAutoserverCount}台</p></div>
+    <div class="card danger" data-filter="miss_jutentori"><p class="label">JUテントリ未掲載</p><p class="value">${missJutentoriCount}台</p></div>
   `;
   document.querySelectorAll('.card[data-filter]').forEach(c=>{
     c.classList.toggle('active-card', c.dataset.filter === currentFilter && currentFilter !== 'all');
@@ -393,22 +426,16 @@ function siteCell(site, r){
   return v ? `<span class="${r.gyohanMismatch?'mismatch':''}">${v}</span>` : '<span class="subtle">―</span>';
 }
 
-function mileageCell(r){
-  const parts = SITES.map(s=>{
-    const d = r.bySite[s];
-    if(!d || d.mileage_km==null) return null;
-    return `${SITE_LABEL[s]}:${d.mileage_km.toLocaleString()}km`;
-  }).filter(Boolean);
-  return `<span class="${r.mileageMismatch?'mismatch':''}">${parts.join(' / ')}</span>`;
+function mileageSiteCell(site, r){
+  const d = r.bySite[site];
+  if(!d || d.mileage_km==null) return '<span class="subtle">―</span>';
+  return `<span class="${r.mileageMismatch?'mismatch':''}">${d.mileage_km.toLocaleString()}km</span>`;
 }
 
-function shakenCell(r){
-  const parts = SITES.map(s=>{
-    const n = r.shakenNorm[s];
-    if(!n) return null;
-    return `${SITE_LABEL[s]}:${n.label}`;
-  }).filter(Boolean);
-  return `<span class="${r.shakenMismatch?'mismatch':''}">${parts.join(' / ')}</span>`;
+function shakenSiteCell(site, r){
+  const n = r.shakenNorm[site];
+  if(!n) return '<span class="subtle">―</span>';
+  return `<span class="${r.shakenMismatch?'mismatch':''}">${n.label}</span>`;
 }
 
 function flagBadges(r){
@@ -436,6 +463,7 @@ function getSortValue(r, key){
     case 'goonet': return r.bySite.goonet?.price_total ?? -1;
     case 'quicknetwork': return r.bySite.quicknetwork?.price_gyohan ?? -1;
     case 'autoserver': return r.bySite.autoserver?.price_gyohan ?? -1;
+    case 'jutentori': return r.bySite.jutentori?.price_gyohan ?? -1;
     case 'mileage': return r.mileages.length ? Math.max(...r.mileages) : -1;
     case 'shaken': {
       const yms = SITES.map(s=>r.shakenNorm[s]?.ym).filter(v=>v!=null);
@@ -454,6 +482,7 @@ function applyFilters(){
   if(currentFilter==='miss_goonet') filtered = filtered.filter(r=>!isActive('goonet', r.bySite.goonet));
   if(currentFilter==='miss_quicknetwork') filtered = filtered.filter(r=>!isActive('quicknetwork', r.bySite.quicknetwork));
   if(currentFilter==='miss_autoserver') filtered = filtered.filter(r=>!isActive('autoserver', r.bySite.autoserver));
+  if(currentFilter==='miss_jutentori') filtered = filtered.filter(r=>!isActive('jutentori', r.bySite.jutentori));
   if(currentFilter==='price') filtered = filtered.filter(r=>r.priceMismatch);
   if(currentFilter==='mileage') filtered = filtered.filter(r=>r.mileageMismatch);
   if(currentFilter==='shaken') filtered = filtered.filter(r=>r.shakenMismatch);
@@ -483,8 +512,17 @@ function render(list){
       <td>${siteCell('goonet', r)}</td>
       <td class="site-col">${siteCell('quicknetwork', r)}</td>
       <td>${siteCell('autoserver', r)}</td>
-      <td class="site-col">${mileageCell(r)}</td>
-      <td>${shakenCell(r)}</td>
+      <td>${siteCell('jutentori', r)}</td>
+      <td class="site-col numcol">${mileageSiteCell('carsensor', r)}</td>
+      <td class="numcol">${mileageSiteCell('goonet', r)}</td>
+      <td class="numcol">${mileageSiteCell('quicknetwork', r)}</td>
+      <td class="numcol">${mileageSiteCell('autoserver', r)}</td>
+      <td class="numcol">${mileageSiteCell('jutentori', r)}</td>
+      <td class="site-col numcol">${shakenSiteCell('carsensor', r)}</td>
+      <td class="numcol">${shakenSiteCell('goonet', r)}</td>
+      <td class="numcol">${shakenSiteCell('quicknetwork', r)}</td>
+      <td class="numcol">${shakenSiteCell('autoserver', r)}</td>
+      <td class="numcol">${shakenSiteCell('jutentori', r)}</td>
       <td>${flagBadges(r)}</td>
     </tr>
   `).join('');
@@ -626,7 +664,7 @@ function parseGoonetCSV(text){
     if(r.length < header.length) continue;
     const vin = normVin(r[idx['車台番号（全桁）']]);
     if(!vin) continue;
-    out[vin] = {
+    const rec = {
       car_name: `${r[idx['ブランド']]||''} ${r[idx['車種']]||''}`.trim(),
       grade: (r[idx['グレード']]||'').trim(),
       price_honntai: manYenToInt(r[idx['車両本体価格']]),
@@ -635,6 +673,9 @@ function parseGoonetCSV(text){
       shaken: (r[idx['車検']]||'').trim(),
       status: (r[idx['グーネット中古車掲載']]||'').trim(),
     };
+    // 同じ車台番号の行が複数ある場合、既に「掲載」中の行があれば非掲載の重複行では上書きしない
+    if(out[vin] && out[vin].status === '掲載' && rec.status !== '掲載') continue;
+    out[vin] = rec;
   }
   return out;
 }
@@ -714,11 +755,55 @@ function parseTanaoroshiCSV(text){
   return out;
 }
 
+// JUテントリ: CSVエクスポートがなく、サイト上の一覧表をコピー&ペーストしたテキストを解析する。
+// 各行のレイアウトは項目によって行数が変わる(車検が空の車両は車検の行自体が無い等)ため、
+// 固定の行オフセットではなく「型式(英数字)の行の直後に車台番号(数字のみ)の行が続く」という
+// 組み合わせを目印(アンカー)にして、そこから前後の項目を読み取る方式にしている。
+function parseJuTentoriText(text){
+  const lines = text.split(/\r\n|\n/).map(l=>l.trim());
+  const out = {};
+  const modelRe = /^(?=.*[A-Z])(?=.*\d)[A-Z0-9]{4,8}$/; // 型式: 英字と数字を含む4〜8桁
+  const serialRe = /^\d{5,8}$/;                          // 車台番号(製造番号部分): 数字5〜8桁
+  for(let i=1;i<lines.length-1;i++){
+    const model = lines[i];
+    const serial = lines[i+1];
+    if(!modelRe.test(model) || !serialRe.test(serial)) continue;
+
+    const carName = lines[i-2] || '';
+    const grade = lines[i-1] || '';
+
+    let j = i+2;
+    j++; // 車歴(自家用等)の行はスキップ
+    let shaken = '';
+    if(/^R\d{1,2}\/\d{1,2}$/.test(lines[j]||'')){ shaken = lines[j]; j++; }
+    const mileageRaw = lines[j]||''; j++;
+    j++; // 色の行はスキップ(未使用)
+    j++; // 評価点の行はスキップ(未使用)
+    j++; // 外/内の行はスキップ(未使用)
+    const priceRaw = lines[j]||''; j++;
+
+    const vin = normVin(model + '-' + serial);
+    const mMile = mileageRaw.replace(/,/g,'').match(/^(\d+)km$/);
+    const price_gyohan = /^\d+$/.test(priceRaw) ? parseInt(priceRaw,10)*1000 : null;
+
+    out[vin] = {
+      car_name: carName,
+      grade: grade,
+      price_gyohan: price_gyohan,
+      mileage_km: mMile ? parseInt(mMile[1],10) : null,
+      shaken: shaken,
+      status: '公開中', // このエクスポート形式は常に掲載中の車両のみを含む想定
+    };
+  }
+  return out;
+}
+
 const PARSERS = {
   carsensor: parseCarsensorCSV,
   goonet: parseGoonetCSV,
   quicknetwork: parseQuickNetworkCSV,
   autoserver: parseAutoserverText,
+  jutentori: parseJuTentoriText,
   tanaoroshi: parseTanaoroshiCSV,
 };
 
@@ -734,6 +819,19 @@ function readFileAsText(file){
     fr.onload = ()=> resolve(decodeAuto(fr.result));
     fr.onerror = ()=> reject(fr.error);
     fr.readAsArrayBuffer(file);
+  });
+}
+
+function clearUploadInputs(){
+  ['carsensor','goonet','quicknetwork','tanaoroshi'].forEach(key=>{
+    const input = document.getElementById('file-'+key);
+    if(input) input.value = '';
+    setStatus(key, '', '');
+  });
+  ['autoserver','jutentori'].forEach(key=>{
+    const ta = document.getElementById('text-'+key);
+    if(ta) ta.value = '';
+    setStatus(key, '', '');
   });
 }
 
@@ -754,20 +852,26 @@ document.getElementById('updateDataBtn').addEventListener('click', async ()=>{
       setStatus(key, 'エラー: ' + err.message, 'err');
     }
   }
-  const autoserverText = document.getElementById('text-autoserver').value.trim();
-  if(autoserverText){
+  const textKeys = ['autoserver','jutentori'];
+  for(const key of textKeys){
+    const text = document.getElementById('text-'+key).value.trim();
+    if(!text) continue;
     try{
-      const parsed = parseAutoserverText(autoserverText);
-      raw.autoserver = parsed;
-      setStatus('autoserver', `読込OK: ${Object.keys(parsed).length}件`, 'ok');
+      const parsed = PARSERS[key](text);
+      raw[key] = parsed;
+      setStatus(key, `読込OK: ${Object.keys(parsed).length}件`, 'ok');
       anyLoaded = true;
     } catch(err){
-      setStatus('autoserver', 'エラー: ' + err.message, 'err');
+      setStatus(key, 'エラー: ' + err.message, 'err');
     }
   }
   if(anyLoaded){
     recompute();
-    await saveAdsData();
+    const ok = await saveAdsData();
+    if(ok){
+      clearUploadInputs();
+      document.getElementById('uploadPanel').open = false;
+    }
   } else {
     setSyncStatus('ファイルが選択されていません。保存は行われませんでした。', 'err');
   }
