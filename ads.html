@@ -58,7 +58,7 @@ tbody tr:hover{background:#fafbfc;}
 .count-hint{font-size:12px;color:var(--text-sub);margin:0 0 8px;}
 .uploadPanel{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:14px 16px;margin-bottom:16px;}
 .uploadPanel summary{cursor:pointer;font-weight:600;font-size:13.5px;color:var(--text);}
-.uploadGrid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px;margin-top:12px;}
+.uploadGrid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-top:12px;}
 .uploadItem label{display:block;font-size:12px;color:var(--text-sub);margin-bottom:4px;}
 .uploadItem input[type=file]{width:100%;font-size:11.5px;}
 .uploadStatus{font-size:11.5px;color:var(--text-muted);margin-top:4px;min-height:14px;}
@@ -71,7 +71,7 @@ tbody tr:hover{background:#fafbfc;}
 </head>
 <body>
 <header>
-<h1>広告掲載状況ダッシュボード</h1>
+<h1>広告掲載状況ダッシュボード <span style="font-size:12px;font-weight:400;opacity:.75;">v1.01</span></h1>
 <p>カーセンサー ／ グーネット ／ QuickNetwork（業販） ／ オートサーバー（業販） の4サイト突合(棚卸一覧は参考照合用)</p>
 </header>
 <div class="wrap">
@@ -94,9 +94,9 @@ tbody tr:hover{background:#fafbfc;}
     <input type="file" id="file-quicknetwork" accept=".csv,.txt">
     <div class="uploadStatus" id="status-quicknetwork"></div>
   </div>
-  <div class="uploadItem">
-    <label>オートサーバー(貼付テキスト保存.txt)</label>
-    <input type="file" id="file-autoserver" accept=".csv,.txt">
+  <div class="uploadItem" style="grid-column:1/-1;">
+    <label>オートサーバー(明細をコピーしてそのまま貼り付け)</label>
+    <textarea id="text-autoserver" rows="5" placeholder="オートサーバーの一覧をコピーしてここに貼り付け" style="width:100%;font-size:11.5px;font-family:monospace;padding:8px;border:1px solid var(--border);border-radius:8px;resize:vertical;box-sizing:border-box;"></textarea>
     <div class="uploadStatus" id="status-autoserver"></div>
   </div>
   <div class="uploadItem">
@@ -116,6 +116,10 @@ tbody tr:hover{background:#fafbfc;}
   <button class="filterbtn active" data-filter="all">すべて</button>
   <button class="filterbtn d" data-filter="missing">掲載漏れのみ</button>
   <button class="filterbtn w" data-filter="notinstock">棚卸に該当なし(要確認)</button>
+  <button class="filterbtn d" data-filter="miss_carsensor">カーセンサー未掲載</button>
+  <button class="filterbtn d" data-filter="miss_goonet">グーネット未掲載</button>
+  <button class="filterbtn d" data-filter="miss_quicknetwork">QuickNetwork未掲載</button>
+  <button class="filterbtn d" data-filter="miss_autoserver">オートサーバー未掲載</button>
   <button class="filterbtn w" data-filter="price">価格ずれのみ</button>
   <button class="filterbtn w" data-filter="mileage">走行距離ずれ</button>
   <button class="filterbtn w" data-filter="shaken">車検ずれ</button>
@@ -368,6 +372,10 @@ function applyFilters(){
   let filtered = rows;
   if(currentFilter==='missing') filtered = filtered.filter(r=>r.missing);
   if(currentFilter==='notinstock') filtered = filtered.filter(r=>r.notInStock);
+  if(currentFilter==='miss_carsensor') filtered = filtered.filter(r=>!isActive('carsensor', r.bySite.carsensor));
+  if(currentFilter==='miss_goonet') filtered = filtered.filter(r=>!isActive('goonet', r.bySite.goonet));
+  if(currentFilter==='miss_quicknetwork') filtered = filtered.filter(r=>!isActive('quicknetwork', r.bySite.quicknetwork));
+  if(currentFilter==='miss_autoserver') filtered = filtered.filter(r=>!isActive('autoserver', r.bySite.autoserver));
   if(currentFilter==='price') filtered = filtered.filter(r=>r.priceMismatch);
   if(currentFilter==='mileage') filtered = filtered.filter(r=>r.mileageMismatch);
   if(currentFilter==='shaken') filtered = filtered.filter(r=>r.shakenMismatch);
@@ -648,9 +656,9 @@ function readFileAsText(file){
 }
 
 document.getElementById('updateDataBtn').addEventListener('click', async ()=>{
-  const keys = ['carsensor','goonet','quicknetwork','autoserver','tanaoroshi'];
+  const fileKeys = ['carsensor','goonet','quicknetwork','tanaoroshi'];
   let anyLoaded = false;
-  for(const key of keys){
+  for(const key of fileKeys){
     const input = document.getElementById('file-'+key);
     const file = input.files[0];
     if(!file) continue;
@@ -662,6 +670,17 @@ document.getElementById('updateDataBtn').addEventListener('click', async ()=>{
       anyLoaded = true;
     } catch(err){
       setStatus(key, 'エラー: ' + err.message, 'err');
+    }
+  }
+  const autoserverText = document.getElementById('text-autoserver').value.trim();
+  if(autoserverText){
+    try{
+      const parsed = parseAutoserverText(autoserverText);
+      raw.autoserver = parsed;
+      setStatus('autoserver', `読込OK: ${Object.keys(parsed).length}件`, 'ok');
+      anyLoaded = true;
+    } catch(err){
+      setStatus('autoserver', 'エラー: ' + err.message, 'err');
     }
   }
   if(anyLoaded){
