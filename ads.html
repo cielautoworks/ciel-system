@@ -62,6 +62,8 @@ tbody tr:hover{background:#fafbfc;}
 .toggleBtn{font-size:11px;padding:4px 8px;border:1px solid var(--border);border-radius:6px;background:#fff;color:var(--text-sub);cursor:pointer;white-space:nowrap;}
 .toggleBtn.on{background:#eef6ee;border-color:var(--ok-text);color:var(--ok-text);}
 .toggleBtn:hover{opacity:0.8;}
+tr.rowNotInStock{background:#fff6d6;}
+tr.rowNotInStock:hover{background:#ffefb8;}
 .subtle{color:var(--text-muted);font-size:11px;}
 .tablewrap{overflow-x:auto;border:1px solid var(--border);border-radius:10px;}
 .legend{font-size:11.5px;color:var(--text-sub);margin:10px 0 4px;}
@@ -89,7 +91,7 @@ tbody tr:hover{background:#fafbfc;}
 <header>
 <div class="header-row">
   <div>
-    <h1>広告掲載状況ダッシュボード <span style="font-size:12px;font-weight:400;opacity:.75;">v1.12</span></h1>
+    <h1>広告掲載状況ダッシュボード <span style="font-size:12px;font-weight:400;opacity:.75;">v1.13</span></h1>
     <p>カーセンサー ／ グーネット ／ QuickNetwork（業販） ／ オートサーバー（業販） ／ JUテントリ（業販） の5サイト突合(棚卸一覧は参考照合用)　※データはFirebaseで共有されます</p>
   </div>
   <button class="updateBtn headerRefreshBtn" id="refreshBtn">🔄 最新を取得</button>
@@ -168,29 +170,28 @@ tbody tr:hover{background:#fafbfc;}
 <thead>
 <tr>
   <th class="sortable" data-sort="vin" rowspan="2">車台番号<span class="arrow">↕</span></th>
-  <th rowspan="2">棚卸</th>
+  <th rowspan="2">業販不要<br><span class="subtle">Quick/AS/テントリ</span></th>
   <th class="sortable" data-sort="carname" rowspan="2">車両<span class="arrow">↕</span></th>
-  <th class="site-col sortable" data-sort="carsensor" rowspan="2">カーセンサー<span class="arrow">↕</span><br><span class="subtle">支払総額</span></th>
-  <th class="sortable" data-sort="goonet" rowspan="2">グーネット<span class="arrow">↕</span><br><span class="subtle">支払総額</span></th>
-  <th class="site-col sortable" data-sort="quicknetwork" rowspan="2">QuickNetwork<span class="arrow">↕</span><br><span class="subtle">業販価格</span></th>
-  <th class="sortable" data-sort="autoserver" rowspan="2">オートサーバー<span class="arrow">↕</span><br><span class="subtle">業販価格</span></th>
-  <th class="sortable" data-sort="jutentori" rowspan="2">JUテントリ<span class="arrow">↕</span><br><span class="subtle">業販価格</span></th>
+  <th class="site-col sortable" data-sort="carsensor" rowspan="2">CS<span class="arrow">↕</span><br><span class="subtle">支払総額(千円)</span></th>
+  <th class="sortable" data-sort="goonet" rowspan="2">goo<span class="arrow">↕</span><br><span class="subtle">支払総額(千円)</span></th>
+  <th class="site-col sortable" data-sort="quicknetwork" rowspan="2">Quick<span class="arrow">↕</span><br><span class="subtle">業販価格(千円)</span></th>
+  <th class="sortable" data-sort="autoserver" rowspan="2">AS<span class="arrow">↕</span><br><span class="subtle">業販価格(千円)</span></th>
+  <th class="sortable" data-sort="jutentori" rowspan="2">テントリ<span class="arrow">↕</span><br><span class="subtle">業販価格(千円)</span></th>
   <th class="site-col sortable" data-sort="mileage" colspan="5">走行距離<span class="arrow">↕</span></th>
   <th class="sortable" data-sort="shaken" colspan="5">車検<span class="arrow">↕</span></th>
   <th class="sortable" data-sort="flags" rowspan="2">フラグ<span class="arrow">↕</span></th>
-  <th rowspan="2">業販不要<br><span class="subtle">QN/AS/JU</span></th>
 </tr>
 <tr>
   <th class="site-col subhead">CS</th>
-  <th class="subhead">グー</th>
-  <th class="subhead">Q</th>
+  <th class="subhead">goo</th>
+  <th class="subhead">Quick</th>
   <th class="subhead">AS</th>
-  <th class="subhead">JU</th>
+  <th class="subhead">テントリ</th>
   <th class="site-col subhead">CS</th>
-  <th class="subhead">グー</th>
-  <th class="subhead">Q</th>
+  <th class="subhead">goo</th>
+  <th class="subhead">Quick</th>
   <th class="subhead">AS</th>
-  <th class="subhead">JU</th>
+  <th class="subhead">テントリ</th>
 </tr>
 </thead>
 <tbody id="tbody"></tbody>
@@ -293,10 +294,10 @@ let noGyohanVins = {};
 let lastLoadedLabel = null;
 const SITES = ['carsensor','goonet','quicknetwork','autoserver','jutentori'];
 const GYOHAN_ONLY_SITES = ['quicknetwork','autoserver','jutentori'];
-const SITE_LABEL = {carsensor:'カーセンサー', goonet:'グーネット', quicknetwork:'QuickNetwork', autoserver:'オートサーバー', jutentori:'JUテントリ'};
+const SITE_LABEL = {carsensor:'CS', goonet:'goo', quicknetwork:'Quick', autoserver:'AS', jutentori:'テントリ'};
 
 /* ============ 表示ユーティリティ ============ */
-function fmtYen(v){ return v==null ? null : '¥'+v.toLocaleString(); }
+function fmtSenYen(v){ return v==null ? null : String(Math.round(v/1000)); }
 
 function isActive(site, d){
   if(!d) return false;
@@ -466,17 +467,22 @@ function siteCell(site, r){
   const d = r.bySite[site];
   if(!d) return '<span class="miss">未掲載</span>';
   if(site==='carsensor' || site==='goonet'){
-    const v = fmtYen(d.price_total);
+    const v = fmtSenYen(d.price_total);
     return v ? `<span class="${r.retailMismatch?'mismatch':''}">${v}</span>` : '<span class="subtle">―</span>';
   }
-  const v = fmtYen(d.price_gyohan);
+  const v = fmtSenYen(d.price_gyohan);
   return v ? `<span class="${r.gyohanMismatch?'mismatch':''}">${v}</span>` : '<span class="subtle">―</span>';
 }
 
 function mileageSiteCell(site, r){
   const d = r.bySite[site];
   if(!d || d.mileage_km==null) return '<span class="subtle">―</span>';
-  return `<span class="${r.mileageMismatch?'mismatch':''}">${d.mileage_km.toLocaleString()}km</span>`;
+  const cls = r.mileageMismatch?'mismatch':'';
+  if(site === 'jutentori'){
+    return `<span class="${cls}">${d.mileage_km.toLocaleString()}km</span>`;
+  }
+  const man = (d.mileage_km/10000).toFixed(1);
+  return `<span class="${cls}">${man}万km</span>`;
 }
 
 function shakenSiteCell(site, r){
@@ -551,9 +557,9 @@ function applyFilters(){
 function render(list){
   document.getElementById('countHint').textContent = `${list.length}件表示中（全${total}件）`;
   document.getElementById('tbody').innerHTML = list.map(r => `
-    <tr>
+    <tr class="${r.notInStock ? 'rowNotInStock' : ''}">
       <td class="vin">${r.vin}</td>
-      <td>${r.inStock ? '<span class="badge ok">該当あり</span>' : '<span class="badge warn">該当なし</span>'}</td>
+      <td class="togglecol"><button type="button" class="toggleBtn ${r.skipGyohan?'on':''}" data-vin="${r.vin}">${r.skipGyohan ? '✅ 対象外' : '☐ 対象'}</button></td>
       <td><div class="carname">${r.carName}</div></td>
       <td class="site-col">${siteCell('carsensor', r)}</td>
       <td>${siteCell('goonet', r)}</td>
@@ -571,7 +577,6 @@ function render(list){
       <td class="numcol">${shakenSiteCell('autoserver', r)}</td>
       <td class="numcol">${shakenSiteCell('jutentori', r)}</td>
       <td>${flagBadges(r)}</td>
-      <td class="togglecol"><button type="button" class="toggleBtn ${r.skipGyohan?'on':''}" data-vin="${r.vin}">${r.skipGyohan ? '✅ 対象外' : '☐ 対象'}</button></td>
     </tr>
   `).join('');
 }
