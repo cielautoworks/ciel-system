@@ -116,17 +116,19 @@ html[data-theme="dark"] .card.warn{box-shadow:0 0 10px rgba(255,194,51,.2);}
 .aaBtn{font-size:11.5px;font-weight:600;padding:4px 10px;border:2px solid var(--sky);border-radius:6px;background:transparent;color:var(--sky);cursor:pointer;white-space:nowrap;}
 .aaBtn:hover{background:rgba(74,171,207,0.12);box-shadow:0 0 8px var(--sky);}
 
-.aaModalPanel{background:var(--card);border:2px solid var(--border);border-radius:14px;padding:22px 24px;width:640px;max-width:92vw;max-height:88vh;overflow-y:auto;}
+.aaModalPanel{background:var(--card);border:2px solid var(--border);border-radius:14px;padding:22px 24px;width:98vw;max-width:1800px;max-height:97vh;overflow-y:auto;}
 .aaModalPanel h3{margin:0 0 4px;font-size:15px;font-weight:600;color:var(--text);}
 .aaModalPanel .aaVinLabel{font-size:12px;color:var(--text-muted);margin:0 0 16px;}
-.aaImagesRow{display:flex;gap:14px;justify-content:center;flex-wrap:wrap;min-height:120px;align-items:flex-start;}
-.aaSlot{display:flex;flex-direction:column;align-items:center;gap:8px;width:260px;}
-.aaSlot img{width:100%;border-radius:8px;border:1px solid var(--border);display:block;}
+.aaImagesRow{display:flex;gap:20px;justify-content:center;flex-wrap:nowrap;min-height:300px;align-items:flex-start;}
+.aaSlot{display:flex;flex-direction:column;align-items:center;gap:8px;flex:1 1 0;min-width:0;max-width:860px;}
+.aaSlot img{width:100%;border-radius:8px;border:1px solid var(--border);display:block;cursor:zoom-in;}
 .aaSlotBtns{display:flex;gap:8px;width:100%;}
-.aaSlotBtns button{flex:1;font-size:11.5px;padding:6px 8px;border-radius:6px;border:2px solid var(--border);background:var(--card);color:var(--text-sub);cursor:pointer;}
+.aaSlotBtns button{flex:1;font-size:12.5px;padding:8px 8px;border-radius:6px;border:2px solid var(--border);background:var(--card);color:var(--text-sub);cursor:pointer;}
 .aaSlotBtns button:hover{background:var(--hover-bg);}
 .aaSlotBtns button.aaDeleteBtn{border-color:var(--danger-border);color:var(--danger-text);}
-.aaDropZone{width:260px;min-height:140px;border:2px dashed var(--sky);border-radius:10px;display:flex;align-items:center;justify-content:center;text-align:center;color:var(--text-sub);font-size:12.5px;padding:12px;cursor:pointer;}
+.aaZoomOverlay{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.85);display:flex;align-items:center;justify-content:center;z-index:200;cursor:zoom-out;}
+.aaZoomOverlay img{max-width:96vw;max-height:96vh;object-fit:contain;cursor:zoom-in;transition:transform .05s linear;}
+.aaDropZone{flex:1 1 0;min-width:0;max-width:860px;min-height:340px;border:2px dashed var(--sky);border-radius:10px;display:flex;align-items:center;justify-content:center;text-align:center;color:var(--text-sub);font-size:13px;padding:12px;cursor:pointer;}
 .aaDropZone.dragover{background:rgba(74,171,207,0.12);}
 .aaModalStatus{font-size:12px;color:var(--text-sub);margin-top:12px;min-height:16px;}
 .aaModalStatus.ok{color:var(--ok-text);}
@@ -182,7 +184,7 @@ body:not(.debugMode) .debugOnly{display:none !important;}
 <header>
 <div class="header-row">
   <div>
-    <h1>広告掲載状況ダッシュボード <span style="font-size:12px;font-weight:400;opacity:.75;">v1.19</span></h1>
+    <h1>広告掲載状況ダッシュボード <span style="font-size:12px;font-weight:400;opacity:.75;">v1.23</span></h1>
     <p>カーセンサー ／ グーネット ／ QuickNetwork（業販） ／ オートサーバー（業販） ／ JUテントリ（業販） の5サイト突合(棚卸一覧は参考照合用)　※データはFirebaseで共有されます</p>
   </div>
   <div style="display:flex;gap:8px;flex-shrink:0;">
@@ -218,6 +220,10 @@ body:not(.debugMode) .debugOnly{display:none !important;}
   </div>
 </div>
 
+<div class="aaZoomOverlay" id="aaZoomOverlay" style="display:none;">
+  <img id="aaZoomImg" src="">
+</div>
+
 <div class="wrap">
 
 <details class="uploadPanel" id="uploadPanel">
@@ -226,6 +232,8 @@ body:not(.debugMode) .debugOnly{display:none !important;}
 <div class="dropZone" id="dropZone">
   <p>📥 カーセンサー・グーネット・QuickNetwork・棚卸のCSVをまとめてドラッグ&ドロップ<br><span class="subtle">ファイルの内容から自動で振り分けます</span></p>
 </div>
+<button type="button" class="debugBtn" id="dropZonePickBtn" style="margin-top:8px;">📂 ファイルを選択(複数選択可)</button>
+<input type="file" id="dropZoneFileInput" accept=".csv,.txt" multiple style="display:none;">
 <div class="uploadStatus" id="status-dropzone"></div>
 
 <div class="uploadGrid debugOnly" id="individualPickers">
@@ -461,28 +469,31 @@ function setAaStatus(msg, cls){
 
 function renderAaSlots(data){
   const row = document.getElementById('aaImagesRow');
-  const imgs = [data?.img1, data?.img2].filter(Boolean);
+  const slots = ['img1', 'img2'];
   let html = '';
-  imgs.forEach((src, i)=>{
-    const slot = i===0 ? 'img1' : 'img2';
-    html += `<div class="aaSlot">
-      <img src="${src}">
-      <div class="aaSlotBtns">
-        <button type="button" class="aaChangeBtn" data-slot="${slot}">変更</button>
-        <button type="button" class="aaDeleteBtn" data-slot="${slot}">削除</button>
-      </div>
-    </div>`;
+  slots.forEach((slot, i)=>{
+    const src = data?.[slot];
+    if(src){
+      html += `<div class="aaSlot">
+        <img src="${src}" class="aaZoomable" data-slot="${slot}" title="ダブルクリックで拡大">
+        <div class="aaSlotBtns">
+          <button type="button" class="aaChangeBtn" data-slot="${slot}">変更</button>
+          <button type="button" class="aaDeleteBtn" data-slot="${slot}">削除</button>
+        </div>
+      </div>`;
+    } else {
+      html += `<div class="aaDropZone" data-slot="${slot}">
+        📥 画像をドラッグ&ドロップ<br>またはクリックして選択<br><span class="subtle">(${i===0?'1枚目':'2枚目'})</span>
+      </div>`;
+    }
   });
-  if(imgs.length < 2){
-    const nextSlot = imgs.length === 0 ? 'img1' : 'img2';
-    html += `<div class="aaDropZone" id="aaDropZone" data-slot="${nextSlot}">
-      📥 画像をドラッグ&ドロップ<br>またはクリックして選択<br><span class="subtle">(${imgs.length===0?'1枚目':'2枚目'})</span>
-    </div>`;
-  }
   row.innerHTML = html;
 
-  const dz = document.getElementById('aaDropZone');
-  if(dz){
+  row.querySelectorAll('.aaZoomable').forEach(img=>{
+    img.addEventListener('dblclick', ()=> openAaZoom(img.src));
+  });
+
+  row.querySelectorAll('.aaDropZone').forEach(dz=>{
     dz.addEventListener('click', ()=>{
       const input = document.createElement('input');
       input.type = 'file';
@@ -498,7 +509,7 @@ function renderAaSlots(data){
       const file = e.dataTransfer.files && e.dataTransfer.files[0];
       if(file) handleAaUpload(dz.dataset.slot, file);
     });
-  }
+  });
   row.querySelectorAll('.aaChangeBtn').forEach(btn=>{
     btn.addEventListener('click', ()=>{
       const input = document.createElement('input');
@@ -513,6 +524,14 @@ function renderAaSlots(data){
   row.querySelectorAll('.aaDeleteBtn').forEach(btn=>{
     btn.addEventListener('click', ()=> handleAaDelete(btn.dataset.slot));
   });
+}
+
+// ズーム表示。オーバーレイ内でマウスを動かすと、カーソルのある部分をさらに拡大する(虫眼鏡的な動作)。
+function openAaZoom(src){
+  const zoomImg = document.getElementById('aaZoomImg');
+  zoomImg.src = src;
+  zoomImg.style.transform = 'scale(1)';
+  document.getElementById('aaZoomOverlay').style.display = 'flex';
 }
 
 async function handleAaUpload(slot, file){
@@ -1302,6 +1321,22 @@ document.getElementById('aaOverlay').addEventListener('click', e=>{
     currentAaVin = null;
   }
 });
+document.getElementById('aaZoomOverlay').addEventListener('click', (e)=>{
+  if(e.target.id === 'aaZoomOverlay'){
+    document.getElementById('aaZoomOverlay').style.display = 'none';
+  }
+});
+document.getElementById('aaZoomImg').addEventListener('mousemove', (e)=>{
+  const img = e.target;
+  const rect = img.getBoundingClientRect();
+  const x = ((e.clientX - rect.left) / rect.width) * 100;
+  const y = ((e.clientY - rect.top) / rect.height) * 100;
+  img.style.transformOrigin = `${x}% ${y}%`;
+  img.style.transform = 'scale(2.5)';
+});
+document.getElementById('aaZoomImg').addEventListener('mouseleave', (e)=>{
+  e.target.style.transform = 'scale(1)';
+});
 
 /* ============ 設定パネル(ダークモード・デバッグモード) ============ */
 const settingsBtn = document.getElementById('settingsBtn');
@@ -1380,6 +1415,15 @@ const dropZone = document.getElementById('dropZone');
 dropZone.addEventListener('drop', e=>{
   const files = Array.from(e.dataTransfer.files || []);
   if(files.length) handleDroppedFiles(files);
+});
+
+document.getElementById('dropZonePickBtn').addEventListener('click', ()=>{
+  document.getElementById('dropZoneFileInput').click();
+});
+document.getElementById('dropZoneFileInput').addEventListener('change', e=>{
+  const files = Array.from(e.target.files || []);
+  if(files.length) handleDroppedFiles(files);
+  e.target.value = '';
 });
 
 /* ============ 初期表示 ============ */
