@@ -186,7 +186,7 @@ body:not(.debugMode) .debugOnly{display:none !important;}
 <header>
 <div class="header-row">
   <div>
-    <h1>広告掲載状況ダッシュボード <span style="font-size:12px;font-weight:400;opacity:.75;">v1.24</span></h1>
+    <h1>広告掲載状況ダッシュボード <span style="font-size:12px;font-weight:400;opacity:.75;">v1.25</span></h1>
     <p>カーセンサー ／ グーネット ／ QuickNetwork（業販） ／ オートサーバー（業販） ／ JUテントリ（業販） の5サイト突合(棚卸一覧は参考照合用)　※データはFirebaseで共有されます</p>
   </div>
   <div style="display:flex;gap:8px;flex-shrink:0;">
@@ -207,6 +207,10 @@ body:not(.debugMode) .debugOnly{display:none !important;}
     <div class="settingsRow">
       <span>デバッグモード<br><span class="subtle">CSVの個別選択ボタンや解析結果のプレビューを表示します</span></span>
       <label class="switch"><input type="checkbox" id="debugModeToggle"><span class="slider"></span></label>
+    </div>
+    <div class="settingsRow">
+      <span>AA枚数の再集計<br><span class="subtle">以前登録した画像の枚数表示がずれている場合に一度実行してください</span></span>
+      <button type="button" class="debugBtn" id="resyncAaBtn">再集計</button>
     </div>
     <button class="settingsCloseBtn" id="settingsCloseBtn">閉じる</button>
   </div>
@@ -549,6 +553,32 @@ async function updateAaPhotoCount(vin, data){
     await set(ref(db, 'adsData/aaPhotoCounts'), aaPhotoCounts);
   } catch(err){
     console.error('updateAaPhotoCount error:', err);
+  }
+}
+
+// AA枚数の再集計(メンテナンス用)。v1.25より前にアップロードされたAA画像は、
+// 枚数メタ情報(aaPhotoCounts)を持っていないためAAボタンの色が反映されない。
+// この処理はaaPhotos配下を全件取得するため通信量がかかる。基本的に一度だけ実行すればよい
+// (以降のアップロード・削除では自動的にaaPhotoCountsが更新されるため不要)。
+async function resyncAaPhotoCounts(){
+  const ok = confirm('保存済みのAA画像をすべて確認し、枚数情報を再集計します。\n画像データ量に応じて通信量がかかります。実行しますか？\n(通常は一度実行すれば十分です)');
+  if(!ok) return;
+  setSyncStatus('AA枚数を再集計中…');
+  try{
+    const snap = await get(ref(db, 'aaPhotos'));
+    const all = snap.val() || {};
+    const counts = {};
+    Object.keys(all).forEach(vin=>{
+      const c = [all[vin]?.img1, all[vin]?.img2].filter(Boolean).length;
+      if(c > 0) counts[vin] = c;
+    });
+    aaPhotoCounts = counts;
+    await set(ref(db, 'adsData/aaPhotoCounts'), aaPhotoCounts);
+    recompute();
+    setSyncStatus(`● AA枚数の再集計が完了しました(${Object.keys(counts).length}台)`, 'ok');
+  } catch(err){
+    console.error('resyncAaPhotoCounts error:', err);
+    setSyncStatus('● 再集計エラー: ' + err.message, 'err');
   }
 }
 
@@ -1394,6 +1424,7 @@ debugModeToggle.addEventListener('change', ()=>{
   document.body.classList.toggle('debugMode', debugModeToggle.checked);
   localStorage.setItem('ciel-debug-mode', debugModeToggle.checked ? '1' : '0');
 });
+document.getElementById('resyncAaBtn').addEventListener('click', resyncAaPhotoCounts);
 
 /* ============ CSVのドラッグ&ドロップ一括振り分け ============ */
 const CSV_AUTO_KEYS = ['carsensor','goonet','quicknetwork','tanaoroshi'];
