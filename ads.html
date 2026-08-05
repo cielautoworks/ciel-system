@@ -93,7 +93,7 @@ thead th.sort-active .arrow{color:var(--sky);}
 thead th.subhead{font-size:10.5px;font-weight:600;color:var(--text-muted);text-align:center;padding:4px 2px;background:var(--thead-bg);cursor:default;}
 tbody td{padding:8px;border-bottom:1px solid #eeeeea;vertical-align:top;white-space:nowrap;}
 tbody tr:hover{background:var(--hover-bg);}
-.vin{font-family:monospace;color:var(--text);font-size:11.5px;font-weight:600;}
+.vin{font-family:monospace;color:var(--text);font-size:15px;font-weight:600;white-space:nowrap;}
 .carname{font-weight:600;}
 .grade{color:var(--text-sub);font-size:11.5px;}
 .miss{color:var(--danger-text);font-weight:600;}
@@ -109,6 +109,9 @@ html[data-theme="dark"] .card.danger{box-shadow:0 0 10px rgba(255,92,110,.2);}
 html[data-theme="dark"] .card.warn{box-shadow:0 0 10px rgba(255,194,51,.2);}
 .site-col{border-left:2px solid var(--border);}
 .numcol{text-align:right;white-space:nowrap;}
+.priceNum{font-size:14px;font-weight:600;}
+.mileageNum{font-size:13.5px;font-weight:600;}
+.mileageUnit{font-size:10px;margin-left:1px;opacity:0.75;}
 .togglecol{text-align:center;}
 .toggleBtn{font-size:11.5px;font-weight:600;padding:4px 10px;border:2px solid var(--toggle-on-border);border-radius:6px;background:var(--toggle-on-bg);color:var(--toggle-on-text);cursor:pointer;white-space:nowrap;}
 .toggleBtn.off{background:var(--toggle-off-bg);color:var(--toggle-off-text);border-color:var(--toggle-off-border);}
@@ -186,7 +189,7 @@ body:not(.debugMode) .debugOnly{display:none !important;}
 <header>
 <div class="header-row">
   <div>
-    <h1>広告掲載状況ダッシュボード <span style="font-size:12px;font-weight:400;opacity:.75;">v1.25</span></h1>
+    <h1>広告掲載状況ダッシュボード <span style="font-size:12px;font-weight:400;opacity:.75;">v1.27</span></h1>
     <p>カーセンサー ／ グーネット ／ QuickNetwork（業販） ／ オートサーバー（業販） ／ JUテントリ（業販） の5サイト突合(棚卸一覧は参考照合用)　※データはFirebaseで共有されます</p>
   </div>
   <div style="display:flex;gap:8px;flex-shrink:0;">
@@ -556,7 +559,7 @@ async function updateAaPhotoCount(vin, data){
   }
 }
 
-// AA枚数の再集計(メンテナンス用)。v1.25より前にアップロードされたAA画像は、
+// AA枚数の再集計(メンテナンス用)。v1.27より前にアップロードされたAA画像は、
 // 枚数メタ情報(aaPhotoCounts)を持っていないためAAボタンの色が反映されない。
 // この処理はaaPhotos配下を全件取得するため通信量がかかる。基本的に一度だけ実行すればよい
 // (以降のアップロード・削除では自動的にaaPhotoCountsが更新されるため不要)。
@@ -833,10 +836,10 @@ function siteCell(site, r){
   if(!d) return '<span class="miss">未掲載</span>';
   if(site==='carsensor' || site==='goonet'){
     const v = fmtSenYen(d.price_total);
-    return v ? `<span class="${r.retailMismatch?'mismatch':''}">${v}</span>` : '<span class="subtle">―</span>';
+    return v ? `<span class="priceNum ${r.retailMismatch?'mismatch':''}">${v}</span>` : '<span class="subtle">―</span>';
   }
   const v = fmtSenYen(d.price_gyohan);
-  return v ? `<span class="${r.gyohanMismatch?'mismatch':''}">${v}</span>` : '<span class="subtle">―</span>';
+  return v ? `<span class="priceNum ${r.gyohanMismatch?'mismatch':''}">${v}</span>` : '<span class="subtle">―</span>';
 }
 
 function mileageSiteCell(site, r){
@@ -844,10 +847,10 @@ function mileageSiteCell(site, r){
   if(!d || d.mileage_km==null) return '<span class="subtle">―</span>';
   const cls = r.mileageMismatch?'mismatch':'';
   if(site === 'jutentori'){
-    return `<span class="${cls}">${d.mileage_km.toLocaleString()}km</span>`;
+    return `<span class="${cls}"><span class="mileageNum">${d.mileage_km.toLocaleString()}</span><span class="mileageUnit">km</span></span>`;
   }
   const man = (d.mileage_km/10000).toFixed(1);
-  return `<span class="${cls}">${man}万km</span>`;
+  return `<span class="${cls}"><span class="mileageNum">${man}</span><span class="mileageUnit">万km</span></span>`;
 }
 
 function shakenSiteCell(site, r){
