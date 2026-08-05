@@ -93,7 +93,7 @@ thead th.sort-active .arrow{color:var(--sky);}
 thead th.subhead{font-size:10.5px;font-weight:600;color:var(--text-muted);text-align:center;padding:4px 2px;background:var(--thead-bg);cursor:default;}
 tbody td{padding:8px;border-bottom:1px solid #eeeeea;vertical-align:top;white-space:nowrap;}
 tbody tr:hover{background:var(--hover-bg);}
-.vin{font-family:monospace;color:var(--text-muted);font-size:11.5px;}
+.vin{font-family:monospace;color:var(--text);font-size:11.5px;font-weight:600;}
 .carname{font-weight:600;}
 .grade{color:var(--text-sub);font-size:11.5px;}
 .miss{color:var(--danger-text);font-weight:600;}
@@ -114,6 +114,8 @@ html[data-theme="dark"] .card.warn{box-shadow:0 0 10px rgba(255,194,51,.2);}
 .toggleBtn.off{background:var(--toggle-off-bg);color:var(--toggle-off-text);border-color:var(--toggle-off-border);}
 .toggleBtn:hover{opacity:0.8;}
 .aaBtn{font-size:11.5px;font-weight:600;padding:4px 10px;border:2px solid var(--sky);border-radius:6px;background:transparent;color:var(--sky);cursor:pointer;white-space:nowrap;}
+.aaBtn.has1{border-color:#ff9d33;color:#ff9d33;}
+.aaBtn.has2{border-color:var(--warn-text);color:var(--warn-text);}
 .aaBtn:hover{background:rgba(74,171,207,0.12);box-shadow:0 0 8px var(--sky);}
 
 .aaModalPanel{background:var(--card);border:2px solid var(--border);border-radius:14px;padding:22px 24px;width:98vw;max-width:1800px;max-height:97vh;overflow-y:auto;}
@@ -184,7 +186,7 @@ body:not(.debugMode) .debugOnly{display:none !important;}
 <header>
 <div class="header-row">
   <div>
-    <h1>広告掲載状況ダッシュボード <span style="font-size:12px;font-weight:400;opacity:.75;">v1.23</span></h1>
+    <h1>広告掲載状況ダッシュボード <span style="font-size:12px;font-weight:400;opacity:.75;">v1.24</span></h1>
     <p>カーセンサー ／ グーネット ／ QuickNetwork（業販） ／ オートサーバー（業販） ／ JUテントリ（業販） の5サイト突合(棚卸一覧は参考照合用)　※データはFirebaseで共有されます</p>
   </div>
   <div style="display:flex;gap:8px;flex-shrink:0;">
@@ -385,6 +387,7 @@ async function loadAdsData(){
     const data = snap.val() || {};
     ADS_SITES_KEYS.forEach(k => { raw[k] = data[k] || {}; });
     noGyohanVins = data.noGyohanVins || {};
+    aaPhotoCounts = data.aaPhotoCounts || {};
     lastLoadedLabel = data.lastUpdated || null;
     document.getElementById('lastUpdated').textContent = lastLoadedLabel ? ('データ基準日: ' + lastLoadedLabel) : 'データがまだ保存されていません。CSVを読み込んで保存してください。';
     setSyncStatus('● 同期済み', 'ok');
@@ -405,6 +408,7 @@ async function saveAdsData(){
     ADS_SITES_KEYS.forEach(k => { payload[k] = raw[k] || {}; });
     payload.lastUpdated = label;
     payload.noGyohanVins = noGyohanVins || {}; // 業販不要フラグは上書きせず保持する
+    payload.aaPhotoCounts = aaPhotoCounts || {}; // AA画像の枚数(軽量なメタ情報のみ)も上書きせず保持する
     await set(ref(db, 'adsData'), payload);
     lastLoadedLabel = label;
     document.getElementById('lastUpdated').textContent = 'データ基準日: ' + label;
@@ -534,6 +538,20 @@ function openAaZoom(src){
   document.getElementById('aaZoomOverlay').style.display = 'flex';
 }
 
+// AA画像の枚数(0/1/2)だけをadsData側の軽量なメタ情報として更新する。
+// 画像本体(aaPhotos)には触れず、通常の一覧読み込みで参照する枚数情報だけを更新する。
+async function updateAaPhotoCount(vin, data){
+  const count = [data?.img1, data?.img2].filter(Boolean).length;
+  if(count > 0) aaPhotoCounts[vin] = count;
+  else delete aaPhotoCounts[vin];
+  recompute();
+  try{
+    await set(ref(db, 'adsData/aaPhotoCounts'), aaPhotoCounts);
+  } catch(err){
+    console.error('updateAaPhotoCount error:', err);
+  }
+}
+
 async function handleAaUpload(slot, file){
   if(!file.type.startsWith('image/')){
     setAaStatus('画像ファイルを選択してください', 'err');
@@ -544,7 +562,9 @@ async function handleAaUpload(slot, file){
     const dataUrl = await compressImageFile(file);
     await set(ref(db, `aaPhotos/${currentAaVin}/${slot}`), dataUrl);
     const snap = await get(ref(db, `aaPhotos/${currentAaVin}`));
-    renderAaSlots(snap.val() || {});
+    const val = snap.val() || {};
+    renderAaSlots(val);
+    updateAaPhotoCount(currentAaVin, val);
     setAaStatus('● 保存しました', 'ok');
   } catch(err){
     console.error('handleAaUpload error:', err);
@@ -557,7 +577,9 @@ async function handleAaDelete(slot){
   try{
     await set(ref(db, `aaPhotos/${currentAaVin}/${slot}`), null);
     const snap = await get(ref(db, `aaPhotos/${currentAaVin}`));
-    renderAaSlots(snap.val() || {});
+    const val = snap.val() || {};
+    renderAaSlots(val);
+    updateAaPhotoCount(currentAaVin, val);
     setAaStatus('● 削除しました', 'ok');
   } catch(err){
     console.error('handleAaDelete error:', err);
@@ -583,6 +605,7 @@ async function openAaModal(vin){
 
 let raw = {carsensor:{}, goonet:{}, quicknetwork:{}, autoserver:{}, jutentori:{}, tanaoroshi:{}};
 let noGyohanVins = {};
+let aaPhotoCounts = {};
 let lastLoadedLabel = null;
 const SITES = ['carsensor','goonet','quicknetwork','autoserver','jutentori'];
 const GYOHAN_ONLY_SITES = ['quicknetwork','autoserver','jutentori'];
@@ -698,6 +721,7 @@ function recompute(){
     const stockInfo = stockRecords[vin] || null;
     const carName = (stockInfo||bySite.carsensor||bySite.goonet||bySite.quicknetwork||bySite.autoserver||{}).car_name || '';
     const shiireDate = normShiireDate(stockInfo?.shiire_date);
+    const aaCount = aaPhotoCounts[vin] || 0;
 
     const retailPrices = [bySite.carsensor?.price_total, bySite.goonet?.price_total].filter(v=>v!=null);
     const gyohanPrices = [bySite.quicknetwork?.price_gyohan, bySite.autoserver?.price_gyohan, bySite.jutentori?.price_gyohan].filter(v=>v!=null);
@@ -730,7 +754,7 @@ function recompute(){
     const flagCount = (missing?1:0) + (notInStock?1:0) + (priceMismatch?1:0) + (mileageMismatch?1:0) + (shakenMismatch?1:0);
 
     return {vin, carName, bySite, inStock, notInStock, retailMismatch, gyohanMismatch, priceMismatch,
-             mileages, mileageMismatch, shakenNorm, shakenMismatch, skipGyohan, shiireDate,
+             mileages, mileageMismatch, shakenNorm, shakenMismatch, skipGyohan, shiireDate, aaCount,
              missing, missingSites: missing ? missingSitesAll : [], flagCount};
   });
 
@@ -816,8 +840,8 @@ function flagBadges(r){
 /* ============ フィルター・検索・ソート ============ */
 let currentFilter = 'all';
 let currentSearch = '';
-let sortKey = null;
-let sortDir = 1;
+let sortKey = 'shiire';
+let sortDir = -1; // 初期表示は仕入日の新しい順
 
 function getSortValue(r, key){
   switch(key){
@@ -873,7 +897,7 @@ function render(list){
       <td class="numcol">${r.shiireDate ? r.shiireDate.label : '<span class="subtle">―</span>'}</td>
       <td class="vin">${r.vin}</td>
       <td class="togglecol"><button type="button" class="toggleBtn ${r.skipGyohan?'off':''}" data-vin="${r.vin}">${r.skipGyohan ? '不要' : '対象'}</button></td>
-      <td class="togglecol"><button type="button" class="aaBtn" data-vin="${r.vin}">AA</button></td>
+      <td class="togglecol"><button type="button" class="aaBtn ${r.aaCount===1?'has1':r.aaCount===2?'has2':''}" data-vin="${r.vin}">AA</button></td>
       <td><div class="carname">${r.carName}</div></td>
       <td class="site-col">${siteCell('carsensor', r)}</td>
       <td>${siteCell('goonet', r)}</td>
@@ -1427,6 +1451,13 @@ document.getElementById('dropZoneFileInput').addEventListener('change', e=>{
 });
 
 /* ============ 初期表示 ============ */
+// 見出しの並び替え矢印を、初期ソート(仕入日 新しい順)に合わせて表示しておく
+const initialSortTh = document.querySelector('th.sortable[data-sort="shiire"]');
+if(initialSortTh){
+  initialSortTh.classList.add('sort-active');
+  initialSortTh.querySelector('.arrow').textContent = '▼';
+}
+
 // 匿名認証してからFirebaseの最新データを読み込む
 let authStarted = false;
 onAuthStateChanged(auth, async user=>{
