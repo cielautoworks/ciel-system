@@ -72,6 +72,13 @@ html[data-theme="dark"] .settingsBtn:hover{background:rgba(74,171,207,0.12);box-
 .aaUploadDesc{margin:0 0 16px;font-size:12.5px;color:var(--text-sub);line-height:1.6;}
 .aaVinLabel{display:block;font-size:12px;color:var(--text-sub);margin-bottom:6px;font-weight:600;}
 .aaVinRow{display:flex;gap:8px;margin-bottom:16px;}
+.aaVinRowWrap{position:relative;flex-wrap:wrap;}
+.aaSuggestList{position:absolute;top:100%;left:0;right:56px;margin-top:4px;background:var(--card);border:1px solid var(--border);border-radius:8px;box-shadow:0 4px 16px rgba(0,0,0,.15);max-height:240px;overflow-y:auto;z-index:10;}
+.aaSuggestItem{padding:9px 12px;font-size:13px;color:var(--text);cursor:pointer;border-bottom:1px solid var(--border);}
+.aaSuggestItem:last-child{border-bottom:none;}
+.aaSuggestItem:hover, .aaSuggestItem.active{background:rgba(74,171,207,0.12);}
+.aaSuggestItem .vin{font-weight:600;}
+.aaSuggestItem .name{color:var(--text-sub);font-size:11.5px;margin-left:6px;}
 .aaVinInput{flex:1;padding:9px 12px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);font-size:14px;min-width:0;}
 .aaVinInput:focus{outline:none;border-color:var(--sky);}
 .aaLoadBtn{padding:9px 16px;border:2px solid var(--sky);background:transparent;color:var(--sky);border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap;}
@@ -136,9 +143,10 @@ html[data-theme="dark"] .aaUploadStatus.err{color:#ff6b6b;}
   <h2 class="aaUploadTitle">🖼 AA出品票アップロード</h2>
   <p class="aaUploadDesc">車台番号を入力して出品票画像を保存します(ドラッグ&ドロップ、またはクリックして選択)。ads.htmlの出品票欄と同じデータです(最大2枚・上書き)。保存すると、ads.htmlに反映されます。</p>
   <label class="aaVinLabel">車台番号</label>
-  <div class="aaVinRow">
-    <input type="text" id="hubAaVin" class="aaVinInput" placeholder="例：ZVW30-1234567">
+  <div class="aaVinRow aaVinRowWrap">
+    <input type="text" id="hubAaVin" class="aaVinInput" placeholder="例：LA160S-0037479 (部分一致で候補表示)" autocomplete="off">
     <button type="button" class="aaLoadBtn" id="hubAaLoadBtn">読込</button>
+    <div class="aaSuggestList" id="hubAaSuggest" style="display:none;"></div>
   </div>
   <div class="aaSlotsRow" id="hubAaSlotsRow"></div>
   <div class="aaUploadStatus" id="hubAaStatus"></div>
@@ -210,6 +218,52 @@ const auth = getAuth(fbApp);
 function normVin(v){ return (v||'').replace(/\s+/g,'').toUpperCase(); }
 
 let hubAaVin = null;
+let hubTanaoroshi = null; // {車台番号: {car_name, ...}} ads.htmlの棚卸データ(車台番号・車名のみの軽量参照)
+
+async function loadHubTanaoroshi(){
+  if(hubTanaoroshi) return hubTanaoroshi;
+  try{
+    const snap = await get(ref(db, 'adsData/tanaoroshi'));
+    hubTanaoroshi = snap.val() || {};
+  } catch(err){
+    console.error('loadHubTanaoroshi error:', err);
+    hubTanaoroshi = {};
+  }
+  return hubTanaoroshi;
+}
+
+function renderHubAaSuggestions(matches){
+  const box = document.getElementById('hubAaSuggest');
+  if(!matches.length){ box.style.display = 'none'; box.innerHTML = ''; return; }
+  box.innerHTML = matches.map(([vin, rec])=>
+    `<div class="aaSuggestItem" data-vin="${vin}"><span class="vin">${vin}</span><span class="name">${(rec.car_name||'').replace(/</g,'&lt;')}</span></div>`
+  ).join('');
+  box.style.display = 'block';
+  box.querySelectorAll('.aaSuggestItem').forEach(item=>{
+    item.addEventListener('click', ()=>{
+      document.getElementById('hubAaVin').value = item.dataset.vin;
+      box.style.display = 'none';
+      loadHubAaVin();
+    });
+  });
+}
+
+async function onHubAaVinInput(){
+  const raw = document.getElementById('hubAaVin').value;
+  const partial = normVin(raw);
+  if(!partial){ renderHubAaSuggestions([]); return; }
+  const data = await loadHubTanaoroshi();
+  const matches = Object.entries(data)
+    .filter(([vin]) => vin.includes(partial))
+    .slice(0, 8);
+  renderHubAaSuggestions(matches);
+}
+
+document.getElementById('hubAaVin').addEventListener('input', onHubAaVinInput);
+document.getElementById('hubAaVin').addEventListener('focus', onHubAaVinInput);
+document.addEventListener('click', e=>{
+  if(!e.target.closest('.aaVinRowWrap')) document.getElementById('hubAaSuggest').style.display = 'none';
+});
 
 function compressImageFile(file){
   return new Promise((resolve, reject)=>{
@@ -340,6 +394,7 @@ async function handleHubAaDelete(slot){
 async function loadHubAaVin(){
   const vin = normVin(document.getElementById('hubAaVin').value);
   if(!vin){ setHubAaStatus('車台番号を入力してください', 'err'); return; }
+  document.getElementById('hubAaSuggest').style.display = 'none';
   hubAaVin = vin;
   document.getElementById('hubAaSlotsRow').innerHTML = '<p class="subtle">読み込み中…</p>';
   setHubAaStatus('');
