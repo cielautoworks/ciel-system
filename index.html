@@ -65,6 +65,32 @@ html[data-theme="dark"] .settingsBtn:hover{background:rgba(74,171,207,0.12);box-
 .switch .slider:before{position:absolute;content:"";height:20px;width:20px;left:3px;top:3px;background:#fff;border-radius:50%;transition:.2s;box-shadow:0 1px 2px rgba(0,0,0,.3);}
 .switch input:checked + .slider{background:var(--sky);box-shadow:0 0 8px var(--sky);}
 .switch input:checked + .slider:before{transform:translateX(20px);}
+
+/* ===== AA出品票アップロード(ハブから直接aaPhotosへ保存する機能) ===== */
+.aaUploadCard{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:22px 22px 20px;margin-top:20px;}
+.aaUploadTitle{margin:0 0 6px;font-size:16px;font-weight:600;color:var(--text);}
+.aaUploadDesc{margin:0 0 16px;font-size:12.5px;color:var(--text-sub);line-height:1.6;}
+.aaVinLabel{display:block;font-size:12px;color:var(--text-sub);margin-bottom:6px;font-weight:600;}
+.aaVinRow{display:flex;gap:8px;margin-bottom:16px;}
+.aaVinInput{flex:1;padding:9px 12px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);font-size:14px;min-width:0;}
+.aaVinInput:focus{outline:none;border-color:var(--sky);}
+.aaLoadBtn{padding:9px 16px;border:2px solid var(--sky);background:transparent;color:var(--sky);border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap;}
+.aaLoadBtn:hover{background:rgba(74,171,207,0.12);}
+.aaSlotsRow{display:grid;grid-template-columns:1fr 1fr;gap:10px;max-width:420px;}
+.aaSlotEmpty{border:2px dashed var(--border);border-radius:10px;aspect-ratio:4/3;display:flex;align-items:center;justify-content:center;text-align:center;color:var(--text-muted);font-size:12px;cursor:pointer;transition:.15s;line-height:1.5;}
+.aaSlotEmpty:hover{border-color:var(--sky);color:var(--sky);}
+.aaSlotEmpty.dragover{border-color:var(--sky);color:var(--sky);background:rgba(74,171,207,0.08);}
+.aaSlotEmpty .subtle{font-size:10.5px;}
+.aaSlotFilled{position:relative;border:1px solid var(--border);border-radius:10px;overflow:hidden;aspect-ratio:4/3;}
+.aaSlotFilled img{width:100%;height:100%;object-fit:cover;display:block;}
+.aaSlotBtns{position:absolute;bottom:0;left:0;right:0;display:flex;background:rgba(0,0,0,.55);}
+.aaSlotBtns button{flex:1;padding:6px;border:none;background:transparent;color:#fff;font-size:11.5px;cursor:pointer;}
+.aaSlotBtns button:hover{background:rgba(255,255,255,.15);}
+.aaUploadStatus{margin-top:12px;font-size:12px;color:var(--text-sub);min-height:16px;}
+.aaUploadStatus.ok{color:#2c9c4a;}
+html[data-theme="dark"] .aaUploadStatus.ok{color:#33ff6e;}
+.aaUploadStatus.err{color:#c0392b;}
+html[data-theme="dark"] .aaUploadStatus.err{color:#ff6b6b;}
 </style>
 </head>
 <body>
@@ -103,6 +129,19 @@ html[data-theme="dark"] .settingsBtn:hover{background:rgba(74,171,207,0.12);box-
     <p>カーセンサー・グーネット・QuickNetwork・オートサーバー・JUテントリの5サイトを車台番号で突合し、掲載漏れ・価格ずれ・走行距離ずれ・車検ずれを一覧表示。</p>
     <span class="tag">稼働中</span>
   </a>
+</div>
+
+<div class="section-label">車両登録</div>
+<div class="aaUploadCard">
+  <h2 class="aaUploadTitle">🖼 AA出品票アップロード</h2>
+  <p class="aaUploadDesc">車台番号を入力して出品票画像を保存します(ドラッグ&ドロップ、またはクリックして選択)。ads.htmlの出品票欄と同じデータです(最大2枚・上書き)。保存すると、ads.htmlに反映されます。</p>
+  <label class="aaVinLabel">車台番号</label>
+  <div class="aaVinRow">
+    <input type="text" id="hubAaVin" class="aaVinInput" placeholder="例：ZVW30-1234567">
+    <button type="button" class="aaLoadBtn" id="hubAaLoadBtn">読込</button>
+  </div>
+  <div class="aaSlotsRow" id="hubAaSlotsRow"></div>
+  <div class="aaUploadStatus" id="hubAaStatus"></div>
 </div>
 
 <div class="section-label">準備中</div>
@@ -144,6 +183,192 @@ darkModeToggle.addEventListener('change', ()=>{
   const theme = darkModeToggle.checked ? 'dark' : 'light';
   document.documentElement.setAttribute('data-theme', theme);
   localStorage.setItem('ciel-theme', theme);
+});
+</script>
+
+<script type="module">
+/* ===== AA出品票アップロード(ads.htmlと同じFirebaseプロジェクト・同じ保存方式) =====
+   ・画像本体は aaPhotos/{車台番号}/img1,img2 に保存(ads.htmlの出品票欄と共通)
+   ・枚数だけの軽量メタ情報 adsData/aaPhotoCounts も更新し、ads.htmlのAAボタン色に反映させる
+   ・adsData/aaPhotoCounts は他の車台番号分と共有のデータなので、書き込み前に必ず最新を取得し、
+     該当車台番号の値だけを書き換えてから保存する(他車両分の数値を消さないため) */
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getDatabase, ref, get, set }
+  from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
+import { getAuth, onAuthStateChanged, signInAnonymously }
+  from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyAFJKdWkTa9WvX9W3ZA95P0BoDDugQUkuM",
+  databaseURL: "https://ciel-autoworks-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "ciel-autoworks",
+};
+const fbApp = initializeApp(firebaseConfig);
+const db = getDatabase(fbApp);
+const auth = getAuth(fbApp);
+
+function normVin(v){ return (v||'').replace(/\s+/g,'').toUpperCase(); }
+
+let hubAaVin = null;
+
+function compressImageFile(file){
+  return new Promise((resolve, reject)=>{
+    const reader = new FileReader();
+    reader.onerror = ()=>reject(new Error('ファイルの読み込みに失敗しました'));
+    reader.onload = ()=>{
+      const img = new Image();
+      img.onerror = ()=>reject(new Error('画像として読み込めませんでした'));
+      img.onload = ()=>{
+        const maxSide = 1200;
+        let w = img.width, h = img.height;
+        if(w > h && w > maxSide){ h = Math.round(h * maxSide / w); w = maxSide; }
+        else if(h > maxSide){ w = Math.round(w * maxSide / h); h = maxSide; }
+        const canvas = document.createElement('canvas');
+        canvas.width = w; canvas.height = h;
+        canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+        resolve(canvas.toDataURL('image/jpeg', 0.72));
+      };
+      img.src = reader.result;
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+function setHubAaStatus(msg, cls){
+  const el = document.getElementById('hubAaStatus');
+  el.textContent = msg;
+  el.className = 'aaUploadStatus' + (cls ? ' '+cls : '');
+}
+
+function renderHubAaSlots(data){
+  const row = document.getElementById('hubAaSlotsRow');
+  const slots = ['img1', 'img2'];
+  let html = '';
+  slots.forEach((slot, i)=>{
+    const src = data?.[slot];
+    if(src){
+      html += `<div class="aaSlotFilled">
+        <img src="${src}" data-slot="${slot}">
+        <div class="aaSlotBtns">
+          <button type="button" class="aaChangeBtn" data-slot="${slot}">変更</button>
+          <button type="button" class="aaDeleteBtn" data-slot="${slot}">削除</button>
+        </div>
+      </div>`;
+    } else {
+      html += `<div class="aaSlotEmpty" data-slot="${slot}">📥 ${i===0?'1枚目':'2枚目'}<br><span class="subtle">クリックして選択</span></div>`;
+    }
+  });
+  row.innerHTML = html;
+
+  row.querySelectorAll('.aaSlotEmpty').forEach(dz=>{
+    dz.addEventListener('click', ()=> pickHubAaFile(dz.dataset.slot));
+    ['dragenter','dragover'].forEach(evt=>dz.addEventListener(evt, e=>{
+      e.preventDefault(); dz.classList.add('dragover');
+    }));
+    ['dragleave','drop'].forEach(evt=>dz.addEventListener(evt, e=>{
+      e.preventDefault(); dz.classList.remove('dragover');
+    }));
+    dz.addEventListener('drop', e=>{
+      const file = e.dataTransfer.files && e.dataTransfer.files[0];
+      if(file) handleHubAaUpload(dz.dataset.slot, file);
+    });
+  });
+  row.querySelectorAll('.aaChangeBtn').forEach(btn=>{
+    btn.addEventListener('click', ()=> pickHubAaFile(btn.dataset.slot));
+  });
+  row.querySelectorAll('.aaDeleteBtn').forEach(btn=>{
+    btn.addEventListener('click', ()=> handleHubAaDelete(btn.dataset.slot));
+  });
+}
+
+function pickHubAaFile(slot){
+  const input = document.createElement('input');
+  input.type = 'file';
+  input.accept = 'image/*';
+  input.addEventListener('change', ()=>{
+    if(input.files[0]) handleHubAaUpload(slot, input.files[0]);
+  });
+  input.click();
+}
+
+async function updateHubAaPhotoCount(vin, data){
+  const count = [data?.img1, data?.img2].filter(Boolean).length;
+  try{
+    const snap = await get(ref(db, 'adsData/aaPhotoCounts'));
+    const counts = snap.val() || {};
+    if(count > 0) counts[vin] = count; else delete counts[vin];
+    await set(ref(db, 'adsData/aaPhotoCounts'), counts);
+  } catch(err){
+    console.error('updateHubAaPhotoCount error:', err);
+  }
+}
+
+async function handleHubAaUpload(slot, file){
+  if(!hubAaVin){ setHubAaStatus('車台番号を入力して「読込」を押してください', 'err'); return; }
+  if(!file.type.startsWith('image/')){ setHubAaStatus('画像ファイルを選択してください', 'err'); return; }
+  setHubAaStatus('圧縮・保存中…');
+  try{
+    const dataUrl = await compressImageFile(file);
+    await set(ref(db, `aaPhotos/${hubAaVin}/${slot}`), dataUrl);
+    const snap = await get(ref(db, `aaPhotos/${hubAaVin}`));
+    const val = snap.val() || {};
+    renderHubAaSlots(val);
+    await updateHubAaPhotoCount(hubAaVin, val);
+    setHubAaStatus('● 保存しました(ads.htmlに反映されます)', 'ok');
+  } catch(err){
+    console.error('handleHubAaUpload error:', err);
+    setHubAaStatus('● 保存エラー: ' + err.message, 'err');
+  }
+}
+
+async function handleHubAaDelete(slot){
+  if(!hubAaVin) return;
+  setHubAaStatus('削除中…');
+  try{
+    await set(ref(db, `aaPhotos/${hubAaVin}/${slot}`), null);
+    const snap = await get(ref(db, `aaPhotos/${hubAaVin}`));
+    const val = snap.val() || {};
+    renderHubAaSlots(val);
+    await updateHubAaPhotoCount(hubAaVin, val);
+    setHubAaStatus('● 削除しました', 'ok');
+  } catch(err){
+    console.error('handleHubAaDelete error:', err);
+    setHubAaStatus('● 削除エラー: ' + err.message, 'err');
+  }
+}
+
+async function loadHubAaVin(){
+  const vin = normVin(document.getElementById('hubAaVin').value);
+  if(!vin){ setHubAaStatus('車台番号を入力してください', 'err'); return; }
+  hubAaVin = vin;
+  document.getElementById('hubAaSlotsRow').innerHTML = '<p class="subtle">読み込み中…</p>';
+  setHubAaStatus('');
+  try{
+    const snap = await get(ref(db, `aaPhotos/${vin}`));
+    renderHubAaSlots(snap.val() || {});
+  } catch(err){
+    console.error('loadHubAaVin error:', err);
+    document.getElementById('hubAaSlotsRow').innerHTML = '';
+    setHubAaStatus('● 読み込みエラー: ' + err.message, 'err');
+  }
+}
+
+document.getElementById('hubAaLoadBtn').addEventListener('click', loadHubAaVin);
+document.getElementById('hubAaVin').addEventListener('keydown', e=>{
+  if(e.key === 'Enter'){ e.preventDefault(); loadHubAaVin(); }
+});
+
+let hubAuthStarted = false;
+onAuthStateChanged(auth, async user=>{
+  if(user && !hubAuthStarted){
+    hubAuthStarted = true;
+  } else if(!user && !hubAuthStarted){
+    try{ await signInAnonymously(auth); }
+    catch(err){
+      setHubAaStatus('● 認証エラー: ' + err.message, 'err');
+      console.error('Auth error:', err);
+    }
+  }
 });
 </script>
 </body>
