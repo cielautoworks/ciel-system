@@ -98,6 +98,13 @@ html[data-theme="dark"] .settingsBtn:hover{background:rgba(74,171,207,0.12);box-
 html[data-theme="dark"] .aaUploadStatus.ok{color:#33ff6e;}
 .aaUploadStatus.err{color:#c0392b;}
 html[data-theme="dark"] .aaUploadStatus.err{color:#ff6b6b;}
+.vehicleListPanel{width:420px;max-width:92vw;max-height:80vh;display:flex;flex-direction:column;}
+.vehicleListBody{overflow-y:auto;max-height:60vh;margin:0 -8px;}
+.vehicleListRow{display:flex;align-items:center;gap:10px;padding:10px 8px;border-bottom:1px solid var(--border);cursor:pointer;font-size:13px;}
+.vehicleListRow:hover{background:rgba(74,171,207,0.1);}
+.vehicleListRow .vlDate{color:var(--text-sub);font-size:11.5px;width:60px;flex-shrink:0;}
+.vehicleListRow .vlVin{font-weight:600;flex-shrink:0;}
+.vehicleListRow .vlName{color:var(--text-sub);font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 </style>
 </head>
 <body>
@@ -146,10 +153,19 @@ html[data-theme="dark"] .aaUploadStatus.err{color:#ff6b6b;}
   <div class="aaVinRow aaVinRowWrap">
     <input type="text" id="hubAaVin" class="aaVinInput" placeholder="例：LA160S-0037479 (部分一致で候補表示)" autocomplete="off">
     <button type="button" class="aaLoadBtn" id="hubAaLoadBtn">読込</button>
+    <button type="button" class="aaLoadBtn" id="hubAaListBtn">📋 車両一覧</button>
     <div class="aaSuggestList" id="hubAaSuggest" style="display:none;"></div>
   </div>
   <div class="aaSlotsRow" id="hubAaSlotsRow"></div>
   <div class="aaUploadStatus" id="hubAaStatus"></div>
+</div>
+
+<div class="settingsOverlay" id="hubVehicleListOverlay" style="display:none;">
+  <div class="settingsPanel vehicleListPanel">
+    <h3>車両一覧(仕入日 新しい順)</h3>
+    <div class="vehicleListBody" id="hubVehicleListBody"></div>
+    <button class="settingsCloseBtn" id="hubVehicleListCloseBtn">閉じる</button>
+  </div>
 </div>
 
 <div class="section-label">準備中</div>
@@ -217,6 +233,25 @@ const auth = getAuth(fbApp);
 
 function normVin(v){ return (v||'').replace(/\s+/g,'').toUpperCase(); }
 
+// ads.htmlのnormShiireDateと同じロジック(表記・並び順を両画面で統一するため)
+function normShiireDate(s){
+  if(!s) return null;
+  s = String(s).trim();
+  let m = s.match(/令和(\d{1,2})[.\/](\d{1,2})[.\/](\d{1,2})/);
+  if(m){
+    const reiwa = parseInt(m[1],10), month = parseInt(m[2],10), day = parseInt(m[3],10);
+    const year = 2018 + reiwa;
+    return {label:`R${reiwa}/${String(month).padStart(2,'0')}/${String(day).padStart(2,'0')}`, sortKey: year*372+month*31+day};
+  }
+  m = s.match(/(\d{4})[年\/.](\d{1,2})[月\/.](\d{1,2})/);
+  if(m){
+    const year=parseInt(m[1],10), month=parseInt(m[2],10), day=parseInt(m[3],10);
+    return {label:`${year}/${String(month).padStart(2,'0')}/${String(day).padStart(2,'0')}`, sortKey:year*372+month*31+day};
+  }
+  return {label:s, sortKey:null};
+}
+
+
 let hubAaVin = null;
 let hubTanaoroshi = null; // {車台番号: {car_name, ...}} ads.htmlの棚卸データ(車台番号・車名のみの軽量参照)
 
@@ -263,6 +298,40 @@ document.getElementById('hubAaVin').addEventListener('input', onHubAaVinInput);
 document.getElementById('hubAaVin').addEventListener('focus', onHubAaVinInput);
 document.addEventListener('click', e=>{
   if(!e.target.closest('.aaVinRowWrap')) document.getElementById('hubAaSuggest').style.display = 'none';
+});
+
+async function openHubVehicleList(){
+  const data = await loadHubTanaoroshi();
+  const list = Object.entries(data)
+    .map(([vin, rec]) => ({vin, name: rec.car_name || '', shiire: normShiireDate(rec.shiire_date)}))
+    .sort((a, b) => (b.shiire?.sortKey ?? -1) - (a.shiire?.sortKey ?? -1));
+  const body = document.getElementById('hubVehicleListBody');
+  if(!list.length){
+    body.innerHTML = '<p class="subtle" style="padding:12px 8px;">棚卸データがありません</p>';
+  } else {
+    body.innerHTML = list.map(v => `
+      <div class="vehicleListRow" data-vin="${v.vin}">
+        <span class="vlDate">${v.shiire ? v.shiire.label : '―'}</span>
+        <span class="vlVin">${v.vin}</span>
+        <span class="vlName">${(v.name||'').replace(/</g,'&lt;')}</span>
+      </div>`).join('');
+    body.querySelectorAll('.vehicleListRow').forEach(row=>{
+      row.addEventListener('click', ()=>{
+        document.getElementById('hubAaVin').value = row.dataset.vin;
+        document.getElementById('hubVehicleListOverlay').style.display = 'none';
+        loadHubAaVin();
+      });
+    });
+  }
+  document.getElementById('hubVehicleListOverlay').style.display = 'flex';
+}
+
+document.getElementById('hubAaListBtn').addEventListener('click', openHubVehicleList);
+document.getElementById('hubVehicleListCloseBtn').addEventListener('click', ()=>{
+  document.getElementById('hubVehicleListOverlay').style.display = 'none';
+});
+document.getElementById('hubVehicleListOverlay').addEventListener('click', e=>{
+  if(e.target.id === 'hubVehicleListOverlay') e.currentTarget.style.display = 'none';
 });
 
 function compressImageFile(file){
