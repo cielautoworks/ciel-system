@@ -121,9 +121,13 @@ html[data-theme="dark"] .card.warn{box-shadow:0 0 10px rgba(255,194,51,.2);}
 .aaBtn.has2{border-color:var(--warn-text);color:var(--warn-text);}
 .aaBtn:hover{background:rgba(74,171,207,0.12);box-shadow:0 0 8px var(--sky);}
 
-.aaModalPanel{background:var(--card);border:2px solid var(--border);border-radius:14px;padding:22px 24px;width:98vw;max-width:1800px;max-height:97vh;overflow-y:auto;}
+.aaModalPanel{background:var(--card);border:2px solid var(--border);border-radius:14px;padding:22px 24px;width:98vw;max-width:1800px;max-height:97vh;overflow-y:auto;position:relative;}
+.aaModalHeader{position:sticky;top:-22px;margin:-22px -24px 0;padding:16px 24px 4px;background:var(--card);display:flex;align-items:center;justify-content:space-between;gap:10px;z-index:5;border-radius:14px 14px 0 0;}
+.aaModalHeader h3{margin:0;}
+.aaModalCloseX{width:32px;height:32px;flex-shrink:0;border-radius:50%;border:2px solid var(--border);background:var(--card);color:var(--text);font-size:16px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;}
+.aaModalCloseX:hover{border-color:var(--sky);color:var(--sky);}
 .aaModalPanel h3{margin:0 0 4px;font-size:15px;font-weight:600;color:var(--text);}
-.aaModalPanel .aaVinLabel{font-size:12px;color:var(--text-muted);margin:0 0 16px;}
+.aaModalPanel .aaVinLabel{font-size:12px;color:var(--text);margin:0 0 16px;}
 .aaImagesRow{display:flex;gap:20px;justify-content:center;flex-wrap:nowrap;min-height:300px;align-items:flex-start;}
 .aaSlot{display:flex;flex-direction:column;align-items:center;gap:8px;flex:1 1 0;min-width:0;max-width:860px;}
 .aaSlot img{width:100%;border-radius:8px;border:1px solid var(--border);display:block;cursor:zoom-in;}
@@ -221,11 +225,25 @@ body:not(.debugMode) .debugOnly{display:none !important;}
 
 <div class="settingsOverlay" id="aaOverlay" style="display:none;">
   <div class="aaModalPanel">
-    <h3>出品票(AA画像)</h3>
+    <div class="aaModalHeader">
+      <h3>出品票(AA画像)</h3>
+      <button type="button" class="aaModalCloseX" id="aaModalCloseX" aria-label="閉じる">✕</button>
+    </div>
     <p class="aaVinLabel" id="aaVinLabel"></p>
     <div class="aaImagesRow" id="aaImagesRow"></div>
     <div class="aaModalStatus" id="aaModalStatus"></div>
     <button class="aaModalCloseBtn" id="aaModalCloseBtn">閉じる</button>
+  </div>
+</div>
+
+<div class="settingsOverlay" id="tanaoroshiDiffOverlay" style="display:none;">
+  <div class="settingsPanel" style="width:480px;max-width:92vw">
+    <h3>棚卸データの確認</h3>
+    <div id="tanaoroshiDiffBody"></div>
+    <div style="display:flex;gap:8px">
+      <button class="settingsCloseBtn" id="tanaoroshiDiffKeepBtn" style="flex:1">そのまま残す</button>
+      <button class="settingsCloseBtn" id="tanaoroshiDiffDeleteBtn" style="flex:1;border-color:var(--danger-text);color:var(--danger-text)">反映する(削除)</button>
+    </div>
   </div>
 </div>
 
@@ -1330,7 +1348,11 @@ document.getElementById('updateDataBtn').addEventListener('click', async ()=>{
     try{
       const text = await readFileAsText(file);
       const parsed = PARSERS[key](text);
-      raw[key] = parsed;
+      if(key === 'tanaoroshi'){
+        raw.tanaoroshi = await confirmTanaoroshiDiff(parsed);
+      } else {
+        raw[key] = parsed;
+      }
       setStatus(key, `読込OK: ${Object.keys(parsed).length}件`, 'ok');
     } catch(err){
       setStatus(key, 'エラー: ' + err.message, 'err');
@@ -1369,6 +1391,10 @@ document.getElementById('tbody').addEventListener('click', e=>{
 });
 
 document.getElementById('aaModalCloseBtn').addEventListener('click', ()=>{
+  document.getElementById('aaOverlay').style.display = 'none';
+  currentAaVin = null;
+});
+document.getElementById('aaModalCloseX').addEventListener('click', ()=>{
   document.getElementById('aaOverlay').style.display = 'none';
   currentAaVin = null;
 });
@@ -1429,6 +1455,39 @@ debugModeToggle.addEventListener('change', ()=>{
 });
 document.getElementById('resyncAaBtn').addEventListener('click', resyncAaPhotoCounts);
 
+// 棚卸CSVを再アップロードした際、今のデータにはあるが新しいCSVには無い車台番号を検出し、
+// (今の仕組みでは黙って消えてしまうため)削除前に必ず確認する。差分が無ければ即座に新データを返す。
+function tanaoroshiDiff(newParsed){
+  const current = raw.tanaoroshi || {};
+  const newKeys = new Set(Object.keys(newParsed));
+  return Object.keys(current).filter(vin => !newKeys.has(vin));
+}
+function confirmTanaoroshiDiff(newParsed){
+  const missing = tanaoroshiDiff(newParsed);
+  if(!missing.length) return Promise.resolve(newParsed);
+  return new Promise(resolve=>{
+    const current = raw.tanaoroshi || {};
+    const body = document.getElementById('tanaoroshiDiffBody');
+    body.innerHTML = `<p style="font-size:13px;margin-bottom:10px">新しい棚卸CSVに含まれていない車台番号が${missing.length}件あります。このまま反映すると、該当車両の仕入日・車名・色・車検期限の表示が空欄になります(広告掲載情報は消えません)。</p>
+      <div style="max-height:240px;overflow-y:auto;border:1px solid var(--border);border-radius:8px;margin-bottom:14px">
+        ${missing.map(vin=>`<div style="padding:7px 10px;border-bottom:1px solid var(--border);font-size:12.5px">
+          <b>${vin}</b> <span style="color:var(--text-sub)">${(current[vin]?.car_name||'').replace(/</g,'&lt;')}</span>
+        </div>`).join('')}
+      </div>`;
+    document.getElementById('tanaoroshiDiffOverlay').style.display = 'flex';
+    document.getElementById('tanaoroshiDiffKeepBtn').onclick = ()=>{
+      document.getElementById('tanaoroshiDiffOverlay').style.display = 'none';
+      // 「そのまま残す」：新データを土台にしつつ、消えてしまう分は元のデータを残す(マージ)
+      resolve(Object.assign({}, current, newParsed));
+    };
+    document.getElementById('tanaoroshiDiffDeleteBtn').onclick = ()=>{
+      document.getElementById('tanaoroshiDiffOverlay').style.display = 'none';
+      // 「反映する」：新しいCSVの内容通りに置き換える(従来通りの動作)
+      resolve(newParsed);
+    };
+  });
+}
+
 /* ============ CSVのドラッグ&ドロップ一括振り分け ============ */
 const CSV_AUTO_KEYS = ['carsensor','goonet','quicknetwork','tanaoroshi'];
 async function handleDroppedFiles(fileList){
@@ -1450,7 +1509,11 @@ async function handleDroppedFiles(fileList){
       } catch(err){ /* このパーサーには一致しない。次を試す */ }
     }
     if(matchedKey){
-      raw[matchedKey] = parsed;
+      if(matchedKey === 'tanaoroshi'){
+        raw.tanaoroshi = await confirmTanaoroshiDiff(parsed);
+      } else {
+        raw[matchedKey] = parsed;
+      }
       setStatus(matchedKey, `📥 ドロップで読込OK: ${Object.keys(parsed).length}件 (${file.name})`, 'ok');
       results.push(`「${file.name}」→ ${matchedKey} として${Object.keys(parsed).length}件読込`);
     } else {

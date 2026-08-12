@@ -408,6 +408,9 @@ async function handleHubCsvFile(file){
     ]);
     // 車両一覧・候補検索のキャッシュに反映(次回取得を待たずに反映するため)
     if(hubTanaoroshi) Object.assign(hubTanaoroshi, newTanaoroshi);
+    // car-appのNewsタブに表示されるログ(新規登録はまとめて1件)
+    const newsId = 'n' + Date.now() + Math.random().toString(36).slice(2,6);
+    await set(ref(db, `newsLog/${newsId}`), {ts: Date.now(), vin: '', message: `新規車両を${added}台登録しました`});
     setHubCsvStatus(`● 新規登録: ${added}台(ads.html / car-app 両方) / スキップ(既存): ${skipped}台`, 'ok');
   } catch(err){
     console.error('handleHubCsvFile error:', err);
