@@ -88,6 +88,8 @@ html[data-theme="dark"] .settingsBtn:hover{background:rgba(74,171,207,0.12);box-
 .aaSlotEmpty:hover{border-color:var(--sky);color:var(--sky);}
 .aaSlotEmpty.dragover{border-color:var(--sky);color:var(--sky);background:rgba(74,171,207,0.08);}
 .aaSlotEmpty .subtle{font-size:10.5px;}
+.csvDropZone{border:2px dashed var(--border);border-radius:10px;padding:24px;text-align:center;color:var(--text-muted);cursor:pointer;transition:.15s;margin-bottom:4px;}
+.csvDropZone:hover, .csvDropZone.dragover{border-color:var(--sky);color:var(--sky);background:rgba(74,171,207,0.08);}
 .aaSlotFilled{position:relative;border:1px solid var(--border);border-radius:10px;overflow:hidden;aspect-ratio:4/3;}
 .aaSlotFilled img{width:100%;height:100%;object-fit:cover;display:block;}
 .aaSlotBtns{position:absolute;bottom:0;left:0;right:0;display:flex;background:rgba(0,0,0,.55);}
@@ -146,6 +148,17 @@ html[data-theme="dark"] .aaUploadStatus.err{color:#ff6b6b;}
 </div>
 
 <div class="section-label">車両登録</div>
+<div class="aaUploadCard">
+  <h2 class="aaUploadTitle">📋 新規車両登録(棚卸CSV)</h2>
+  <p class="aaUploadDesc">棚卸CSVをアップロードすると、まだ登録されていない車台番号だけを判定して、ads.html用の棚卸データとcar-appの在庫(stock)の両方に新規登録します。既存の車台番号はスキップされ、既存データは書き換えません。</p>
+  <div class="csvDropZone" id="hubCsvDropZone">
+    <div style="font-size:22px;margin-bottom:6px">📄</div>
+    <p style="font-size:12px">棚卸CSVをドラッグ&ドロップ、またはクリックして選択</p>
+  </div>
+  <input type="file" id="hubCsvFileInput" accept=".csv" style="display:none">
+  <div class="aaUploadStatus" id="hubCsvStatus"></div>
+</div>
+
 <div class="aaUploadCard">
   <h2 class="aaUploadTitle">🖼 AA出品票アップロード</h2>
   <p class="aaUploadDesc">車台番号を入力して出品票画像を保存します(ドラッグ&ドロップ、またはクリックして選択)。ads.htmlの出品票欄と同じデータです(最大2枚・上書き)。保存すると、ads.htmlに反映されます。</p>
@@ -250,6 +263,175 @@ function normShiireDate(s){
   }
   return {label:s, sortKey:null};
 }
+
+/* ===== 新規車両登録(棚卸CSV) =====
+   ・car-appのstock CSVインポート(fmtDate/toFullWidth/parseLine)と全く同じロジックを使い、
+     ads.htmlのtanaoroshiヘッダー判定(「車台番号」「車名」を含む行)と組み合わせて解析する
+   ・新規の車台番号だけをadsData/tanaoroshiとcar-appのstockの両方にupdate()で追加登録する
+     (update()はサブパス単位の追記なので、既存の他データを上書き・消去しない) */
+function parseLine(line){
+  const res=[];let cur='';let inQ=false;
+  for(const c of line){
+    if(c==='"'){inQ=!inQ;}
+    else if((c===','||c==='\t')&&!inQ){res.push(cur);cur='';}
+    else{cur+=c;}
+  }
+  res.push(cur);return res;
+}
+function fmtDate(s){
+  if(!s)return '';
+  let m=s.match(/令和\s*(\d+)\s*[\/．年]\s*(\d+)\s*[\/．月]\s*(\d+)/);
+  if(m)return`${2018+parseInt(m[1])}-${String(m[2]).padStart(2,'0')}-${String(m[3]).padStart(2,'0')}`;
+  m=s.match(/平成\s*(\d+)\s*[\/．年]\s*(\d+)\s*[\/．月]\s*(\d+)/);
+  if(m)return`${1988+parseInt(m[1])}-${String(m[2]).padStart(2,'0')}-${String(m[3]).padStart(2,'0')}`;
+  m=s.match(/昭和\s*(\d+)\s*[\/．年]\s*(\d+)\s*[\/．月]\s*(\d+)/);
+  if(m)return`${1925+parseInt(m[1])}-${String(m[2]).padStart(2,'0')}-${String(m[3]).padStart(2,'0')}`;
+  m=s.match(/^(\d{4})[\/\-\.](\d{1,2})[\/\-\.](\d{1,2})/);
+  if(m)return`${m[1]}-${String(m[2]).padStart(2,'0')}-${String(m[3]).padStart(2,'0')}`;
+  return s;
+}
+function toFullWidth(s){
+  if(!s)return s;
+  const kanaMap={
+    'ｦ':'ヲ','ｧ':'ァ','ｨ':'ィ','ｩ':'ゥ','ｪ':'ェ','ｫ':'ォ','ｬ':'ャ','ｭ':'ュ','ｮ':'ョ','ｯ':'ッ','ｰ':'ー',
+    'ｱ':'ア','ｲ':'イ','ｳ':'ウ','ｴ':'エ','ｵ':'オ','ｶ':'カ','ｷ':'キ','ｸ':'ク','ｹ':'ケ','ｺ':'コ',
+    'ｻ':'サ','ｼ':'シ','ｽ':'ス','ｾ':'セ','ｿ':'ソ','ﾀ':'タ','ﾁ':'チ','ﾂ':'ツ','ﾃ':'テ','ﾄ':'ト',
+    'ﾅ':'ナ','ﾆ':'ニ','ﾇ':'ヌ','ﾈ':'ネ','ﾉ':'ノ','ﾊ':'ハ','ﾋ':'ヒ','ﾌ':'フ','ﾍ':'ヘ','ﾎ':'ホ',
+    'ﾏ':'マ','ﾐ':'ミ','ﾑ':'ム','ﾒ':'メ','ﾓ':'モ','ﾔ':'ヤ','ﾕ':'ユ','ﾖ':'ヨ',
+    'ﾗ':'ラ','ﾘ':'リ','ﾙ':'ル','ﾚ':'レ','ﾛ':'ロ','ﾜ':'ワ','ﾝ':'ン','ﾞ':'゛','ﾟ':'゜'
+  };
+  const dk={'カ':'ガ','キ':'ギ','ク':'グ','ケ':'ゲ','コ':'ゴ','サ':'ザ','シ':'ジ','ス':'ズ','セ':'ゼ','ソ':'ゾ',
+    'タ':'ダ','チ':'ヂ','ツ':'ヅ','テ':'デ','ト':'ド','ハ':'バ','ヒ':'ビ','フ':'ブ','ヘ':'ベ','ホ':'ボ','ウ':'ヴ'};
+  const hdk={'ハ':'パ','ヒ':'ピ','フ':'プ','ヘ':'ペ','ホ':'ポ'};
+  const DAKUTEN  =['\uFF9E','\u309B','\u3099','゛'];
+  const HANDAKUTEN=['\uFF9F','\u309C','\u309A','゜'];
+  const chars=[...s].map(c=>kanaMap[c]||c);
+  let result='';
+  for(let i=0;i<chars.length;i++){
+    const c=chars[i];
+    if(DAKUTEN.includes(c)&&result.length>0){
+      const prev=result[result.length-1];
+      if(dk[prev]){result=result.slice(0,-1)+dk[prev];continue;}
+    }
+    if(HANDAKUTEN.includes(c)&&result.length>0){
+      const prev=result[result.length-1];
+      if(hdk[prev]){result=result.slice(0,-1)+hdk[prev];continue;}
+    }
+    result+=c;
+  }
+  return result.normalize('NFKC');
+}
+function decodeAuto(buf){
+  let txt = new TextDecoder('utf-8').decode(buf);
+  if(txt.charCodeAt(0) === 0xFEFF) txt = txt.slice(1);
+  if(txt.includes('\uFFFD')) txt = new TextDecoder('shift-jis').decode(buf);
+  return txt;
+}
+function parseCSV2D(text){
+  const lines = text.replace(/\r\n/g,'\n').replace(/\r/g,'\n').split('\n').filter(l=>l.length);
+  return lines.map(parseLine);
+}
+
+function setHubCsvStatus(msg, cls){
+  const el = document.getElementById('hubCsvStatus');
+  el.textContent = msg;
+  el.className = 'aaUploadStatus' + (cls ? ' '+cls : '');
+}
+
+async function handleHubCsvFile(file){
+  setHubCsvStatus('読込中…');
+  try{
+    const buf = await file.arrayBuffer();
+    const text = decodeAuto(buf);
+    const rowsArr = parseCSV2D(text);
+    const hIdx = rowsArr.findIndex(r => r.includes('車台番号') && r.includes('車名'));
+    if(hIdx === -1) throw new Error('棚卸CSVのヘッダー行(車台番号・車名を含む行)が見つかりません');
+    const header = rowsArr[hIdx];
+    const fi = (...names) => { for(const n of names){ const i = header.indexOf(n); if(i>=0) return i; } return -1; };
+    const idx = {
+      date: fi('仕入日'), name: fi('車名'), sup: fi('仕入先名'),
+      color: fi('色'), vin: fi('車台番号'), year: fi('年式'),
+      shaken: fi('車検期限'), price: fi('仕入金額'), total: fi('合計'),
+    };
+    const g = (row, i) => (i>=0 && i<row.length) ? (row[i]||'').replace(/^"|"$/g,'').trim() : '';
+
+    // 既存の車台番号を収集(ads.htmlのtanaoroshi + car-appのstock/stockArchive)。
+    // どちらかに既に存在する車台番号は新規登録の対象から除外する。
+    const [tanaSnap, stockSnap, archiveSnap] = await Promise.all([
+      get(ref(db, 'adsData/tanaoroshi')),
+      get(ref(db, 'stock')),
+      get(ref(db, 'stockArchive')),
+    ]);
+    const existVins = new Set(Object.keys(tanaSnap.val() || {}));
+    Object.values(stockSnap.val() || {}).forEach(v => { if(v.vin) existVins.add(normVin(v.vin)); });
+    Object.values(archiveSnap.val() || {}).forEach(v => { if(v.vin) existVins.add(normVin(v.vin)); });
+
+    const newTanaoroshi = {};
+    const newStock = {};
+    let added = 0, skipped = 0;
+    for(const row of rowsArr.slice(hIdx+1)){
+      const first = g(row, 0);
+      if(!first || !/^(平成|令和|昭和|\d{4})/.test(first)) continue;
+      const vin = normVin(g(row, idx.vin));
+      if(!vin){ continue; }
+      if(existVins.has(vin)){ skipped++; continue; }
+      existVins.add(vin);
+
+      // ads.html用(生の文字列、ads.htmlの既存表記と揃える)
+      newTanaoroshi[vin] = {
+        car_name: g(row, idx.name),
+        color: g(row, idx.color),
+        shaken: g(row, idx.shaken),
+        shiire_date: g(row, idx.date),
+      };
+      // car-app用(car-appのparseCSVと同一ロジックで整形)
+      const sid = 'i' + Date.now() + Math.random().toString(36).slice(2,6);
+      newStock[sid] = {
+        id: sid, date: fmtDate(g(row, idx.date)),
+        name: toFullWidth(g(row, idx.name)), sup: g(row, idx.sup),
+        color: g(row, idx.color), vin, year: fmtDate(g(row, idx.year)),
+        shaken: fmtDate(g(row, idx.shaken)),
+        price: g(row, idx.price), total: g(row, idx.total),
+        regNo: '', status1: 'undelivered', status2: 'none',
+        cleaned: false, photographed: false, maintained: false, needsParts: false,
+        memo: '', isLoaner: false, addedAt: Date.now(),
+      };
+      added++;
+    }
+    if(!added){
+      setHubCsvStatus(`新規車両はありませんでした(既存: ${skipped}台)`, 'ok');
+      return;
+    }
+    await Promise.all([
+      update(ref(db, 'adsData/tanaoroshi'), newTanaoroshi),
+      update(ref(db, 'stock'), newStock),
+    ]);
+    // 車両一覧・候補検索のキャッシュに反映(次回取得を待たずに反映するため)
+    if(hubTanaoroshi) Object.assign(hubTanaoroshi, newTanaoroshi);
+    setHubCsvStatus(`● 新規登録: ${added}台(ads.html / car-app 両方) / スキップ(既存): ${skipped}台`, 'ok');
+  } catch(err){
+    console.error('handleHubCsvFile error:', err);
+    setHubCsvStatus('● エラー: ' + err.message, 'err');
+  }
+}
+
+const hubCsvDropZone = document.getElementById('hubCsvDropZone');
+const hubCsvFileInput = document.getElementById('hubCsvFileInput');
+hubCsvDropZone.addEventListener('click', ()=> hubCsvFileInput.click());
+hubCsvFileInput.addEventListener('change', ()=>{
+  if(hubCsvFileInput.files[0]) handleHubCsvFile(hubCsvFileInput.files[0]);
+  hubCsvFileInput.value = '';
+});
+['dragenter','dragover'].forEach(evt=>hubCsvDropZone.addEventListener(evt, e=>{
+  e.preventDefault(); hubCsvDropZone.classList.add('dragover');
+}));
+['dragleave','drop'].forEach(evt=>hubCsvDropZone.addEventListener(evt, e=>{
+  e.preventDefault(); hubCsvDropZone.classList.remove('dragover');
+}));
+hubCsvDropZone.addEventListener('drop', e=>{
+  const file = e.dataTransfer.files && e.dataTransfer.files[0];
+  if(file) handleHubCsvFile(file);
+});
 
 
 let hubAaVin = null;
