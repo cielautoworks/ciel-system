@@ -193,7 +193,7 @@ body:not(.debugMode) .debugOnly{display:none !important;}
 <header>
 <div class="header-row">
   <div>
-    <h1>広告掲載状況ダッシュボード <span style="font-size:12px;font-weight:400;opacity:.75;">v1.27</span></h1>
+    <h1>広告掲載状況ダッシュボード <span style="font-size:12px;font-weight:400;opacity:.75;">v1.29</span></h1>
     <p>カーセンサー ／ グーネット ／ QuickNetwork（業販） ／ オートサーバー（業販） ／ JUテントリ（業販） の5サイト突合(棚卸一覧は参考照合用)　※データはFirebaseで共有されます</p>
   </div>
   <div style="display:flex;gap:8px;flex-shrink:0;">
@@ -821,8 +821,13 @@ function renderSummary(){
   const mileageMismatchCount = rows.filter(r=>r.mileageMismatch).length;
   const shakenMismatchCount = rows.filter(r=>r.shakenMismatch).length;
   const cleanCount = rows.filter(r=>!r.missing && !r.priceMismatch && !r.mileageMismatch && !r.shakenMismatch).length;
-  const missCarsensorCount = rows.filter(r=>!isActive('carsensor', r.bySite.carsensor)).length;
-  const missGoonetCount = rows.filter(r=>!isActive('goonet', r.bySite.goonet)).length;
+  // CS/gooの「未掲載」は、以下の2パターンをまとめて指していたため分けて集計する。
+  // ・真の未掲載:そのサイトのCSVにレコード自体が無い(一度も掲載していない)
+  // ・一時非掲載:レコード(価格等)はあるが、掲載状況が「掲載」ではない(掲載を止めている)
+  const missCarsensorCount = rows.filter(r=>!r.bySite.carsensor).length;
+  const tempMissCarsensorCount = rows.filter(r=>r.bySite.carsensor && r.bySite.carsensor.status !== '掲載').length;
+  const missGoonetCount = rows.filter(r=>!r.bySite.goonet).length;
+  const tempMissGoonetCount = rows.filter(r=>r.bySite.goonet && r.bySite.goonet.status !== '掲載').length;
   const missQuicknetworkCount = rows.filter(r=>!r.skipGyohan && !isActive('quicknetwork', r.bySite.quicknetwork)).length;
   const missAutoserverCount = rows.filter(r=>!r.skipGyohan && !isActive('autoserver', r.bySite.autoserver)).length;
   const missJutentoriCount = rows.filter(r=>!r.skipGyohan && !isActive('jutentori', r.bySite.jutentori)).length;
@@ -837,10 +842,12 @@ function renderSummary(){
     <div class="card" data-filter="clean"><p class="label">全項目一致</p><p class="value">${cleanCount}台</p></div>
   `;
   document.getElementById('summarySites').innerHTML = `
-    <div class="card danger" data-filter="miss_carsensor"><p class="label">カーセンサー未掲載</p><p class="value">${missCarsensorCount}台</p></div>
-    <div class="card danger" data-filter="miss_goonet"><p class="label">グーネット未掲載</p><p class="value">${missGoonetCount}台</p></div>
-    <div class="card danger" data-filter="miss_quicknetwork"><p class="label">QuickNetwork未掲載</p><p class="value">${missQuicknetworkCount}台</p></div>
-    <div class="card danger" data-filter="miss_autoserver"><p class="label">オートサーバー未掲載</p><p class="value">${missAutoserverCount}台</p></div>
+    <div class="card danger" data-filter="miss_carsensor"><p class="label">CS未掲載</p><p class="value">${missCarsensorCount}台</p></div>
+    <div class="card warn" data-filter="temp_miss_carsensor"><p class="label">CS一時非掲載</p><p class="value">${tempMissCarsensorCount}台</p></div>
+    <div class="card danger" data-filter="miss_goonet"><p class="label">goo未掲載</p><p class="value">${missGoonetCount}台</p></div>
+    <div class="card warn" data-filter="temp_miss_goonet"><p class="label">goo一時非掲載</p><p class="value">${tempMissGoonetCount}台</p></div>
+    <div class="card danger" data-filter="miss_quicknetwork"><p class="label">Quick未掲載</p><p class="value">${missQuicknetworkCount}台</p></div>
+    <div class="card danger" data-filter="miss_autoserver"><p class="label">AS未掲載</p><p class="value">${missAutoserverCount}台</p></div>
     <div class="card danger" data-filter="miss_jutentori"><p class="label">JUテントリ未掲載</p><p class="value">${missJutentoriCount}台</p></div>
   `;
   document.querySelectorAll('.card[data-filter]').forEach(c=>{
@@ -918,8 +925,10 @@ function applyFilters(){
   let filtered = rows;
   if(currentFilter==='missing') filtered = filtered.filter(r=>r.missing);
   if(currentFilter==='notinstock') filtered = filtered.filter(r=>r.notInStock);
-  if(currentFilter==='miss_carsensor') filtered = filtered.filter(r=>!isActive('carsensor', r.bySite.carsensor));
-  if(currentFilter==='miss_goonet') filtered = filtered.filter(r=>!isActive('goonet', r.bySite.goonet));
+  if(currentFilter==='miss_carsensor') filtered = filtered.filter(r=>!r.bySite.carsensor);
+  if(currentFilter==='temp_miss_carsensor') filtered = filtered.filter(r=>r.bySite.carsensor && r.bySite.carsensor.status !== '掲載');
+  if(currentFilter==='miss_goonet') filtered = filtered.filter(r=>!r.bySite.goonet);
+  if(currentFilter==='temp_miss_goonet') filtered = filtered.filter(r=>r.bySite.goonet && r.bySite.goonet.status !== '掲載');
   if(currentFilter==='miss_quicknetwork') filtered = filtered.filter(r=>!r.skipGyohan && !isActive('quicknetwork', r.bySite.quicknetwork));
   if(currentFilter==='miss_autoserver') filtered = filtered.filter(r=>!r.skipGyohan && !isActive('autoserver', r.bySite.autoserver));
   if(currentFilter==='miss_jutentori') filtered = filtered.filter(r=>!r.skipGyohan && !isActive('jutentori', r.bySite.jutentori));

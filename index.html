@@ -117,7 +117,7 @@ html[data-theme="dark"] .aaUploadStatus.err{color:#ff6b6b;}
 <header>
 <div class="header-row">
   <div>
-    <h1>Ciel System</h1>
+    <h1>Ciel System <span style="font-size:12px;font-weight:400;opacity:.75;">v1.02</span></h1>
     <p>シエルオートワークス 業務ツール一覧</p>
   </div>
   <button class="settingsBtn" id="settingsBtn">⚙ 設定</button>
@@ -154,7 +154,7 @@ html[data-theme="dark"] .aaUploadStatus.err{color:#ff6b6b;}
 <div class="section-label">車両登録</div>
 <div class="aaUploadCard">
   <h2 class="aaUploadTitle">📋 新規車両登録(棚卸CSV)</h2>
-  <p class="aaUploadDesc">棚卸CSVをアップロードすると、まだ登録されていない車台番号だけを判定して、ads.html用の棚卸データとcar-appの在庫(stock)の両方に新規登録します。既存の車台番号はスキップされ、既存データは書き換えません。</p>
+  <p class="aaUploadDesc">棚卸CSVをアップロードすると、ads.html用の棚卸データとcar-appの在庫(stock)それぞれについて、まだ登録されていない車台番号だけを新規登録します(片方にしか登録されていない車台番号は、不足している側だけ追加登録されます)。既に両方に存在する車台番号はスキップされ、既存データは書き換えません。</p>
   <div class="csvDropZone" id="hubCsvDropZone">
     <div style="font-size:22px;margin-bottom:6px">📄</div>
     <p style="font-size:12px">棚卸CSVをドラッグ&ドロップ、またはクリックして選択</p>
@@ -234,7 +234,7 @@ darkModeToggle.addEventListener('change', ()=>{
    ・adsData/aaPhotoCounts は他の車台番号分と共有のデータなので、書き込み前に必ず最新を取得し、
      該当車台番号の値だけを書き換えてから保存する(他車両分の数値を消さないため) */
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-import { getDatabase, ref, get, set }
+import { getDatabase, ref, get, set, update }
   from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
 import { getAuth, onAuthStateChanged, signInAnonymously }
   from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
@@ -359,50 +359,64 @@ async function handleHubCsvFile(file){
     };
     const g = (row, i) => (i>=0 && i<row.length) ? (row[i]||'').replace(/^"|"$/g,'').trim() : '';
 
-    // 既存の車台番号を収集(ads.htmlのtanaoroshi + car-appのstock/stockArchive)。
-    // どちらかに既に存在する車台番号は新規登録の対象から除外する。
+    // 既存の車台番号を収集(ads.htmlのtanaoroshi と car-appのstock/stockArchive)。
+    // tanaoroshiとstockは別々の登録経路(car-app単体のCSV読込・手入力等)を持ちうるため、
+    // 「どちらかにあれば完全スキップ」ではなく、tanaoroshi/stockそれぞれの存在有無を別々に判定する。
+    // これにより、片方にだけ登録されていて、もう片方に登録が漏れている車両を後から埋められる。
     const [tanaSnap, stockSnap, archiveSnap] = await Promise.all([
       get(ref(db, 'adsData/tanaoroshi')),
       get(ref(db, 'stock')),
       get(ref(db, 'stockArchive')),
     ]);
-    const existVins = new Set(Object.keys(tanaSnap.val() || {}));
-    Object.values(stockSnap.val() || {}).forEach(v => { if(v.vin) existVins.add(normVin(v.vin)); });
-    Object.values(archiveSnap.val() || {}).forEach(v => { if(v.vin) existVins.add(normVin(v.vin)); });
+    const tanaVins = new Set(Object.keys(tanaSnap.val() || {}));
+    const stockVins = new Set();
+    Object.values(stockSnap.val() || {}).forEach(v => { if(v.vin) stockVins.add(normVin(v.vin)); });
+    Object.values(archiveSnap.val() || {}).forEach(v => { if(v.vin) stockVins.add(normVin(v.vin)); });
 
     const newTanaoroshi = {};
     const newStock = {};
-    let added = 0, skipped = 0;
+    let addedBoth = 0, addedTanaOnly = 0, addedStockOnly = 0, skipped = 0;
     for(const row of rowsArr.slice(hIdx+1)){
       const first = g(row, 0);
       if(!first || !/^(平成|令和|昭和|\d{4})/.test(first)) continue;
       const vin = normVin(g(row, idx.vin));
       if(!vin){ continue; }
-      if(existVins.has(vin)){ skipped++; continue; }
-      existVins.add(vin);
+      const inTana = tanaVins.has(vin);
+      const inStock = stockVins.has(vin);
+      if(inTana && inStock){ skipped++; continue; }
 
-      // ads.html用(生の文字列、ads.htmlの既存表記と揃える)
-      newTanaoroshi[vin] = {
-        car_name: g(row, idx.name),
-        color: g(row, idx.color),
-        shaken: g(row, idx.shaken),
-        shiire_date: g(row, idx.date),
-      };
-      // car-app用(car-appのparseCSVと同一ロジックで整形)
-      const sid = 'i' + Date.now() + Math.random().toString(36).slice(2,6);
-      newStock[sid] = {
-        id: sid, date: fmtDate(g(row, idx.date)),
-        name: toFullWidth(g(row, idx.name)), sup: g(row, idx.sup),
-        color: g(row, idx.color), vin, year: fmtDate(g(row, idx.year)),
-        shaken: fmtDate(g(row, idx.shaken)),
-        price: g(row, idx.price), total: g(row, idx.total),
-        regNo: '', status1: 'undelivered', status2: 'none',
-        cleaned: false, photographed: false, maintained: false, needsParts: false,
-        memo: '', isLoaner: false, addedAt: Date.now(),
-      };
-      added++;
+      if(!inTana){
+        // ads.html用(生の文字列、ads.htmlの既存表記と揃える)
+        newTanaoroshi[vin] = {
+          car_name: g(row, idx.name),
+          color: g(row, idx.color),
+          shaken: g(row, idx.shaken),
+          shiire_date: g(row, idx.date),
+        };
+        tanaVins.add(vin);
+      }
+      if(!inStock){
+        // car-app用(car-appのparseCSVと同一ロジックで整形)
+        const sid = 'i' + Date.now() + Math.random().toString(36).slice(2,6);
+        newStock[sid] = {
+          id: sid, date: fmtDate(g(row, idx.date)),
+          name: toFullWidth(g(row, idx.name)), sup: g(row, idx.sup),
+          color: g(row, idx.color), vin, year: fmtDate(g(row, idx.year)),
+          shaken: fmtDate(g(row, idx.shaken)),
+          price: g(row, idx.price), total: g(row, idx.total),
+          regNo: '', status1: 'undelivered', status2: 'none',
+          cleaned: false, photographed: false, maintained: false, needsParts: false,
+          memo: '', isLoaner: false, addedAt: Date.now(),
+        };
+        stockVins.add(vin);
+      }
+
+      if(!inTana && !inStock) addedBoth++;
+      else if(!inTana) addedTanaOnly++;
+      else addedStockOnly++;
     }
-    if(!added){
+    const totalAdded = addedBoth + addedTanaOnly + addedStockOnly;
+    if(!totalAdded){
       setHubCsvStatus(`新規車両はありませんでした(既存: ${skipped}台)`, 'ok');
       return;
     }
@@ -414,8 +428,12 @@ async function handleHubCsvFile(file){
     if(hubTanaoroshi) Object.assign(hubTanaoroshi, newTanaoroshi);
     // car-appのNewsタブに表示されるログ(新規登録はまとめて1件)
     const newsId = 'n' + Date.now() + Math.random().toString(36).slice(2,6);
-    await set(ref(db, `newsLog/${newsId}`), {ts: Date.now(), vin: '', message: `新規車両を${added}台登録しました`});
-    setHubCsvStatus(`● 新規登録: ${added}台(ads.html / car-app 両方) / スキップ(既存): ${skipped}台`, 'ok');
+    await set(ref(db, `newsLog/${newsId}`), {ts: Date.now(), vin: '', message: `新規車両を${totalAdded}台登録しました`});
+    let statusMsg = `● 新規登録: ${addedBoth}台(ads.html / car-app 両方)`;
+    if(addedTanaOnly) statusMsg += ` / ads.htmlのみ追加: ${addedTanaOnly}台(car-appには既存)`;
+    if(addedStockOnly) statusMsg += ` / car-appのみ追加: ${addedStockOnly}台(ads.htmlには既存)`;
+    statusMsg += ` / スキップ(両方に既存): ${skipped}台`;
+    setHubCsvStatus(statusMsg, 'ok');
   } catch(err){
     console.error('handleHubCsvFile error:', err);
     setHubCsvStatus('● エラー: ' + err.message, 'err');
