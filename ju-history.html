@@ -144,9 +144,26 @@ html[data-theme="dark"] .badge.warn{border-color:var(--warn-text);}
 .vhModalCloseX{width:32px;height:32px;flex-shrink:0;border-radius:50%;border:2px solid var(--border);background:var(--card);color:var(--text);font-size:16px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;}
 .vhModalCloseX:hover{border-color:var(--sky);color:var(--sky);}
 .vhModalSub{font-size:12px;color:var(--text-sub);margin:0 0 16px;}
-.vhStats{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:8px;margin-bottom:18px;}
-.vhStats .card{padding:10px 12px;cursor:default;}
-.vhStats .card .value{font-size:18px;}
+.vhStats{display:grid;grid-template-columns:repeat(6,1fr);gap:8px;margin-bottom:14px;}
+@media (max-width:760px){ .vhStats{grid-template-columns:repeat(3,1fr);} }
+.vhStats .card{padding:10px 10px;cursor:default;}
+.vhStats .card .value{font-size:17px;}
+.vhStats .card.profit .value.pos{color:var(--ok-text);}
+.vhStats .card.profit .value.neg{color:var(--danger-text);}
+.bidChartWrap{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:12px 14px 8px;margin-bottom:18px;}
+.bidChartTitle{font-size:12.5px;font-weight:600;color:var(--text);margin:0 0 8px;}
+.bidChartEmpty{font-size:12px;color:var(--text-muted);padding:6px 0;}
+.bidChart{width:100%;height:auto;overflow:visible;}
+.bidChart .bidLine{fill:none;stroke:var(--sky);stroke-width:2;stroke-linecap:round;stroke-linejoin:round;}
+.bidChart .bidGrid{stroke:var(--border);stroke-width:1;}
+.bidChart .bidPt{stroke:var(--card);stroke-width:2;cursor:pointer;}
+.bidChart .bidPt.ryusatsu{fill:var(--danger-text);}
+.bidChart .bidPt.seiyaku{fill:var(--ok-text);}
+.bidChart .bidLabel{font-size:9.5px;fill:var(--text-muted);}
+.bidChart .bidValueLabel{font-size:10px;font-weight:600;fill:var(--text);}
+.bidChartLegend{display:flex;gap:14px;font-size:11px;color:var(--text-sub);margin-top:4px;}
+.bidChartLegend span{display:inline-flex;align-items:center;gap:5px;}
+.bidChartLegend i{width:9px;height:9px;border-radius:50%;display:inline-block;}
 .timeline{position:relative;padding-left:22px;}
 .timeline:before{content:'';position:absolute;left:6px;top:4px;bottom:4px;width:2px;background:var(--border);}
 .tlItem{position:relative;padding-bottom:18px;}
@@ -163,7 +180,7 @@ html[data-theme="dark"] .badge.warn{border-color:var(--warn-text);}
 <header>
 <div class="header-row">
   <div>
-    <h1>オークション出品履歴チェックツール <span style="font-size:12px;font-weight:400;opacity:.75;">v1.02</span></h1>
+    <h1>オークション出品履歴チェックツール <span style="font-size:12px;font-weight:400;opacity:.75;">v1.03</span></h1>
     <p>JU新潟・USS新潟・USS東京・TAA東北への出品(売却)・落札(仕入)履歴を車両ごとに管理。累計手数料・最終取引からの経過日数を確認できます。　※データはFirebaseで共有されます</p>
   </div>
   <div style="display:flex;gap:8px;flex-shrink:0;">
@@ -193,6 +210,7 @@ html[data-theme="dark"] .badge.warn{border-color:var(--warn-text);}
     </div>
     <p class="vhModalSub" id="vhModalSub"></p>
     <div class="vhStats" id="vhStats"></div>
+    <div class="bidChartWrap" id="bidChartWrap"></div>
     <div class="timeline" id="vhTimeline"></div>
   </div>
 </div>
@@ -201,7 +219,7 @@ html[data-theme="dark"] .badge.warn{border-color:var(--warn-text);}
 
 <details class="uploadPanel" id="uploadPanel">
 <summary>📂 出品履歴CSVを読み込んでデータを更新</summary>
-<p style="font-size:12px;color:var(--text-sub);margin:10px 0 0;">JU新潟・USS新潟・USS東京・TAA東北の計算書(精算書)から抽出したCSVを取り込みます。列: kai,date,shuppin_no,vin,car_name,grade,nendo,category,status,pref,shary_dai,recycle,shuppin_ryo,seiyaku_ryo,rakusatsu_ryo,jizei,source　／　category=rakusatsuは自社が落札(仕入)した記録、status=cancelは出品後キャンセルされた記録として履歴には残りますが集計からは除外されます　／　同じ会場(source)+回(kai)+出品番号(shuppin_no)のデータは再取込すると上書きされます(既存の他のデータは消えません)。</p>
+<p style="font-size:12px;color:var(--text-sub);margin:10px 0 0;">JU新潟・USS新潟・USS東京・TAA東北の計算書(精算書)から抽出したCSVを取り込みます。列: kai,date,shuppin_no,vin,car_name,grade,nendo,category,status,pref,shary_dai,recycle,shuppin_ryo,seiyaku_ryo,rakusatsu_ryo,jizei,source,max_bid　／　max_bid=流札時の最終(最高)入札額。列が無いCSVを取り込んでも問題ありません(0として扱われます)　／　category=rakusatsuは自社が落札(仕入)した記録、status=cancelは出品後キャンセルされた記録として履歴には残りますが集計からは除外されます　／　同じ会場(source)+回(kai)+出品番号(shuppin_no)のデータは再取込すると上書きされます(既存の他のデータは消えません)。</p>
 <div class="dropZone" id="dropZone">
   <p>📥 出品履歴CSVをドラッグ&ドロップ、またはクリックして選択</p>
 </div>
@@ -361,6 +379,20 @@ function build(){
     if(inStock && !inArchive) stockStatus = 'stock';
     else if(inArchive) stockStatus = 'archive';
 
+    // 最高入札額の推移(流札=最終入札額、成約=成約額を「成立した入札」として1本の折れ線に並べる)
+    const bidHistory = shuppinEntries.map(e=>{
+      const isSeiyaku = e.status==='seiyaku';
+      const val = isSeiyaku ? (Number(e.sharyDai)||0) : (Number(e.maxBid)||0);
+      return { date: e.date||'', kai: e.kai||'', source: e.source||'', status: e.status||'', value: val };
+    }).filter(p=>p.value>0);
+
+    const seiyakuEntries = shuppinEntries.filter(e=>e.status==='seiyaku');
+    const ryusatsuOnlyEntries = shuppinEntries.filter(e=>e.status==='ryusatsu' && (Number(e.maxBid)||0)>0);
+    const latestMaxBid = ryusatsuOnlyEntries.length ? Number(ryusatsuOnlyEntries[ryusatsuOnlyEntries.length-1].maxBid)||0 : null;
+    const buySharyDai = rakusatsuEntries.length ? (Number(rakusatsuEntries[rakusatsuEntries.length-1].sharyDai)||0) : null;
+    const sellSharyDai = seiyakuEntries.length ? (Number(seiyakuEntries[seiyakuEntries.length-1].sharyDai)||0) : null;
+    const grossProfit = (sellSharyDai!=null && buySharyDai!=null) ? (sellSharyDai - buySharyDai) : null;
+
     vehicles.push({
       vin, carName, grade, entries,
       count: shuppinEntries.length,
@@ -372,6 +404,7 @@ function build(){
       lastShuppinDate: lastShuppin ? (lastShuppin.date||'') : '',
       daysSinceShuppin,
       totalFee, totalJizei, daysSince, stockStatus,
+      bidHistory, latestMaxBid, buySharyDai, sellSharyDai, grossProfit,
     });
 
     entries.forEach(e=>{
@@ -381,6 +414,7 @@ function build(){
         status: e.status || '', sharyDai: Number(e.sharyDai)||0,
         shuppinRyo: Number(e.shuppinRyo)||0, seiyakuRyo: Number(e.seiyakuRyo)||0,
         rakusatsuRyo: Number(e.rakusatsuRyo)||0, jizei: Number(e.jizei)||0,
+        maxBid: Number(e.maxBid)||0,
       });
     });
   }
@@ -537,11 +571,64 @@ function render(){
   renderTable();
 }
 
+function fmtYen(n){
+  if(n==null) return '';
+  const sign = n<0 ? '-' : '';
+  return sign + '¥' + Math.abs(n).toLocaleString('ja-JP');
+}
+
+function renderBidChart(v){
+  const wrap = document.getElementById('bidChartWrap');
+  const hist = v.bidHistory;
+  if(!hist.length){
+    wrap.innerHTML = `<p class="bidChartTitle">最高入札額の推移</p><p class="bidChartEmpty">最高入札額のデータがありません(未取得、または出品履歴なし)</p>`;
+    return;
+  }
+  const W=800, H=170, padL=16, padR=16, padT=20, padB=26;
+  const innerW = W-padL-padR, innerH = H-padT-padB;
+  const maxRaw = Math.max(...hist.map(p=>p.value));
+  const maxV = maxRaw*1.18 || 1;
+  const n = hist.length;
+  const xAt = i => n>1 ? padL + i*(innerW/(n-1)) : padL+innerW/2;
+  const yAt = val => padT + innerH - (val/maxV)*innerH;
+  const pts = hist.map((p,i)=>({...p, cx:xAt(i), cy:yAt(p.value)}));
+  const pathD = pts.map((p,i)=> (i===0?'M':'L')+p.cx.toFixed(1)+','+p.cy.toFixed(1)).join(' ');
+  const maxIdx = pts.reduce((mi,p,i)=> p.value>pts[mi].value?i:mi, 0);
+  const minIdx = pts.reduce((mi,p,i)=> p.value<pts[mi].value?i:mi, 0);
+  const fmtMD = d=>{ if(!d) return ''; const m=d.split('-'); return m.length===3? `${m[1]}/${m[2]}`:d; };
+  const statusLabel = s=> s==='seiyaku' ? '成約' : '流札(最終入札額)';
+
+  const circles = pts.map((p,i)=>`
+    <circle class="bidPt ${p.status}" cx="${p.cx.toFixed(1)}" cy="${p.cy.toFixed(1)}" r="5">
+      <title>${p.date} 第${p.kai}回 ${sourceLabel(p.source)} ${statusLabel(p.status)} ¥${fmtNum(p.value)}</title>
+    </circle>
+    ${(i===maxIdx||i===minIdx||i===n-1)?`<text class="bidValueLabel" x="${p.cx.toFixed(1)}" y="${Math.max(padT-4,(p.cy-10)).toFixed(1)}" text-anchor="middle">¥${fmtNum(p.value)}</text>`:''}
+    <text class="bidLabel" x="${p.cx.toFixed(1)}" y="${H-8}" text-anchor="middle">${fmtMD(p.date)}</text>
+  `).join('');
+
+  wrap.innerHTML = `
+    <p class="bidChartTitle">最高入札額の推移(流札=最終入札額／成約=成約額)</p>
+    <svg class="bidChart" viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet">
+      <line class="bidGrid" x1="${padL}" y1="${(padT+innerH).toFixed(1)}" x2="${W-padR}" y2="${(padT+innerH).toFixed(1)}"/>
+      <path class="bidLine" d="${pathD}"/>
+      ${circles}
+    </svg>
+    <div class="bidChartLegend">
+      <span><i style="background:var(--danger-text)"></i>流札(最終入札額)</span>
+      <span><i style="background:var(--ok-text)"></i>成約(成約額)</span>
+    </div>
+  `;
+}
+
 function openVehicleModal(vin){
   const v = vehicles.find(x=>x.vin===vin);
   if(!v) return;
   document.getElementById('vhModalTitle').textContent = `${v.carName||''} ${v.grade||''}`.trim() || v.vin;
   document.getElementById('vhModalSub').textContent = `${fmtVin(v.vin)} ／ ${stockBadge(v.stockStatus).replace(/<[^>]+>/g,'')}`;
+
+  const profitClass = v.grossProfit==null ? '' : (v.grossProfit>=0?'pos':'neg');
+  const profitText = v.grossProfit==null ? '算出不可' : fmtYen(v.grossProfit);
+
   document.getElementById('vhStats').innerHTML = `
     <div class="card"><p class="label">出品回数</p><p class="value">${v.count}回</p></div>
     <div class="card"><p class="label">仕入会場</p><p class="value" style="font-size:14px;">${v.buySources.length?v.buySources.join('・'):'なし'}</p></div>
@@ -551,7 +638,14 @@ function openVehicleModal(vin){
     <div class="card"><p class="label">経過日数(出品)</p><p class="value">${v.daysSinceShuppin!=null?v.daysSinceShuppin+'日':''}</p></div>
     <div class="card"><p class="label">累計手数料</p><p class="value" style="font-size:16px;">¥${fmtNum(v.totalFee)}</p></div>
     <div class="card"><p class="label">自税相当額(参考)</p><p class="value" style="font-size:16px;">¥${fmtNum(v.totalJizei)}</p></div>
+    <div class="card"><p class="label">仕入時金額(車両代)</p><p class="value" style="font-size:16px;">${v.buySharyDai==null?'なし':fmtYen(v.buySharyDai)}</p></div>
+    <div class="card"><p class="label">成約時金額(車両代)</p><p class="value" style="font-size:16px;">${v.sellSharyDai==null?'なし':fmtYen(v.sellSharyDai)}</p></div>
+    <div class="card profit"><p class="label">粗利(車両代のみ)</p><p class="value ${profitClass}" style="font-size:16px;">${profitText}</p></div>
+    <div class="card"><p class="label">直近流札 最高入札額</p><p class="value" style="font-size:16px;">${v.latestMaxBid==null?'データなし':fmtYen(v.latestMaxBid)}</p></div>
   `;
+
+  renderBidChart(v);
+
   document.getElementById('vhTimeline').innerHTML = [...v.entries].reverse().map(e=>{
     const fee = (Number(e.shuppinRyo)||0)+(Number(e.seiyakuRyo)||0)+(Number(e.rakusatsuRyo)||0);
     const isCancel = e.status==='cancel';
@@ -560,7 +654,7 @@ function openVehicleModal(vin){
       <div class="tlDot"></div>
       <div class="tlHead">第${e.kai||''}回 ${sourceLabel(e.source)} ${e.date||''} ${statusBadge(e.status, e.category)}</div>
       <div class="tlBody">
-        出品番号:${e.shuppinNo||''}　${e.sharyDai?'車両代金:<b>¥'+fmtNum(e.sharyDai)+'</b>　':''}${e.pref?'落札県:'+e.pref+'　':''}手数料計:<b>¥${fmtNum(fee)}</b>${isCancel?'(集計対象外)':''}
+        出品番号:${e.shuppinNo||''}　${e.sharyDai?'車両代金:<b>¥'+fmtNum(e.sharyDai)+'</b>　':''}${e.status==='ryusatsu'&&Number(e.maxBid)?'最高入札額:<b>¥'+fmtNum(e.maxBid)+'</b>　':''}${e.pref?'落札県:'+e.pref+'　':''}手数料計:<b>¥${fmtNum(fee)}</b>${isCancel?'(集計対象外)':''}
       </div>
       ${Number(e.jizei)?`<div class="jizeiNote">自税相当額:¥${fmtNum(e.jizei)}(参考・集計対象外)</div>`:''}
     </div>`;
@@ -655,6 +749,7 @@ function parseJuCsv(text){
       seiyakuRyo: Number(g('seiyaku_ryo')||0),
       rakusatsuRyo: Number(g('rakusatsu_ryo')||0),
       jizei: Number(g('jizei')||0),
+      maxBid: Number(g('max_bid')||0),
     });
   }
   return rows;
