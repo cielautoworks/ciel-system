@@ -111,6 +111,7 @@ html[data-theme="dark"] .badge.warn{border-color:var(--warn-text);}
 .jizeiNote{font-size:11px;color:var(--text-muted);margin-top:2px;}
 .tablewrap{overflow-x:auto;border:1px solid var(--border);border-radius:10px;}
 .legend{font-size:11.5px;color:var(--text-sub);margin:10px 0 4px;}
+.subtle{color:var(--text-muted);font-size:10px;}
 .count-hint{font-size:12px;color:var(--text-sub);margin:0 0 8px;}
 
 .uploadPanel{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:14px 16px;margin-bottom:16px;}
@@ -162,7 +163,7 @@ html[data-theme="dark"] .badge.warn{border-color:var(--warn-text);}
 <header>
 <div class="header-row">
   <div>
-    <h1>オークション出品履歴チェックツール <span style="font-size:12px;font-weight:400;opacity:.75;">v1.01</span></h1>
+    <h1>オークション出品履歴チェックツール <span style="font-size:12px;font-weight:400;opacity:.75;">v1.02</span></h1>
     <p>JU新潟・USS新潟・USS東京・TAA東北への出品(売却)・落札(仕入)履歴を車両ごとに管理。累計手数料・最終取引からの経過日数を確認できます。　※データはFirebaseで共有されます</p>
   </div>
   <div style="display:flex;gap:8px;flex-shrink:0;">
@@ -241,9 +242,10 @@ html[data-theme="dark"] .badge.warn{border-color:var(--warn-text);}
   <th class="sortable" data-sort="carname">車両<span class="arrow">↕</span></th>
   <th>在庫状態</th>
   <th class="sortable numcol" data-sort="count">出品回数<span class="arrow">↕</span></th>
-  <th class="sortable numcol" data-sort="buycount">仕入回数<span class="arrow">↕</span></th>
+  <th>仕入会場</th>
   <th>直近結果</th>
-  <th class="sortable numcol" data-sort="days">経過日数<span class="arrow">↕</span></th>
+  <th class="sortable numcol" data-sort="days">経過日数<span class="arrow">↕</span><br><span class="subtle" style="font-weight:400;">(最終取引)</span></th>
+  <th class="sortable numcol" data-sort="shuppindays">出品経過日数<span class="arrow">↕</span><br><span class="subtle" style="font-weight:400;">(直近出品)</span></th>
   <th class="sortable numcol" data-sort="fee">累計手数料<span class="arrow">↕</span></th>
 </tr>
 </thead>
@@ -269,7 +271,7 @@ html[data-theme="dark"] .badge.warn{border-color:var(--warn-text);}
 </table>
 </div>
 
-<p class="legend">※在庫状態は棚卸/在庫データとの車台番号突合で判定(在庫あり＝car-appの在庫または棚卸に存在／アーカイブ＝納車済み等で在庫から外れた車両／不明＝どちらにも見当たらない車両)。出品回数＝自社が出品(売却)側の回数(取消は除く)、仕入回数＝自社が落札(購入)側の回数。累計手数料＝出品料+成約料(売却側)＋落札料(仕入側、AAで仕入れて別会場で出品した車両など)の合計(取消分は含まない)。自税相当額(自動車税等の日数按分)は手数料に含めず、車両詳細で参考表示。経過日数は最終取引日からの日数。</p>
+<p class="legend">※在庫状態は棚卸/在庫データとの車台番号突合で判定(在庫あり＝car-appの在庫または棚卸に存在／アーカイブ＝納車済み等で在庫から外れた車両／不明＝どちらにも見当たらない車両)。出品回数＝自社が出品(売却)側の回数(取消は除く)、仕入会場＝自社が落札(購入)した会場。累計手数料＝出品料+成約料(売却側)＋落札料(仕入側、AAで仕入れて別会場で出品した車両など)の合計(取消分は含まない)。自税相当額(自動車税等の日数按分)は手数料に含めず、車両詳細で参考表示。経過日数(最終取引)は仕入・出品を問わず最も新しい記録からの日数、経過日数(出品)は直近の出品(売却)記録のみを基準にした日数(「3ヶ月以上出品なし」の絞込もこちらを基準)。</p>
 
 </div>
 
@@ -350,6 +352,9 @@ function build(){
     const carName = last.carName || tanaInfo?.car_name || '';
     const grade = last.grade || '';
     const daysSince = last.date ? Math.floor((now - new Date(last.date).getTime())/86400000) : null;
+    const lastShuppin = shuppinEntries.length ? shuppinEntries[shuppinEntries.length-1] : null;
+    const daysSinceShuppin = lastShuppin && lastShuppin.date ? Math.floor((now - new Date(lastShuppin.date).getTime())/86400000) : null;
+    const buySources = [...new Set(rakusatsuEntries.map(e=>sourceLabel(e.source)).filter(Boolean))];
     const inStock = stockVins.has(vin) || !!tanaInfo;
     const inArchive = archiveVins.has(vin);
     let stockStatus = 'unknown';
@@ -360,9 +365,12 @@ function build(){
       vin, carName, grade, entries,
       count: shuppinEntries.length,
       buyCount: rakusatsuEntries.length,
+      buySources,
       lastDate: last.date || '',
       lastStatus: last.status || '',
       lastCategory: last.category || 'shuppin',
+      lastShuppinDate: lastShuppin ? (lastShuppin.date||'') : '',
+      daysSinceShuppin,
       totalFee, totalJizei, daysSince, stockStatus,
     });
 
@@ -396,7 +404,7 @@ function renderSummary(){
   const total = vehicles.length;
   const stockCount = vehicles.filter(v=>v.stockStatus==='stock').length;
   const archiveCount = vehicles.filter(v=>v.stockStatus==='archive').length;
-  const staleCount = vehicles.filter(v=>v.stockStatus==='stock' && v.daysSince!=null && v.daysSince>=90).length;
+  const staleCount = vehicles.filter(v=>v.stockStatus==='stock' && v.daysSinceShuppin!=null && v.daysSinceShuppin>=90).length;
   const buyCount = vehicles.filter(v=>v.buyCount>0).length;
   const totalFeeAll = vehicles.reduce((s,v)=>s+v.totalFee,0);
 
@@ -434,7 +442,7 @@ function applyFilters(list){
   let filtered = list;
   if(currentFilter==='stock') filtered = filtered.filter(v=>v.stockStatus==='stock');
   if(currentFilter==='archive') filtered = filtered.filter(v=>v.stockStatus==='archive');
-  if(currentFilter==='stale') filtered = filtered.filter(v=>v.stockStatus==='stock' && v.daysSince!=null && v.daysSince>=90);
+  if(currentFilter==='stale') filtered = filtered.filter(v=>v.stockStatus==='stock' && v.daysSinceShuppin!=null && v.daysSinceShuppin>=90);
   if(currentFilter==='hasbuy') filtered = filtered.filter(v=>v.buyCount>0);
   if(src!=='all') filtered = filtered.filter(v=> v.entries.some(e=>e.source===src));
   if(q){
@@ -452,8 +460,8 @@ function renderVehicleTable(){
       else if(sortKey==='vin') { av=a.vin; bv=b.vin; }
       else if(sortKey==='carname') { av=a.carName; bv=b.carName; }
       else if(sortKey==='count') { av=a.count; bv=b.count; }
-      else if(sortKey==='buycount') { av=a.buyCount; bv=b.buyCount; }
       else if(sortKey==='days') { av=a.daysSince??-1; bv=b.daysSince??-1; }
+      else if(sortKey==='shuppindays') { av=a.daysSinceShuppin??-1; bv=b.daysSinceShuppin??-1; }
       else if(sortKey==='fee') { av=a.totalFee; bv=b.totalFee; }
       if(typeof av==='string') return av.localeCompare(bv)*sortDir;
       return (av-bv)*sortDir;
@@ -469,9 +477,10 @@ function renderVehicleTable(){
       <td><span class="carname">${v.carName||''}</span><br><span class="grade">${v.grade||''}</span></td>
       <td>${stockBadge(v.stockStatus)}</td>
       <td class="numcol">${v.count}回</td>
-      <td class="numcol">${v.buyCount>0?v.buyCount+'回':''}</td>
+      <td>${v.buySources.length?v.buySources.map(s=>`<span class="badge source">${s}</span>`).join(''):''}</td>
       <td>${statusBadge(v.lastStatus, v.lastCategory)}</td>
       <td class="numcol">${v.daysSince!=null?v.daysSince+'日':''}</td>
+      <td class="numcol">${v.daysSinceShuppin!=null?v.daysSinceShuppin+'日':''}</td>
       <td class="numcol priceNum">¥${fmtNum(v.totalFee)}</td>
     </tr>
   `).join('');
@@ -535,9 +544,11 @@ function openVehicleModal(vin){
   document.getElementById('vhModalSub').textContent = `${fmtVin(v.vin)} ／ ${stockBadge(v.stockStatus).replace(/<[^>]+>/g,'')}`;
   document.getElementById('vhStats').innerHTML = `
     <div class="card"><p class="label">出品回数</p><p class="value">${v.count}回</p></div>
-    <div class="card"><p class="label">仕入(落札)回数</p><p class="value">${v.buyCount}回</p></div>
+    <div class="card"><p class="label">仕入会場</p><p class="value" style="font-size:14px;">${v.buySources.length?v.buySources.join('・'):'なし'}</p></div>
     <div class="card"><p class="label">最終取引日</p><p class="value" style="font-size:15px;">${v.lastDate||''}</p></div>
-    <div class="card"><p class="label">経過日数</p><p class="value">${v.daysSince!=null?v.daysSince+'日':''}</p></div>
+    <div class="card"><p class="label">経過日数(最終取引)</p><p class="value">${v.daysSince!=null?v.daysSince+'日':''}</p></div>
+    <div class="card"><p class="label">直近出品日</p><p class="value" style="font-size:15px;">${v.lastShuppinDate||'なし'}</p></div>
+    <div class="card"><p class="label">経過日数(出品)</p><p class="value">${v.daysSinceShuppin!=null?v.daysSinceShuppin+'日':''}</p></div>
     <div class="card"><p class="label">累計手数料</p><p class="value" style="font-size:16px;">¥${fmtNum(v.totalFee)}</p></div>
     <div class="card"><p class="label">自税相当額(参考)</p><p class="value" style="font-size:16px;">¥${fmtNum(v.totalJizei)}</p></div>
   `;
