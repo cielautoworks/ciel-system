@@ -104,6 +104,27 @@ tr.rowArchive{background:var(--archive-bg);opacity:.75;}
 .badge.buy{background:rgba(74,171,207,0.12);color:var(--sky);border-color:var(--sky);}
 .badge.cancel{background:var(--archive-bg);color:var(--text-muted);border-color:var(--archive-border);text-decoration:line-through;}
 .badge.source{background:transparent;color:var(--text-sub);border-color:var(--border);}
+.togglecol{text-align:center;}
+.aaBtn{font-size:11.5px;font-weight:600;padding:4px 10px;border:2px solid var(--sky);border-radius:6px;background:transparent;color:var(--sky);cursor:pointer;white-space:nowrap;}
+.aaBtn.has1{border-color:#ff9d33;color:#ff9d33;}
+.aaBtn.has2{border-color:var(--warn-text);color:var(--warn-text);}
+.aaBtn.has0{opacity:.35;}
+.aaBtn:hover{background:rgba(74,171,207,0.12);box-shadow:0 0 8px var(--sky);}
+.aaModalPanelPhotos{background:var(--card);border:2px solid var(--border);border-radius:14px;padding:22px 24px;width:98vw;max-width:1400px;max-height:97vh;overflow-y:auto;position:relative;}
+.aaModalHeader{position:sticky;top:-22px;margin:-22px -24px 0;padding:16px 24px 4px;background:var(--card);display:flex;align-items:center;justify-content:space-between;gap:10px;z-index:5;border-radius:14px 14px 0 0;}
+.aaModalHeader h3{margin:0;font-size:15px;}
+.aaModalCloseX{width:32px;height:32px;flex-shrink:0;border-radius:50%;border:2px solid var(--border);background:var(--card);color:var(--text);font-size:16px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;}
+.aaModalCloseX:hover{border-color:var(--sky);color:var(--sky);}
+.aaVinLabel{font-size:12px;color:var(--text);margin:0 0 16px;}
+.aaImagesRow{display:flex;gap:20px;justify-content:center;flex-wrap:wrap;min-height:120px;align-items:flex-start;}
+.aaSlot{display:flex;flex-direction:column;align-items:center;gap:8px;flex:1 1 0;min-width:200px;max-width:640px;}
+.aaSlot img{width:100%;border-radius:8px;border:1px solid var(--border);display:block;cursor:zoom-in;}
+.aaModalStatus{font-size:12px;color:var(--text-sub);margin-top:12px;min-height:16px;}
+.aaModalStatus.err{color:var(--danger-text);}
+.aaModalCloseBtn{margin-top:16px;width:100%;padding:8px;background:transparent;border:2px solid var(--sky);color:var(--sky);border-radius:8px;font-size:13px;cursor:pointer;font-weight:600;}
+.aaModalCloseBtn:hover{background:rgba(74,171,207,0.12);box-shadow:0 0 8px var(--sky);}
+.aaZoomOverlay{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.85);display:flex;align-items:center;justify-content:center;z-index:200;cursor:zoom-out;}
+.aaZoomOverlay img{max-width:96vw;max-height:96vh;object-fit:contain;}
 html[data-theme="dark"] .badge.ok{border-color:var(--ok-text);}
 html[data-theme="dark"] .badge.miss{border-color:var(--danger-text);}
 html[data-theme="dark"] .badge.warn{border-color:var(--warn-text);}
@@ -180,7 +201,7 @@ html[data-theme="dark"] .badge.warn{border-color:var(--warn-text);}
 <header>
 <div class="header-row">
   <div>
-    <h1>オークション出品履歴チェックツール <span style="font-size:12px;font-weight:400;opacity:.75;">v1.03</span></h1>
+    <h1>オークション出品履歴チェックツール <span style="font-size:12px;font-weight:400;opacity:.75;">v1.04</span></h1>
     <p>JU新潟・USS新潟・USS東京・TAA東北への出品(売却)・落札(仕入)履歴を車両ごとに管理。累計手数料・最終取引からの経過日数を確認できます。　※データはFirebaseで共有されます</p>
   </div>
   <div style="display:flex;gap:8px;flex-shrink:0;">
@@ -206,13 +227,33 @@ html[data-theme="dark"] .badge.warn{border-color:var(--warn-text);}
   <div class="vhModalPanel">
     <div class="vhModalHeader">
       <h3 id="vhModalTitle"></h3>
-      <button type="button" class="vhModalCloseX" id="vhModalCloseX" aria-label="閉じる">✕</button>
+      <div style="display:flex;gap:8px;align-items:center;flex-shrink:0;">
+        <button type="button" class="aaBtn" id="vhAaBtn">🖼 出品票</button>
+        <button type="button" class="vhModalCloseX" id="vhModalCloseX" aria-label="閉じる">✕</button>
+      </div>
     </div>
     <p class="vhModalSub" id="vhModalSub"></p>
     <div class="vhStats" id="vhStats"></div>
     <div class="bidChartWrap" id="bidChartWrap"></div>
     <div class="timeline" id="vhTimeline"></div>
   </div>
+</div>
+
+<div class="settingsOverlay" id="aaOverlay" style="display:none;">
+  <div class="aaModalPanelPhotos">
+    <div class="aaModalHeader">
+      <h3>出品票(AA画像・表示のみ)</h3>
+      <button type="button" class="aaModalCloseX" id="aaModalCloseX" aria-label="閉じる">✕</button>
+    </div>
+    <p class="aaVinLabel" id="aaVinLabel"></p>
+    <div class="aaImagesRow" id="aaImagesRow"></div>
+    <div class="aaModalStatus" id="aaModalStatus"></div>
+    <button class="aaModalCloseBtn" id="aaModalCloseBtn">閉じる</button>
+  </div>
+</div>
+
+<div class="aaZoomOverlay" id="aaZoomOverlay" style="display:none;">
+  <img id="aaZoomImg" src="">
 </div>
 
 <div class="wrap">
@@ -265,6 +306,7 @@ html[data-theme="dark"] .badge.warn{border-color:var(--warn-text);}
   <th class="sortable numcol" data-sort="days">経過日数<span class="arrow">↕</span><br><span class="subtle" style="font-weight:400;">(最終取引)</span></th>
   <th class="sortable numcol" data-sort="shuppindays">出品経過日数<span class="arrow">↕</span><br><span class="subtle" style="font-weight:400;">(直近出品)</span></th>
   <th class="sortable numcol" data-sort="fee">累計手数料<span class="arrow">↕</span></th>
+  <th>出品票</th>
 </tr>
 </thead>
 <tbody id="vehicleTbody"></tbody>
@@ -289,7 +331,7 @@ html[data-theme="dark"] .badge.warn{border-color:var(--warn-text);}
 </table>
 </div>
 
-<p class="legend">※在庫状態は棚卸/在庫データとの車台番号突合で判定(在庫あり＝car-appの在庫または棚卸に存在／アーカイブ＝納車済み等で在庫から外れた車両／不明＝どちらにも見当たらない車両)。出品回数＝自社が出品(売却)側の回数(取消は除く)、仕入会場＝自社が落札(購入)した会場。累計手数料＝出品料+成約料(売却側)＋落札料(仕入側、AAで仕入れて別会場で出品した車両など)の合計(取消分は含まない)。自税相当額(自動車税等の日数按分)は手数料に含めず、車両詳細で参考表示。経過日数(最終取引)は仕入・出品を問わず最も新しい記録からの日数、経過日数(出品)は直近の出品(売却)記録のみを基準にした日数(「3ヶ月以上出品なし」の絞込もこちらを基準)。</p>
+<p class="legend">※在庫状態は棚卸/在庫データとの車台番号突合で判定(在庫あり＝car-appの在庫または棚卸に存在／アーカイブ＝納車済み等で在庫から外れた車両／不明＝どちらにも見当たらない車両)。出品回数＝自社が出品(売却)側の回数(取消は除く)、仕入会場＝自社が落札(購入)した会場。累計手数料＝出品料+成約料(売却側)＋落札料(仕入側、AAで仕入れて別会場で出品した車両など)の合計(取消分は含まない)。自税相当額(自動車税等の日数按分)は手数料に含めず、車両詳細で参考表示。経過日数(最終取引)は仕入・出品を問わず最も新しい記録からの日数、経過日数(出品)は直近の出品(売却)記録のみを基準にした日数(「3ヶ月以上出品なし」の絞込もこちらを基準)。出品票(🖼)ボタンはciel-systemハブに登録済みのAA出品票画像を表示のみ行うもので、この画面から画像の登録・削除はできません(登録はハブ側で行います)。</p>
 
 </div>
 
@@ -323,6 +365,7 @@ let juHistory = {};   // { normVin: { entryKey: {...} } }
 let tanaoroshi = {};  // { normVin: {...} }
 let stock = {};       // { id: {...} }
 let stockArchive = {};// { id: {...} }
+let aaPhotoCounts = {}; // { normVin: 枚数(0/1/2) } ※ads.html/ハブが管理する軽量メタ情報。ここでは表示のみ
 let vehicles = [];    // built summary rows
 let logRows = [];     // flat log rows
 let currentFilter = 'all';
@@ -331,15 +374,17 @@ let sortKey = null, sortDir = 1;
 let logSortKey = null, logSortDir = 1;
 
 async function loadAll(){
-  const [juSnap, tanaSnap, stockSnap, archSnap] = await Promise.all([
+  const [juSnap, tanaSnap, stockSnap, archSnap, aaSnap] = await Promise.all([
     get(ref(db,'juHistory')),
     get(ref(db,'adsData/tanaoroshi')),
     get(ref(db,'stock')),
     get(ref(db,'stockArchive')),
+    get(ref(db,'adsData/aaPhotoCounts')),
   ]);
   juHistory = juSnap.exists() ? juSnap.val() : {};
   tanaoroshi = tanaSnap.exists() ? tanaSnap.val() : {};
   stock = stockSnap.exists() ? stockSnap.val() : {};
+  aaPhotoCounts = aaSnap.exists() ? aaSnap.val() : {};
   stockArchive = archSnap.exists() ? archSnap.val() : {};
   build();
   render();
@@ -423,7 +468,7 @@ function build(){
 
 function statusBadge(status, category){
   if(status==='cancel') return '<span class="badge cancel">取消</span>';
-  if(category==='rakusatsu') return '<span class="badge buy">落札(仕入)</span>';
+  if(category==='rakusatsu') return '<span class="badge buy">落札</span>';
   if(status==='seiyaku') return '<span class="badge ok">成約</span>';
   if(status==='ryusatsu') return '<span class="badge miss">流札</span>';
   return status ? `<span class="badge warn">${status}</span>` : '';
@@ -516,10 +561,15 @@ function renderVehicleTable(){
       <td class="numcol">${v.daysSince!=null?v.daysSince+'日':''}</td>
       <td class="numcol">${v.daysSinceShuppin!=null?v.daysSinceShuppin+'日':''}</td>
       <td class="numcol priceNum">¥${fmtNum(v.totalFee)}</td>
+      <td class="togglecol">${aaButtonHtml(v.vin)}</td>
     </tr>
   `).join('');
   document.querySelectorAll('#vehicleTbody tr').forEach(tr=>{
-    tr.onclick=()=> openVehicleModal(tr.dataset.vin);
+    tr.onclick=(e)=>{
+      const aaBtn = e.target.closest('.aaBtn');
+      if(aaBtn){ openAaModal(aaBtn.dataset.vin); return; }
+      openVehicleModal(tr.dataset.vin);
+    };
   });
 }
 
@@ -620,9 +670,12 @@ function renderBidChart(v){
   `;
 }
 
+let currentVhVin = null;
+
 function openVehicleModal(vin){
   const v = vehicles.find(x=>x.vin===vin);
   if(!v) return;
+  currentVhVin = vin;
   document.getElementById('vhModalTitle').textContent = `${v.carName||''} ${v.grade||''}`.trim() || v.vin;
   document.getElementById('vhModalSub').textContent = `${fmtVin(v.vin)} ／ ${stockBadge(v.stockStatus).replace(/<[^>]+>/g,'')}`;
 
@@ -646,6 +699,11 @@ function openVehicleModal(vin){
 
   renderBidChart(v);
 
+  const aaCount = aaPhotoCounts[v.vin] || 0;
+  const vhAaBtn = document.getElementById('vhAaBtn');
+  vhAaBtn.className = 'aaBtn' + (aaCount===1?' has1':aaCount===2?' has2':' has0');
+  vhAaBtn.textContent = `🖼 出品票${aaCount?'('+aaCount+'枚)':''}`;
+
   document.getElementById('vhTimeline').innerHTML = [...v.entries].reverse().map(e=>{
     const fee = (Number(e.shuppinRyo)||0)+(Number(e.seiyakuRyo)||0)+(Number(e.rakusatsuRyo)||0);
     const isCancel = e.status==='cancel';
@@ -664,6 +722,57 @@ function openVehicleModal(vin){
 
 document.getElementById('vhModalCloseX').onclick=()=>{ document.getElementById('vhOverlay').style.display='none'; };
 document.getElementById('vhOverlay').onclick=(e)=>{ if(e.target.id==='vhOverlay') e.currentTarget.style.display='none'; };
+
+// --- AA出品票(表示のみ・登録はciel-systemハブ側で行う) ---
+function aaButtonHtml(vin){
+  const count = aaPhotoCounts[vin] || 0;
+  const cls = count===1?'has1':count===2?'has2':'has0';
+  return `<button type="button" class="aaBtn ${cls}" data-vin="${vin}">🖼${count?count:''}</button>`;
+}
+
+function renderAaSlots(data){
+  const row = document.getElementById('aaImagesRow');
+  const slots = ['img1','img2'];
+  const imgs = slots.map(s=>data?.[s]).filter(Boolean);
+  if(!imgs.length){
+    row.innerHTML = '<p style="color:var(--text-muted);font-size:12px;">この車台番号の出品票画像は登録されていません</p>';
+    return;
+  }
+  row.innerHTML = imgs.map(src=>`
+    <div class="aaSlot">
+      <img src="${src}" class="aaZoomable" title="クリックで拡大">
+    </div>
+  `).join('');
+  row.querySelectorAll('.aaZoomable').forEach(img=>{
+    img.addEventListener('click', ()=> openAaZoom(img.src));
+  });
+}
+
+function openAaZoom(src){
+  document.getElementById('aaZoomImg').src = src;
+  document.getElementById('aaZoomOverlay').style.display='flex';
+}
+
+async function openAaModal(vin){
+  document.getElementById('aaVinLabel').textContent = fmtVin(vin);
+  document.getElementById('aaImagesRow').innerHTML = '<p style="color:var(--text-muted);font-size:12px;">読み込み中…</p>';
+  document.getElementById('aaModalStatus').textContent = '';
+  document.getElementById('aaOverlay').style.display = 'flex';
+  try{
+    const snap = await get(ref(db, `aaPhotos/${vin}`));
+    renderAaSlots(snap.val() || {});
+  }catch(err){
+    document.getElementById('aaImagesRow').innerHTML = '';
+    document.getElementById('aaModalStatus').textContent = '読み込みエラー: ' + err.message;
+    document.getElementById('aaModalStatus').className = 'aaModalStatus err';
+  }
+}
+
+document.getElementById('vhAaBtn').onclick=()=>{ if(currentVhVin) openAaModal(currentVhVin); };
+document.getElementById('aaModalCloseX').onclick=()=>{ document.getElementById('aaOverlay').style.display='none'; };
+document.getElementById('aaModalCloseBtn').onclick=()=>{ document.getElementById('aaOverlay').style.display='none'; };
+document.getElementById('aaOverlay').onclick=(e)=>{ if(e.target.id==='aaOverlay') e.currentTarget.style.display='none'; };
+document.getElementById('aaZoomOverlay').onclick=()=>{ document.getElementById('aaZoomOverlay').style.display='none'; };
 
 document.getElementById('searchBox').addEventListener('input', renderTable);
 document.getElementById('sourceSelect').addEventListener('change', renderTable);
