@@ -43,6 +43,9 @@ html[data-theme="dark"]{
 }
 html[data-theme="dark"] .filterbtn.active{background:rgba(74,171,207,0.12);color:var(--sky);box-shadow:0 0 8px var(--sky);}
 *{box-sizing:border-box;}
+input[type=number]::-webkit-outer-spin-button,
+input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none;margin:0;}
+input[type=number]{-moz-appearance:textfield;}
 body{margin:0;font-family:"Hiragino Kaku Gothic ProN","Yu Gothic",sans-serif;background:var(--bg);color:var(--text);}
 header{background:var(--header-bg);color:var(--header-text);padding:20px 28px;}
 .header-row{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;}
@@ -203,7 +206,7 @@ tr.rowArchive{background:var(--neutral-bg);opacity:.7;}
 <header>
 <div class="header-row">
   <div>
-    <h1>プライシングツール <span style="font-size:12px;font-weight:400;opacity:.75;">v1.01</span></h1>
+    <h1>プライシングツール <span style="font-size:12px;font-weight:400;opacity:.75;">v1.02</span></h1>
     <p>原価から総額下限・業販下限を算出し、車体価格に対する粗利をランク表示します。※データはFirebaseで共有されます</p>
   </div>
   <div style="display:flex;gap:8px;flex-shrink:0;">
