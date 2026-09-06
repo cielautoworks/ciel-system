@@ -26,6 +26,7 @@
   --a-bg:#eef0fb; --a-text:#4a4fc0; --a-border:#c9cdf2;
   --header-bg:linear-gradient(90deg,var(--sky),#3d8fae); --header-text:#fff;
   --thead-bg:#fafaf8; --hover-bg:#fafbfc;
+  --filterbtn-bg:#fff; --filterbtn-active-bg:var(--sky);
 }
 html[data-theme="dark"]{
   --bg:#0e0f13; --card:#181a20; --border:#2e313a;
@@ -38,7 +39,9 @@ html[data-theme="dark"]{
   --a-bg:#171a30; --a-text:#9297f5; --a-border:#9297f5;
   --header-bg:#12141a; --header-text:#f0f0f0;
   --thead-bg:#181a20; --hover-bg:#20232b;
+  --filterbtn-bg:#181a20; --filterbtn-active-bg:transparent;
 }
+html[data-theme="dark"] .filterbtn.active{background:rgba(74,171,207,0.12);color:var(--sky);box-shadow:0 0 8px var(--sky);}
 *{box-sizing:border-box;}
 body{margin:0;font-family:"Hiragino Kaku Gothic ProN","Yu Gothic",sans-serif;background:var(--bg);color:var(--text);}
 header{background:var(--header-bg);color:var(--header-text);padding:20px 28px;}
@@ -61,10 +64,19 @@ html[data-theme="dark"] .headerBtn:hover{background:rgba(74,171,207,0.12);}
 .printBtn:hover{background:#3d8fae;}
 .printBtn:disabled{opacity:.4;cursor:not-allowed;}
 
+.toolbar{display:flex;gap:8px;align-items:center;margin-bottom:12px;flex-wrap:wrap;}
+.filterbtn{font-size:12.5px;padding:6px 14px;border-radius:20px;border:2px solid var(--border);background:var(--filterbtn-bg);cursor:pointer;color:var(--text-sub);font-weight:600;}
+.filterbtn.active{background:var(--filterbtn-active-bg);color:#fff;border-color:var(--sky);}
+
 .tablewrap{overflow-x:auto;border:1px solid var(--border);border-radius:10px;}
 table{width:100%;border-collapse:collapse;background:var(--card);font-size:12.5px;}
 thead th{position:sticky;top:0;background:var(--thead-bg);text-align:left;padding:9px 8px;font-weight:600;color:var(--text-sub);border-bottom:1px solid var(--border);white-space:nowrap;}
 thead th .unit{display:block;font-size:9.5px;font-weight:400;color:var(--text-muted);}
+thead th.sortable{cursor:pointer;user-select:none;}
+thead th.sortable:hover{color:var(--sky);}
+thead th .arrow{font-size:9.5px;color:var(--text-muted);margin-left:3px;}
+thead th.sort-active{color:var(--sky);}
+thead th.sort-active .arrow{color:var(--sky);}
 tbody td{padding:8px;border-bottom:1px solid var(--border);vertical-align:top;white-space:nowrap;}
 tbody tr:hover{background:var(--hover-bg);}
 tr.rowArchive{background:var(--neutral-bg);opacity:.7;}
@@ -208,46 +220,7 @@ tr.rowArchive{background:var(--neutral-bg);opacity:.7;}
 
 <div class="wrap">
 
-<div class="sectionTitle">
-  <span><span class="num">1</span>車両一覧</span>
-  <div class="sectionRight">
-    <span class="saveStatus" id="saveStatus"></span>
-    <button class="printBtn" id="printSelectedBtn" disabled>🖨 選択車両を印刷</button>
-  </div>
-</div>
-<p class="legend" id="loadingNote">読み込み中…</p>
-<div class="tablewrap">
-<table>
-<thead>
-<tr>
-  <th class="ckcol"><input type="checkbox" id="ckAll"></th>
-  <th>車台番号</th>
-  <th>車両</th>
-  <th>在庫</th>
-  <th>出品票</th>
-  <th class="numcol">車体価格<span class="unit">千円</span></th>
-  <th class="numcol">支払総額<span class="unit">千円・自動</span></th>
-  <th class="numcol">業販価格<span class="unit">千円</span></th>
-  <th>ランク</th>
-  <th class="numcol">総額下限<span class="unit">税込+目標粗利</span></th>
-  <th class="numcol">業販下限<span class="unit">税抜+目標粗利</span></th>
-  <th class="numcol">車検<span class="unit">円</span></th>
-  <th class="numcol">加修<span class="unit">円</span></th>
-  <th class="numcol">陸送<span class="unit">円</span></th>
-  <th class="numcol">原価</th>
-  <th>詳細</th>
-</tr>
-</thead>
-<tbody id="vehicleTbody"></tbody>
-</table>
-</div>
-
-<div class="rankLegendRow" id="rankLegend"></div>
-<p class="legend">
-原価 = 精算書分(AA仕入記録から自動取得。記録がない車両は詳細から手動入力)＋追加費用(車検・加修・出品料・陸送費、車検は初期値35,000円・陸送は初期値4,000円)　／　総額下限 = 原価を税区分に応じて計算した税込原価 + 目標小売粗利(車両価格・落札料・出品料・陸送・加修に消費税10%を加算、リサイクル預託金・車検・自税相当額には加算しない)　／　業販下限 = 原価から車検・リサイクル預託金・消費税を除いた額 + 目標業販粗利　／　目標小売粗利(初期値15万円)・目標業販粗利(初期値10万円)は詳細から車両ごとに変更可能　／　車体価格・支払総額・業販価格は千円単位で入力(例:198→198,000円)、支払総額=車体価格+10万円(自動)　／　ランクは車体価格−原価(税抜)を、その車両の目標小売粗利を基準に算出　／　対象車両はcar-appの在庫(stock)・納車済み(stockArchive)の全車両。入力内容は自動的に保存されます。
-</p>
-
-<div class="sectionTitle"><span class="num">2</span>データ取込み</div>
+<div class="sectionTitle"><span class="num">1</span>データ取込み</div>
 <details class="uploadPanel">
 <summary>📂 精算書CSV・棚卸CSVを取り込んでデータを更新(ju-history.html・ciel-systemハブと同じ取込みロジックです)</summary>
 <div class="uploadGrid">
@@ -269,6 +242,51 @@ tr.rowArchive{background:var(--neutral-bg);opacity:.7;}
   </div>
 </div>
 </details>
+
+<div class="sectionTitle">
+  <span><span class="num">2</span>車両一覧</span>
+  <div class="sectionRight">
+    <span class="saveStatus" id="saveStatus"></span>
+    <button class="printBtn" id="printSelectedBtn" disabled>🖨 選択車両を印刷</button>
+  </div>
+</div>
+<div class="toolbar">
+  <button class="filterbtn" data-filter="all">すべて</button>
+  <button class="filterbtn active" data-filter="stock">在庫あり</button>
+  <button class="filterbtn" data-filter="archive">納車済み</button>
+</div>
+<p class="legend" id="loadingNote">読み込み中…</p>
+<div class="tablewrap">
+<table>
+<thead>
+<tr>
+  <th class="ckcol"><input type="checkbox" id="ckAll"></th>
+  <th class="sortable" data-sort="vin">車台番号<span class="arrow">↕</span></th>
+  <th class="sortable" data-sort="name">車両<span class="arrow">↕</span></th>
+  <th class="sortable" data-sort="date">仕入日<span class="arrow">↕</span></th>
+  <th>在庫</th>
+  <th>出品票</th>
+  <th class="numcol sortable" data-sort="body">車体価格<span class="unit">千円</span><span class="arrow">↕</span></th>
+  <th class="numcol">支払総額<span class="unit">千円・自動</span></th>
+  <th class="numcol sortable" data-sort="as">業販価格<span class="unit">千円</span><span class="arrow">↕</span></th>
+  <th class="sortable" data-sort="rank">ランク<span class="arrow">↕</span></th>
+  <th class="numcol sortable" data-sort="floorTotal">総額下限<span class="unit">税込+目標粗利</span><span class="arrow">↕</span></th>
+  <th class="numcol sortable" data-sort="floorWholesale">業販下限<span class="unit">税抜+目標粗利</span><span class="arrow">↕</span></th>
+  <th class="numcol">車検<span class="unit">円</span></th>
+  <th class="numcol">加修<span class="unit">円</span></th>
+  <th class="numcol">陸送<span class="unit">円</span></th>
+  <th class="numcol sortable" data-sort="cost">原価<span class="arrow">↕</span></th>
+  <th>詳細</th>
+</tr>
+</thead>
+<tbody id="vehicleTbody"></tbody>
+</table>
+</div>
+
+<div class="rankLegendRow" id="rankLegend"></div>
+<p class="legend">
+原価 = 精算書分(AA仕入記録から自動取得。記録がない車両は詳細から手動入力)＋追加費用(車検・加修・出品料・陸送費、車検は初期値35,000円・陸送は初期値4,000円)　／　総額下限 = 原価を税区分に応じて計算した税込原価 + 目標小売粗利(車両価格・落札料・出品料・陸送・加修に消費税10%を加算、リサイクル預託金・車検・自税相当額には加算しない)　／　業販下限 = 原価から車検・リサイクル預託金・消費税を除いた額 + 目標業販粗利　／　目標小売粗利(初期値15万円)・目標業販粗利(初期値10万円)は詳細から車両ごとに変更可能　／　車体価格・支払総額・業販価格は千円単位で入力(例:198→198,000円)、支払総額=車体価格+10万円(自動)　／　ランクは車体価格−原価(税抜)を、その車両の目標小売粗利を基準に算出　／　対象車両はcar-appの在庫(stock)・納車済み(stockArchive)の全車両。入力内容は自動的に保存されます。　／　初期表示は仕入日の新しい順・在庫ありのみ。上部の「在庫あり/納車済み/すべて」ボタンで絞り込み、列見出しをクリックすると並べ替えできます(もう一度クリックで昇順⇄降順)。
+</p>
 
 </div>
 
@@ -490,6 +508,7 @@ function build(){
     return {
       vin,
       name: sv.name || '',
+      date: sv.date || '',
       grade: (lastBuy && lastBuy.grade) || '',
       hasSeisan,
       seisan: hasSeisan ? {
@@ -511,12 +530,57 @@ function build(){
       selected: false,
     };
   });
+}
 
-  // 未入力(車体価格未設定)の車両を先に、それ以外は車台番号順に表示
-  vehicles.sort((a,b)=>{
-    const an = a.body==null ? 0 : 1, bn = b.body==null ? 0 : 1;
-    if(an !== bn) return an - bn;
-    return (a.vin||'').localeCompare(b.vin||'');
+// ===== 絞り込み・並べ替え =====
+let stockFilter = 'stock'; // 'all' | 'stock' | 'archive' (初期値:在庫あり)
+let sortKey = 'date', sortDir = -1; // 初期値:仕入日の新しい順(降順)
+const RANK_ORDER = { X:0, D:1, C:2, B:3, A:4, S:5 };
+
+function getSortValue(v, key){
+  switch(key){
+    case 'vin': return v.vin || '';
+    case 'name': return v.name || '';
+    case 'date': return v.date || '';
+    case 'body': return v.body;
+    case 'as': return v.as;
+    case 'rank': {
+      if(v.body==null) return null;
+      const rank = rankOf(v.body - costOf(v), v.marginTotal);
+      return rank==null ? null : RANK_ORDER[rank];
+    }
+    case 'floorTotal': return floorTotal(v);
+    case 'floorWholesale': return floorWholesale(v);
+    case 'cost': return costOf(v);
+    default: return '';
+  }
+}
+function compareVehicles(a, b){
+  const av = getSortValue(a, sortKey), bv = getSortValue(b, sortKey);
+  const aEmpty = (av==null || av==='');
+  const bEmpty = (bv==null || bv==='');
+  if(aEmpty && bEmpty) return 0;
+  if(aEmpty) return 1; // 未入力・空欄は常に末尾
+  if(bEmpty) return -1;
+  if(typeof av === 'string') return av.localeCompare(bv) * sortDir;
+  return (av - bv) * sortDir;
+}
+function getVisibleVehicles(){
+  let list = vehicles;
+  if(stockFilter !== 'all') list = list.filter(v=>v.stockStatus===stockFilter);
+  return list.slice().sort(compareVehicles);
+}
+function updateSortHeaderUI(){
+  document.querySelectorAll('thead th.sortable').forEach(th=>{
+    const key = th.dataset.sort;
+    const arrow = th.querySelector('.arrow');
+    if(key===sortKey){
+      th.classList.add('sort-active');
+      if(arrow) arrow.textContent = sortDir===1 ? '▲' : '▼';
+    } else {
+      th.classList.remove('sort-active');
+      if(arrow) arrow.textContent = '↕';
+    }
   });
 }
 
@@ -560,7 +624,8 @@ function stockBadge(status){
 
 function renderTable(){
   const tbody = document.getElementById('vehicleTbody');
-  tbody.innerHTML = vehicles.map((v,i)=>{
+  const list = getVisibleVehicles();
+  tbody.innerHTML = list.map((v,i)=>{
     const cost = costOf(v);
     const total = v.body==null ? null : v.body + TOTAL_ADD;
     const profit = v.body==null ? null : v.body - cost;
@@ -574,6 +639,7 @@ function renderTable(){
       <td class="ckcol"><input type="checkbox" class="rowCk" data-vin="${v.vin}" ${v.selected?'checked':''}></td>
       <td class="vin">${v.vin}</td>
       <td><span class="carname">${v.name}</span><br><span class="grade">${v.grade}</span></td>
+      <td>${v.date||''}</td>
       <td>${stockBadge(v.stockStatus)}</td>
       <td><button class="aaBtn ${aaCls}" data-vin="${v.vin}" data-action="aa">🖼${v.aaCount?v.aaCount:''}</button></td>
       <td class="numcol"><input type="number" class="priceInput big" placeholder="未入力" value="${bodyVal}" data-vin="${v.vin}" data-field="body"></td>
@@ -622,6 +688,7 @@ function renderTable(){
     btn.addEventListener('click', ()=> openAa(btn.dataset.vin));
   });
   updatePrintBtnState();
+  updateSortHeaderUI();
 }
 
 function updateRowCalc(vin){
@@ -795,10 +862,30 @@ document.getElementById('aaZoomOverlay').addEventListener('click', ()=>{
   document.getElementById('aaZoomOverlay').classList.remove('open');
 });
 
-// ===== 全選択チェック =====
+// ===== 全選択チェック(表示中=絞り込み後の車両のみ対象) =====
 document.getElementById('ckAll').addEventListener('change', e=>{
-  vehicles.forEach(v=> v.selected = e.target.checked);
+  getVisibleVehicles().forEach(v=> v.selected = e.target.checked);
   renderTable();
+});
+
+// ===== 絞り込みボタン =====
+document.querySelectorAll('.toolbar .filterbtn').forEach(b=>{
+  b.addEventListener('click', ()=>{
+    document.querySelectorAll('.toolbar .filterbtn').forEach(x=>x.classList.remove('active'));
+    b.classList.add('active');
+    stockFilter = b.dataset.filter;
+    renderTable();
+  });
+});
+
+// ===== 並べ替え(列見出しクリック) =====
+document.querySelectorAll('thead th.sortable').forEach(th=>{
+  th.addEventListener('click', ()=>{
+    const key = th.dataset.sort;
+    if(sortKey===key){ sortDir = -sortDir; }
+    else { sortKey = key; sortDir = (key==='date') ? -1 : 1; }
+    renderTable();
+  });
 });
 
 // ===== 印刷 =====
