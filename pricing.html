@@ -1,0 +1,1092 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>プライシングツール | シエルオートワークス</title>
+<script>
+// ダークモードの初期適用(画面のちらつき防止のため、CSS読み込み前に実行する)。
+// ads.html・ju-history.htmlと同じキー名(ciel-theme)を使うことで、設定を共有する。
+(function(){
+  var t = localStorage.getItem('ciel-theme');
+  if(t !== 'light' && t !== 'dark') t = 'dark';
+  document.documentElement.setAttribute('data-theme', t);
+})();
+</script>
+<style>
+:root{
+  --sky:#4AABCF; --pink:#D97A9A;
+  --bg:#f5f6f4; --card:#ffffff; --border:#e2e2de;
+  --text:#232320; --text-sub:#6b6b65; --text-muted:#9a9a92;
+  --danger-bg:#fbeaea; --danger-text:#a32d2d; --danger-border:#e9b9b9;
+  --warn-bg:#fbf1de; --warn-text:#8a5a0a; --warn-border:#eecf9d;
+  --ok-bg:#e9f4ea; --ok-text:#2c6b34; --ok-border:#bfe0c4;
+  --neutral-bg:#f1efe8; --neutral-text:#6b6b65; --neutral-border:#dcdad2;
+  --b-bg:#eaf3f8; --b-text:#2f7ea3; --b-border:#bcdcea;
+  --a-bg:#eef0fb; --a-text:#4a4fc0; --a-border:#c9cdf2;
+  --header-bg:linear-gradient(90deg,var(--sky),#3d8fae); --header-text:#fff;
+  --thead-bg:#fafaf8; --hover-bg:#fafbfc;
+}
+html[data-theme="dark"]{
+  --bg:#0e0f13; --card:#181a20; --border:#2e313a;
+  --text:#f0f0f0; --text-sub:#a9adb8; --text-muted:#6e7280;
+  --danger-bg:#20142a; --danger-text:#ff45d0; --danger-border:#ff45d0;
+  --warn-bg:#1c1f10; --warn-text:#e8ff4d; --warn-border:#e8ff4d;
+  --ok-bg:#0f1f14; --ok-text:#33ff6e; --ok-border:#33ff6e;
+  --neutral-bg:#181a20; --neutral-text:#8a8f9c; --neutral-border:#3a3e4a;
+  --b-bg:#0f1c22; --b-text:#4ecbf0; --b-border:#4ecbf0;
+  --a-bg:#171a30; --a-text:#9297f5; --a-border:#9297f5;
+  --header-bg:#12141a; --header-text:#f0f0f0;
+  --thead-bg:#181a20; --hover-bg:#20232b;
+}
+*{box-sizing:border-box;}
+body{margin:0;font-family:"Hiragino Kaku Gothic ProN","Yu Gothic",sans-serif;background:var(--bg);color:var(--text);}
+header{background:var(--header-bg);color:var(--header-text);padding:20px 28px;}
+.header-row{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;}
+header h1{margin:0;font-size:20px;font-weight:600;}
+header p{margin:4px 0 0;font-size:13px;opacity:.9;}
+.headerBtn{background:transparent;border:2px solid rgba(255,255,255,0.7);color:#fff;border-radius:8px;padding:8px 16px;font-size:13px;cursor:pointer;font-weight:600;text-decoration:none;display:inline-flex;align-items:center;}
+.headerBtn:hover{background:rgba(255,255,255,0.12);}
+html[data-theme="dark"] .headerBtn{border-color:var(--sky);color:var(--sky);}
+html[data-theme="dark"] .headerBtn:hover{background:rgba(74,171,207,0.12);}
+
+.wrap{padding:22px 28px 60px;max-width:1700px;margin:0 auto;}
+.sectionTitle{font-size:14px;font-weight:600;color:var(--text);margin:26px 0 10px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;}
+.sectionTitle .num{display:inline-block;width:20px;height:20px;line-height:20px;text-align:center;border-radius:50%;background:var(--sky);color:#fff;font-size:11px;margin-right:8px;}
+.sectionRight{display:flex;align-items:center;gap:12px;}
+.saveStatus{font-size:11.5px;color:var(--text-muted);min-width:110px;}
+.saveStatus.saving{color:var(--warn-text);}
+.saveStatus.ok{color:var(--ok-text);}
+.printBtn{background:var(--sky);color:#fff;border:none;border-radius:8px;padding:8px 18px;font-size:13px;font-weight:600;cursor:pointer;}
+.printBtn:hover{background:#3d8fae;}
+.printBtn:disabled{opacity:.4;cursor:not-allowed;}
+
+.tablewrap{overflow-x:auto;border:1px solid var(--border);border-radius:10px;}
+table{width:100%;border-collapse:collapse;background:var(--card);font-size:12.5px;}
+thead th{position:sticky;top:0;background:var(--thead-bg);text-align:left;padding:9px 8px;font-weight:600;color:var(--text-sub);border-bottom:1px solid var(--border);white-space:nowrap;}
+thead th .unit{display:block;font-size:9.5px;font-weight:400;color:var(--text-muted);}
+tbody td{padding:8px;border-bottom:1px solid var(--border);vertical-align:top;white-space:nowrap;}
+tbody tr:hover{background:var(--hover-bg);}
+tr.rowArchive{background:var(--neutral-bg);opacity:.7;}
+.vin{font-family:monospace;color:var(--text);font-size:13px;font-weight:600;}
+.carname{font-weight:600;}
+.grade{color:var(--text-sub);font-size:11px;}
+.numcol{text-align:right;}
+.ckcol{text-align:center;}
+.smallInput{width:70px;padding:5px 6px;border:1px solid var(--border);border-radius:6px;background:var(--bg);color:var(--text);font-size:12px;text-align:right;}
+.smallInput:focus{outline:none;border-color:var(--sky);}
+.priceInput{width:78px;padding:5px 6px;border:1px solid var(--border);border-radius:6px;background:var(--bg);color:var(--text);font-size:12.5px;text-align:right;}
+.priceInput:focus{outline:none;border-color:var(--sky);}
+.priceInput.big{width:104px;padding:8px 9px;font-size:21px;font-weight:700;}
+.priceInput.totalMatch{background:var(--bg);color:var(--text);border:1px solid var(--border);opacity:1;-webkit-text-fill-color:var(--text);}
+.rankBadge{display:inline-block;min-width:26px;text-align:center;font-size:12px;font-weight:700;padding:3px 8px;border-radius:6px;border:2px solid transparent;}
+.rankBadge.none{background:var(--neutral-bg);color:var(--text-muted);border-color:var(--neutral-border);}
+.rankBadge.X{background:var(--danger-bg);color:var(--danger-text);border-color:var(--danger-border);}
+.rankBadge.D{background:var(--warn-bg);color:var(--warn-text);border-color:var(--warn-border);}
+.rankBadge.C{background:var(--neutral-bg);color:var(--neutral-text);border-color:var(--neutral-border);}
+.rankBadge.B{background:var(--b-bg);color:var(--b-text);border-color:var(--b-border);}
+.rankBadge.A{background:var(--a-bg);color:var(--a-text);border-color:var(--a-border);}
+.rankBadge.S{background:var(--ok-bg);color:var(--ok-text);border-color:var(--ok-border);}
+.detailBtn{font-size:11.5px;font-weight:600;padding:4px 10px;border:2px solid var(--sky);border-radius:6px;background:transparent;color:var(--sky);cursor:pointer;white-space:nowrap;}
+.detailBtn:hover{background:rgba(74,171,207,0.12);}
+.legend{font-size:11px;color:var(--text-sub);margin:10px 0 0;line-height:1.8;}
+
+.aaBtn{font-size:11.5px;font-weight:600;padding:4px 10px;border:2px solid var(--sky);border-radius:6px;background:transparent;color:var(--sky);cursor:pointer;white-space:nowrap;}
+.aaBtn.has1{border-color:#ff9d33;color:#ff9d33;}
+.aaBtn.has2{border-color:var(--warn-text);color:var(--warn-text);}
+.aaBtn.has0{opacity:.35;}
+.aaBtn:hover{background:rgba(74,171,207,0.12);}
+
+.uploadPanel{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:14px 16px;margin-top:10px;}
+.uploadPanel summary{cursor:pointer;font-weight:600;font-size:13.5px;color:var(--text);}
+.uploadGrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px;margin-top:14px;}
+.dropZone{padding:20px;border:2px dashed var(--sky);border-radius:10px;text-align:center;color:var(--text-sub);background:var(--bg);cursor:pointer;transition:.15s;}
+.dropZone:hover, .dropZone.dragover{border-color:var(--sky);background:rgba(74,171,207,0.08);}
+.dropZone p{margin:0 0 2px;font-size:13px;font-weight:600;color:var(--text);}
+.dropZone span{font-size:11px;}
+.uploadStatus{font-size:11.5px;color:var(--text-muted);margin-top:8px;min-height:14px;white-space:pre-line;}
+.uploadStatus.ok{color:var(--ok-text);}
+.uploadStatus.err{color:var(--danger-text);}
+
+.rankLegendRow{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;}
+.rankLegendRow .item{font-size:11px;color:var(--text-sub);display:flex;align-items:center;gap:5px;}
+
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,0.55);display:none;align-items:center;justify-content:center;z-index:100;}
+.overlay.open{display:flex;}
+.modalPanel{background:var(--card);border:2px solid var(--border);border-radius:14px;padding:22px 24px;width:96vw;max-width:640px;max-height:92vh;overflow-y:auto;position:relative;}
+.modalHeader{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:4px;}
+.modalHeader h3{margin:0;font-size:16px;}
+.modalCloseX{width:30px;height:30px;flex-shrink:0;border-radius:50%;border:2px solid var(--border);background:var(--card);color:var(--text);font-size:15px;cursor:pointer;}
+.modalCloseX:hover{border-color:var(--sky);color:var(--sky);}
+.modalSub{font-size:12px;color:var(--text-sub);margin:0 0 6px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+.fieldGroup{margin-bottom:16px;}
+.fieldGroup h4{font-size:12.5px;font-weight:600;color:var(--text-sub);margin:0 0 8px;border-bottom:1px solid var(--border);padding-bottom:6px;}
+.fieldRow{display:flex;align-items:center;justify-content:space-between;padding:5px 0;font-size:13px;gap:10px;}
+.fieldRow .fieldNote{font-size:10.5px;color:var(--text-muted);}
+.fieldRow input{width:120px;padding:6px 8px;border:1px solid var(--border);border-radius:6px;background:var(--bg);color:var(--text);font-size:13px;text-align:right;}
+.fieldRow input:focus{outline:none;border-color:var(--sky);}
+.fieldRow input.bigField{font-size:21px;font-weight:700;width:150px;padding:9px 11px;}
+.fieldRow input.bigField.totalMatch{background:var(--bg);color:var(--text);border:1px solid var(--border);opacity:1;-webkit-text-fill-color:var(--text);}
+.sourceNote{font-size:11px;color:var(--text-muted);margin:-4px 0 10px;}
+.resultBox{background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:14px 16px;margin-top:6px;}
+.resultRow{display:flex;justify-content:space-between;align-items:center;padding:4px 0;font-size:13px;gap:10px;}
+.resultRow b{font-size:15px;}
+.resultRow .taxNote{font-size:10px;color:var(--text-muted);}
+.modalSaveNote{font-size:11px;color:var(--text-muted);text-align:center;margin-top:10px;}
+
+.aaModalPanelPhotos{background:var(--card);border:2px solid var(--border);border-radius:14px;padding:22px 24px;width:96vw;max-width:900px;max-height:92vh;overflow-y:auto;position:relative;}
+.aaModalHeader{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:4px;}
+.aaModalHeader h3{margin:0;font-size:15px;}
+.aaVinLabel{font-size:12px;color:var(--text-sub);margin:0 0 16px;}
+.aaImagesRow{display:flex;gap:20px;justify-content:center;flex-wrap:wrap;min-height:120px;align-items:flex-start;}
+.aaSlot{display:flex;flex-direction:column;align-items:center;gap:8px;flex:1 1 0;min-width:200px;max-width:420px;}
+.aaSlot img{width:100%;border-radius:8px;border:1px solid var(--border);display:block;cursor:zoom-in;}
+.aaEmptyNote{color:var(--text-muted);font-size:12px;padding:20px;}
+.aaZoomOverlay{position:fixed;inset:0;background:rgba(0,0,0,0.85);display:none;align-items:center;justify-content:center;z-index:200;cursor:zoom-out;}
+.aaZoomOverlay.open{display:flex;}
+.aaZoomOverlay img{max-width:96vw;max-height:96vh;object-fit:contain;}
+
+.settingsOverlay{position:fixed;inset:0;background:rgba(0,0,0,0.55);display:none;align-items:center;justify-content:center;z-index:100;}
+.settingsOverlay.open{display:flex;}
+.settingsPanel{background:var(--card);border:2px solid var(--border);border-radius:14px;padding:22px 24px;width:320px;max-width:90vw;}
+.settingsPanel h3{margin:0 0 16px;font-size:15px;font-weight:600;color:var(--text);}
+.settingsRow{display:flex;justify-content:space-between;align-items:center;padding:12px 0;}
+.settingsRow span{font-size:13px;color:var(--text);}
+.settingsCloseBtn{margin-top:12px;width:100%;padding:8px;background:transparent;border:2px solid var(--sky);color:var(--sky);border-radius:8px;font-size:13px;cursor:pointer;font-weight:600;}
+.switch{position:relative;display:inline-block;width:46px;height:26px;flex-shrink:0;}
+.switch input{opacity:0;width:0;height:0;}
+.switch .slider{position:absolute;top:0;left:0;right:0;bottom:0;background:var(--border);border-radius:26px;transition:.2s;cursor:pointer;}
+.switch .slider:before{position:absolute;content:"";height:20px;width:20px;left:3px;top:3px;background:#fff;border-radius:50%;transition:.2s;box-shadow:0 1px 2px rgba(0,0,0,.3);}
+.switch input:checked + .slider{background:var(--sky);}
+.switch input:checked + .slider:before{transform:translateX(20px);}
+
+/* ===== 印刷用シート ===== */
+#printArea{display:none;}
+.printTable{width:100%;border-collapse:collapse;font-family:"Hiragino Kaku Gothic ProN","Yu Gothic",sans-serif;color:#000;background:#fff;}
+.printTable th, .printTable td{border:1px solid #000;padding:6px 8px;text-align:center;color:#000;background:#fff;}
+.printTable th{background:#e0e0e0;font-size:11px;font-weight:700;}
+.printTable .rule{width:48px;}
+.printTable .vinCell{font-family:monospace;font-size:12px;}
+.printTable .nameCell{font-size:12px;text-align:left;}
+.printTable .bigPrice{font-size:22px;font-weight:700;}
+.printTitle{font-size:16px;font-weight:700;margin-bottom:10px;color:#000;}
+
+@media print{
+  body > *:not(#printArea){display:none!important;}
+  #printArea{display:block!important;position:static;width:100%;color:#000!important;background:#fff!important;}
+  #printArea, #printArea *{color:#000!important;background:#fff!important;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+  body{background:#fff!important;}
+}
+</style>
+</head>
+<body>
+
+<header>
+<div class="header-row">
+  <div>
+    <h1>プライシングツール <span style="font-size:12px;font-weight:400;opacity:.75;">v1.00</span></h1>
+    <p>原価から総額下限・業販下限を算出し、車体価格に対する粗利をランク表示します。※データはFirebaseで共有されます</p>
+  </div>
+  <div style="display:flex;gap:8px;flex-shrink:0;">
+    <a class="headerBtn" href="./index.html">🏠 一覧へ</a>
+    <button class="headerBtn" id="refreshBtn">🔄 最新を取得</button>
+    <button class="headerBtn" id="settingsBtn">⚙ 設定</button>
+  </div>
+</div>
+</header>
+
+<div class="settingsOverlay" id="settingsOverlay">
+  <div class="settingsPanel">
+    <h3>設定</h3>
+    <div class="settingsRow">
+      <span>ダークモード</span>
+      <label class="switch"><input type="checkbox" id="darkModeToggle"><span class="slider"></span></label>
+    </div>
+    <button class="settingsCloseBtn" id="settingsCloseBtn">閉じる</button>
+  </div>
+</div>
+
+<div class="wrap">
+
+<div class="sectionTitle">
+  <span><span class="num">1</span>車両一覧</span>
+  <div class="sectionRight">
+    <span class="saveStatus" id="saveStatus"></span>
+    <button class="printBtn" id="printSelectedBtn" disabled>🖨 選択車両を印刷</button>
+  </div>
+</div>
+<p class="legend" id="loadingNote">読み込み中…</p>
+<div class="tablewrap">
+<table>
+<thead>
+<tr>
+  <th class="ckcol"><input type="checkbox" id="ckAll"></th>
+  <th>車台番号</th>
+  <th>車両</th>
+  <th>在庫</th>
+  <th>出品票</th>
+  <th class="numcol">車体価格<span class="unit">千円</span></th>
+  <th class="numcol">支払総額<span class="unit">千円・自動</span></th>
+  <th class="numcol">業販価格<span class="unit">千円</span></th>
+  <th>ランク</th>
+  <th class="numcol">総額下限<span class="unit">税込+目標粗利</span></th>
+  <th class="numcol">業販下限<span class="unit">税抜+目標粗利</span></th>
+  <th class="numcol">車検<span class="unit">円</span></th>
+  <th class="numcol">加修<span class="unit">円</span></th>
+  <th class="numcol">陸送<span class="unit">円</span></th>
+  <th class="numcol">原価</th>
+  <th>詳細</th>
+</tr>
+</thead>
+<tbody id="vehicleTbody"></tbody>
+</table>
+</div>
+
+<div class="rankLegendRow" id="rankLegend"></div>
+<p class="legend">
+原価 = 精算書分(AA仕入記録から自動取得。記録がない車両は詳細から手動入力)＋追加費用(車検・加修・出品料・陸送費、車検は初期値35,000円・陸送は初期値4,000円)　／　総額下限 = 原価を税区分に応じて計算した税込原価 + 目標小売粗利(車両価格・落札料・出品料・陸送・加修に消費税10%を加算、リサイクル預託金・車検・自税相当額には加算しない)　／　業販下限 = 原価から車検・リサイクル預託金・消費税を除いた額 + 目標業販粗利　／　目標小売粗利(初期値15万円)・目標業販粗利(初期値10万円)は詳細から車両ごとに変更可能　／　車体価格・支払総額・業販価格は千円単位で入力(例:198→198,000円)、支払総額=車体価格+10万円(自動)　／　ランクは車体価格−原価(税抜)を、その車両の目標小売粗利を基準に算出　／　対象車両はcar-appの在庫(stock)・納車済み(stockArchive)の全車両。入力内容は自動的に保存されます。
+</p>
+
+<div class="sectionTitle"><span class="num">2</span>データ取込み</div>
+<details class="uploadPanel">
+<summary>📂 精算書CSV・棚卸CSVを取り込んでデータを更新(ju-history.html・ciel-systemハブと同じ取込みロジックです)</summary>
+<div class="uploadGrid">
+  <div>
+    <div class="dropZone" id="seisanDropZone">
+      <p>📥 精算書CSVをドラッグ&ドロップ</p>
+      <span>JU新潟・USS新潟・USS東京・TAA東北の計算書CSV(juHistoryノードに保存・ju-history.htmlと共有)</span>
+    </div>
+    <input type="file" id="seisanFileInput" accept=".csv,.txt" style="display:none">
+    <div class="uploadStatus" id="seisanUploadStatus"></div>
+  </div>
+  <div>
+    <div class="dropZone" id="tanaCsvDropZone">
+      <p>📄 棚卸CSVをドラッグ&ドロップ</p>
+      <span>新規車台番号のみ登録(adsData/tanaoroshi・stockノードに保存・ciel-systemハブと共有)</span>
+    </div>
+    <input type="file" id="tanaCsvFileInput" accept=".csv" style="display:none">
+    <div class="uploadStatus" id="tanaCsvUploadStatus"></div>
+  </div>
+</div>
+</details>
+
+</div>
+
+<!-- 詳細モーダル -->
+<div class="overlay" id="detailOverlay">
+  <div class="modalPanel">
+    <div class="modalHeader">
+      <h3 id="mVehicleName"></h3>
+      <button class="modalCloseX" id="mCloseBtn">✕</button>
+    </div>
+    <p class="modalSub"><span id="mVin"></span><span id="mStatusBadge"></span></p>
+
+    <div class="fieldGroup" id="mSeisanGroup">
+      <h4>精算書分(自動取得)</h4>
+      <div id="mSeisanRows"></div>
+    </div>
+
+    <div class="fieldGroup" id="mManualCostGroup" style="display:none;">
+      <h4>原価(手動入力・AA仕入記録なし)</h4>
+      <div class="fieldRow">
+        <span>原価<span class="fieldNote">円単位</span></span>
+        <input type="number" id="mManualCost">
+      </div>
+    </div>
+
+    <div class="fieldGroup">
+      <h4>追加費用(内訳入力・円単位)</h4>
+      <div class="fieldRow"><span>車検<span class="fieldNote">消費税なし</span></span><input type="number" id="mShaken"></div>
+      <div class="fieldRow"><span>加修<span class="fieldNote">消費税10%あり</span></span><input type="number" id="mKashu"></div>
+      <div class="fieldRow"><span>出品料<span class="fieldNote">消費税10%あり</span></span><input type="number" id="mShuppin"></div>
+      <div class="fieldRow"><span>陸送費<span class="fieldNote">消費税10%あり</span></span><input type="number" id="mRikuso"></div>
+    </div>
+
+    <div class="fieldGroup">
+      <h4>価格(千円単位・例:198→198,000円)</h4>
+      <div class="fieldRow"><span>車体価格</span><input type="number" id="mBody" class="bigField"></div>
+      <div class="fieldRow"><span>支払総額(車体+10万円)</span><input type="number" id="mTotal" class="bigField totalMatch" disabled></div>
+      <div class="fieldRow"><span>業販価格</span><input type="number" id="mAS" class="bigField"></div>
+    </div>
+
+    <div class="fieldGroup">
+      <h4>目標粗利(円単位・この車両だけの調整に使えます)</h4>
+      <div class="fieldRow"><span>目標小売粗利<span class="fieldNote">総額下限の算出に使用・初期値15万円</span></span><input type="number" id="mMarginTotal"></div>
+      <div class="fieldRow"><span>目標業販粗利<span class="fieldNote">業販下限の算出に使用・初期値10万円</span></span><input type="number" id="mMarginWholesale"></div>
+    </div>
+
+    <div class="resultBox">
+      <div class="resultRow"><span>原価合計(税抜)</span><b id="rCost">¥0</b></div>
+      <div class="resultRow"><span>総額下限<span class="taxNote" id="rFloorTotalNote"></span></span><b id="rFloorTotal">¥0</b></div>
+      <div class="resultRow"><span>業販下限<span class="taxNote" id="rFloorWholesaleNote"></span></span><b id="rFloorWholesale">¥0</b></div>
+      <div class="resultRow"><span>粗利額(車体−原価税抜)</span><b id="rProfit">¥0</b></div>
+      <div class="resultRow"><span>ランク</span><span id="rRank"></span></div>
+    </div>
+
+    <p class="modalSaveNote" id="mSaveNote">入力内容は自動的に保存されます</p>
+  </div>
+</div>
+
+<!-- AA出品票モーダル -->
+<div class="overlay" id="aaOverlay">
+  <div class="aaModalPanelPhotos">
+    <div class="aaModalHeader">
+      <h3>出品票(AA画像・表示のみ)</h3>
+      <button class="modalCloseX" id="aaCloseBtn">✕</button>
+    </div>
+    <p class="aaVinLabel" id="aaVinLabel"></p>
+    <div class="aaImagesRow" id="aaImagesRow"></div>
+  </div>
+</div>
+<div class="aaZoomOverlay" id="aaZoomOverlay">
+  <img id="aaZoomImg" src="">
+</div>
+
+<!-- 印刷専用エリア -->
+<div id="printArea">
+  <p class="printTitle">プライシング一覧(印刷)　出力日:<span id="printDate"></span></p>
+  <table class="printTable">
+    <thead>
+      <tr>
+        <th class="rule">C</th>
+        <th class="rule">G</th>
+        <th class="rule">A</th>
+        <th class="rule">Q</th>
+        <th>車台番号</th>
+        <th>車両</th>
+        <th>車体価格<br><span style="font-weight:400;">(千円)</span></th>
+        <th>支払総額<br><span style="font-weight:400;">(千円)</span></th>
+        <th>業販価格<br><span style="font-weight:400;">(千円)</span></th>
+      </tr>
+    </thead>
+    <tbody id="printTbody"></tbody>
+  </table>
+</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getDatabase, ref, get, set, update }
+  from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
+import { getAuth, onAuthStateChanged, signInAnonymously }
+  from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyAFJKdWkTa9WvX9W3ZA95P0BoDDugQUkuM",
+  authDomain: "ciel-autoworks.firebaseapp.com",
+  databaseURL: "https://ciel-autoworks-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "ciel-autoworks",
+};
+const fbApp = initializeApp(firebaseConfig);
+const db = getDatabase(fbApp);
+const auth = getAuth(fbApp);
+
+function normVin(v){ return (v||'').replace(/\s+/g,'').toUpperCase(); }
+const SOURCE_LABELS = { JU_niigata:'JU新潟', USS_niigata:'USS新潟', USS_tokyo:'USS東京', TAA_tohoku:'TAA東北' };
+function sourceLabel(s){ return SOURCE_LABELS[s] || s || ''; }
+
+const MARGIN_TOTAL_DEFAULT = 150000;      // 目標小売粗利の初期値(車両ごとに詳細から変更可能)
+const MARGIN_WHOLESALE_DEFAULT = 100000;  // 目標業販粗利の初期値(車両ごとに詳細から変更可能)
+const EXTRA_DEFAULT = { shaken:35000, kashu:0, shuppinRyo:0, rikuso:4000 }; // 車検・陸送は初期値あり
+const TOTAL_ADD = 100000; // 支払総額 = 車体価格 + この額(自動)
+const TAX_RATE = 0.10;
+
+function fmtYen(n){
+  if(n==null || isNaN(n)) return '―';
+  const sign = n<0 ? '-' : '';
+  return sign + '¥' + Math.abs(Math.round(n)).toLocaleString('ja-JP');
+}
+function fmtSen(n){ // 千円単位で表示(198000円→198)
+  if(n==null || isNaN(n)) return '―';
+  const sign = n<0 ? '-' : '';
+  return sign + Math.abs(Math.round(n/1000)).toLocaleString('ja-JP');
+}
+function seisanTotal(s){ return s.rakusatsu + s.recycle + s.rakusatsuRyo + s.jizei; }
+function extraTotal(e){ return (Number(e.shaken)||0)+(Number(e.kashu)||0)+(Number(e.shuppinRyo)||0)+(Number(e.rikuso)||0); }
+function costOf(v){
+  const seisanPart = v.hasSeisan ? seisanTotal(v.seisan) : (Number(v.manualCost)||0);
+  return seisanPart + extraTotal(v.extra);
+}
+// 消費税10%を加算する部分(車両価格・落札料・出品料・陸送・加修)
+function taxableSum(v){
+  const seisanTaxable = v.hasSeisan ? (v.seisan.rakusatsu + v.seisan.rakusatsuRyo) : (Number(v.manualCost)||0);
+  return seisanTaxable + (Number(v.extra.kashu)||0) + (Number(v.extra.shuppinRyo)||0) + (Number(v.extra.rikuso)||0);
+}
+// 消費税を加算しない部分(リサイクル預託金・車検・自税相当額)
+function nonTaxableSum(v){
+  const seisanNonTaxable = v.hasSeisan ? (v.seisan.recycle + v.seisan.jizei) : 0;
+  return seisanNonTaxable + (Number(v.extra.shaken)||0);
+}
+function floorTotal(v){ // 総額下限 = 税込原価 + 目標小売粗利
+  const taxed = taxableSum(v) * (1+TAX_RATE);
+  return taxed + nonTaxableSum(v) + (Number(v.marginTotal)||0);
+}
+function floorWholesale(v){ // 業販下限 = (車検・リサイクル預託金・消費税を除く原価) + 目標業販粗利
+  const seisanBase = v.hasSeisan ? (v.seisan.rakusatsu + v.seisan.rakusatsuRyo + v.seisan.jizei) : (Number(v.manualCost)||0);
+  const extraBase = (Number(v.extra.kashu)||0) + (Number(v.extra.shuppinRyo)||0) + (Number(v.extra.rikuso)||0);
+  return seisanBase + extraBase + (Number(v.marginWholesale)||0);
+}
+function rankOf(profit, target){
+  if(profit==null) return null;
+  target = Number(target)||0;
+  if(profit < target - 100000) return 'X';
+  if(profit < target) return 'D';
+  if(profit < target + 100000) return 'C';
+  if(profit < target + 200000) return 'B';
+  if(profit < target + 300000) return 'A';
+  return 'S';
+}
+function statusBadgeHtml(v){
+  if(!v.hasSeisan) return '<span style="display:inline-block;font-size:10.5px;padding:2px 8px;border-radius:20px;background:var(--danger-bg);color:var(--danger-text);border:2px solid var(--danger-border);">要確認(AA仕入記録なし・原価手動入力)</span>';
+  return '<span style="display:inline-block;font-size:10.5px;padding:2px 8px;border-radius:20px;background:var(--ok-bg);color:var(--ok-text);border:2px solid var(--ok-border);">精算書データあり</span>';
+}
+
+// ===== Firebaseから読み込んだ生データ =====
+let stock = {}, stockArchive = {}, juHistory = {}, aaPhotoCounts = {}, pricingData = {};
+let vehicles = [];
+
+async function loadAll(){
+  document.getElementById('loadingNote').style.display='';
+  document.getElementById('loadingNote').textContent = '読み込み中…';
+  try{
+    const [stockSnap, archSnap, juSnap, aaSnap, pdSnap] = await Promise.all([
+      get(ref(db,'stock')),
+      get(ref(db,'stockArchive')),
+      get(ref(db,'juHistory')),
+      get(ref(db,'adsData/aaPhotoCounts')),
+      get(ref(db,'pricingData')),
+    ]);
+    stock = stockSnap.val() || {};
+    stockArchive = archSnap.val() || {};
+    juHistory = juSnap.val() || {};
+    aaPhotoCounts = aaSnap.val() || {};
+    pricingData = pdSnap.val() || {};
+    build();
+    render();
+    document.getElementById('loadingNote').style.display='none';
+  }catch(err){
+    console.error('loadAll error:', err);
+    document.getElementById('loadingNote').textContent = '● 読み込みエラー: ' + err.message;
+  }
+}
+
+function build(){
+  const stockList = Object.values(stock).filter(v=>v && v.vin).map(v=>({...v, archived:false}));
+  const archiveList = Object.values(stockArchive).filter(v=>v && v.vin).map(v=>({...v, archived:true}));
+  const all = [...stockList, ...archiveList];
+
+  vehicles = all.map(sv=>{
+    const vin = normVin(sv.vin);
+    const entriesObj = juHistory[vin] || {};
+    const entries = Object.values(entriesObj).filter(e=>e && typeof e==='object');
+    const rakusatsuEntries = entries
+      .filter(e=>e.category==='rakusatsu' && e.status!=='cancel')
+      .sort((a,b)=>(a.date||'').localeCompare(b.date||''));
+    const lastBuy = rakusatsuEntries.length ? rakusatsuEntries[rakusatsuEntries.length-1] : null;
+    const hasSeisan = !!lastBuy;
+
+    const pd = pricingData[vin] || {};
+    const extra = Object.assign({}, EXTRA_DEFAULT, pd.extraCost || {});
+
+    return {
+      vin,
+      name: sv.name || '',
+      grade: (lastBuy && lastBuy.grade) || '',
+      hasSeisan,
+      seisan: hasSeisan ? {
+        rakusatsu: Number(lastBuy.sharyDai)||0,
+        recycle: Number(lastBuy.recycle)||0,
+        rakusatsuRyo: Number(lastBuy.rakusatsuRyo)||0,
+        jizei: Number(lastBuy.jizei)||0,
+        date: lastBuy.date || '',
+        source: lastBuy.source || '',
+      } : null,
+      manualCost: pd.manualCost!=null ? pd.manualCost : null,
+      extra,
+      body: pd.body!=null ? pd.body : null,
+      as: pd.as!=null ? pd.as : null,
+      marginTotal: pd.marginTotal!=null ? pd.marginTotal : MARGIN_TOTAL_DEFAULT,
+      marginWholesale: pd.marginWholesale!=null ? pd.marginWholesale : MARGIN_WHOLESALE_DEFAULT,
+      stockStatus: sv.archived ? 'archive' : 'stock',
+      aaCount: aaPhotoCounts[vin] || 0,
+      selected: false,
+    };
+  });
+
+  // 未入力(車体価格未設定)の車両を先に、それ以外は車台番号順に表示
+  vehicles.sort((a,b)=>{
+    const an = a.body==null ? 0 : 1, bn = b.body==null ? 0 : 1;
+    if(an !== bn) return an - bn;
+    return (a.vin||'').localeCompare(b.vin||'');
+  });
+}
+
+// ===== 保存(デバウンス。フィールドごとではなく車両単位でpricingData/{vin}を書き込む) =====
+const saveTimers = {};
+function scheduleSave(vin){
+  const statusEl = document.getElementById('saveStatus');
+  statusEl.textContent = '保存待ち…';
+  statusEl.className = 'saveStatus';
+  if(saveTimers[vin]) clearTimeout(saveTimers[vin]);
+  saveTimers[vin] = setTimeout(()=> doSave(vin), 800);
+}
+async function doSave(vin){
+  const v = vehicles.find(x=>x.vin===vin);
+  if(!v) return;
+  const statusEl = document.getElementById('saveStatus');
+  statusEl.textContent = '保存中…';
+  statusEl.className = 'saveStatus saving';
+  try{
+    const payload = {
+      extraCost: { shaken:v.extra.shaken||0, kashu:v.extra.kashu||0, shuppinRyo:v.extra.shuppinRyo||0, rikuso:v.extra.rikuso||0 },
+      body: v.body, as: v.as,
+      marginTotal: v.marginTotal, marginWholesale: v.marginWholesale,
+      updatedAt: Date.now(),
+    };
+    if(!v.hasSeisan) payload.manualCost = v.manualCost||0;
+    await set(ref(db, `pricingData/${vin}`), payload);
+    statusEl.textContent = '✓ 保存しました(' + vin + ')';
+    statusEl.className = 'saveStatus ok';
+  }catch(err){
+    console.error('doSave error:', err);
+    statusEl.textContent = '● 保存エラー: ' + err.message;
+    statusEl.className = 'saveStatus';
+  }
+}
+
+function stockBadge(status){
+  if(status==='stock') return '<span class="badge" style="display:inline-block;font-size:10.5px;padding:2px 8px;border-radius:20px;background:var(--ok-bg);color:var(--ok-text);border:2px solid var(--ok-border);">在庫</span>';
+  return '<span class="badge" style="display:inline-block;font-size:10.5px;padding:2px 8px;border-radius:20px;background:var(--neutral-bg);color:var(--neutral-text);border:2px solid var(--neutral-border);">納車済</span>';
+}
+
+function renderTable(){
+  const tbody = document.getElementById('vehicleTbody');
+  tbody.innerHTML = vehicles.map((v,i)=>{
+    const cost = costOf(v);
+    const total = v.body==null ? null : v.body + TOTAL_ADD;
+    const profit = v.body==null ? null : v.body - cost;
+    const rank = rankOf(profit, v.marginTotal);
+    const aaCls = v.aaCount===1?'has1':v.aaCount===2?'has2':'has0';
+    const bodyVal = v.body==null ? '' : Math.round(v.body/1000);
+    const totalVal = total==null ? '' : Math.round(total/1000);
+    const asVal = v.as==null ? '' : Math.round(v.as/1000);
+    return `
+    <tr class="${v.stockStatus==='archive'?'rowArchive':''}" data-vin="${v.vin}">
+      <td class="ckcol"><input type="checkbox" class="rowCk" data-vin="${v.vin}" ${v.selected?'checked':''}></td>
+      <td class="vin">${v.vin}</td>
+      <td><span class="carname">${v.name}</span><br><span class="grade">${v.grade}</span></td>
+      <td>${stockBadge(v.stockStatus)}</td>
+      <td><button class="aaBtn ${aaCls}" data-vin="${v.vin}" data-action="aa">🖼${v.aaCount?v.aaCount:''}</button></td>
+      <td class="numcol"><input type="number" class="priceInput big" placeholder="未入力" value="${bodyVal}" data-vin="${v.vin}" data-field="body"></td>
+      <td class="numcol"><input type="number" id="total-${v.vin}" class="priceInput big totalMatch" placeholder="―" value="${totalVal}" disabled></td>
+      <td class="numcol"><input type="number" class="priceInput big" placeholder="未入力" value="${asVal}" data-vin="${v.vin}" data-field="as"></td>
+      <td id="rank-${v.vin}">${rank ? `<span class="rankBadge ${rank}">${rank}</span>` : `<span class="rankBadge none">―</span>`}</td>
+      <td class="numcol" id="floorTotal-${v.vin}">${fmtYen(floorTotal(v))}</td>
+      <td class="numcol" id="floorWholesale-${v.vin}">${fmtYen(floorWholesale(v))}</td>
+      <td class="numcol"><input type="number" class="smallInput" value="${v.extra.shaken}" data-vin="${v.vin}" data-field="shaken"></td>
+      <td class="numcol"><input type="number" class="smallInput" value="${v.extra.kashu}" data-vin="${v.vin}" data-field="kashu"></td>
+      <td class="numcol"><input type="number" class="smallInput" value="${v.extra.rikuso}" data-vin="${v.vin}" data-field="rikuso"></td>
+      <td class="numcol" id="cost-${v.vin}">${fmtYen(cost)}</td>
+      <td><button class="detailBtn" data-vin="${v.vin}" data-action="detail">詳細</button></td>
+    </tr>`;
+  }).join('');
+
+  tbody.querySelectorAll('.rowCk').forEach(ck=>{
+    ck.addEventListener('change', e=>{
+      const v = vehicles.find(x=>x.vin===e.target.dataset.vin);
+      if(v) v.selected = e.target.checked;
+      updatePrintBtnState();
+    });
+  });
+  tbody.querySelectorAll('.smallInput').forEach(inp=>{
+    inp.addEventListener('input', e=>{
+      const vin = e.target.dataset.vin, field = e.target.dataset.field;
+      const v = vehicles.find(x=>x.vin===vin);
+      v.extra[field] = Number(e.target.value)||0;
+      updateRowCalc(vin);
+      scheduleSave(vin);
+    });
+  });
+  tbody.querySelectorAll('.priceInput[data-field]').forEach(inp=>{
+    inp.addEventListener('input', e=>{
+      const vin = e.target.dataset.vin, field = e.target.dataset.field;
+      const v = vehicles.find(x=>x.vin===vin);
+      v[field] = e.target.value==='' ? null : Number(e.target.value)*1000;
+      updateRowCalc(vin);
+      scheduleSave(vin);
+    });
+  });
+  tbody.querySelectorAll('[data-action="detail"]').forEach(btn=>{
+    btn.addEventListener('click', ()=> openDetail(btn.dataset.vin));
+  });
+  tbody.querySelectorAll('[data-action="aa"]').forEach(btn=>{
+    btn.addEventListener('click', ()=> openAa(btn.dataset.vin));
+  });
+  updatePrintBtnState();
+}
+
+function updateRowCalc(vin){
+  const v = vehicles.find(x=>x.vin===vin);
+  if(!v) return;
+  const cost = costOf(v);
+  const total = v.body==null ? null : v.body + TOTAL_ADD;
+  const profit = v.body==null ? null : v.body - cost;
+  const rank = rankOf(profit, v.marginTotal);
+  const totalEl = document.getElementById(`total-${vin}`);
+  if(totalEl) totalEl.value = total==null ? '' : Math.round(total/1000);
+  const rankEl = document.getElementById(`rank-${vin}`);
+  if(rankEl) rankEl.innerHTML = rank ? `<span class="rankBadge ${rank}">${rank}</span>` : `<span class="rankBadge none">―</span>`;
+  const ftEl = document.getElementById(`floorTotal-${vin}`);
+  if(ftEl) ftEl.textContent = fmtYen(floorTotal(v));
+  const fwEl = document.getElementById(`floorWholesale-${vin}`);
+  if(fwEl) fwEl.textContent = fmtYen(floorWholesale(v));
+  const costEl = document.getElementById(`cost-${vin}`);
+  if(costEl) costEl.textContent = fmtYen(cost);
+}
+
+function updatePrintBtnState(){
+  const anySelected = vehicles.some(v=>v.selected);
+  document.getElementById('printSelectedBtn').disabled = !anySelected;
+}
+
+function renderRankLegend(){
+  const order = ['X','D','C','B','A','S'];
+  const labels = {
+    X:'目標−10万円未満', D:'目標−10万円〜目標未満', C:'目標〜目標+10万円未満',
+    B:'目標+10万円〜目標+20万円未満', A:'目標+20万円〜目標+30万円未満', S:'目標+30万円以上',
+  };
+  document.getElementById('rankLegend').innerHTML = order.map(r=>
+    `<span class="item"><span class="rankBadge ${r}">${r}</span> 粗利 ${labels[r]}</span>`
+  ).join('') + `<span class="item">※「目標」= その車両の目標小売粗利(詳細から変更可能・初期値15万円)</span>`;
+}
+
+function render(){
+  renderRankLegend();
+  renderTable();
+}
+
+// ===== 詳細モーダル =====
+let currentVin = null;
+function openDetail(vin){
+  currentVin = vin;
+  const v = vehicles.find(x=>x.vin===vin);
+  if(!v) return;
+  document.getElementById('mVehicleName').textContent = `${v.name} ${v.grade}`.trim();
+  document.getElementById('mVin').textContent = v.vin;
+  document.getElementById('mStatusBadge').innerHTML = statusBadgeHtml(v);
+
+  const seisanGroup = document.getElementById('mSeisanGroup');
+  const manualGroup = document.getElementById('mManualCostGroup');
+  if(v.hasSeisan){
+    seisanGroup.style.display='';
+    manualGroup.style.display='none';
+    const s = v.seisan;
+    document.getElementById('mSeisanRows').innerHTML = `
+      <p class="sourceNote">取得元:${s.date||'―'}・${sourceLabel(s.source)}</p>
+      <div class="fieldRow"><span>車両代金<span class="fieldNote">消費税10%あり</span></span><span>${fmtYen(s.rakusatsu)}</span></div>
+      <div class="fieldRow"><span>リサイクル料金<span class="fieldNote">消費税なし</span></span><span>${fmtYen(s.recycle)}</span></div>
+      <div class="fieldRow"><span>落札料<span class="fieldNote">消費税10%あり</span></span><span>${fmtYen(s.rakusatsuRyo)}</span></div>
+      <div class="fieldRow"><span>自税相当額<span class="fieldNote">消費税なし</span></span><span>${fmtYen(s.jizei)}</span></div>
+      <div class="fieldRow" style="border-top:1px solid var(--border);margin-top:4px;padding-top:8px;"><b>精算書分 合計</b><b>${fmtYen(seisanTotal(s))}</b></div>
+    `;
+  } else {
+    seisanGroup.style.display='none';
+    manualGroup.style.display='';
+    document.getElementById('mManualCost').value = v.manualCost||0;
+  }
+
+  document.getElementById('mShaken').value = v.extra.shaken||0;
+  document.getElementById('mKashu').value = v.extra.kashu||0;
+  document.getElementById('mShuppin').value = v.extra.shuppinRyo||0;
+  document.getElementById('mRikuso').value = v.extra.rikuso||0;
+  document.getElementById('mBody').value = v.body==null ? '' : Math.round(v.body/1000);
+  document.getElementById('mTotal').value = v.body==null ? '' : Math.round((v.body+TOTAL_ADD)/1000);
+  document.getElementById('mAS').value = v.as==null ? '' : Math.round(v.as/1000);
+  document.getElementById('mMarginTotal').value = v.marginTotal!=null ? v.marginTotal : MARGIN_TOTAL_DEFAULT;
+  document.getElementById('mMarginWholesale').value = v.marginWholesale!=null ? v.marginWholesale : MARGIN_WHOLESALE_DEFAULT;
+
+  updateModalResult(false);
+  document.getElementById('detailOverlay').classList.add('open');
+}
+
+function updateModalResult(triggerSave){
+  const v = vehicles.find(x=>x.vin===currentVin);
+  if(!v) return;
+  if(!v.hasSeisan) v.manualCost = Number(document.getElementById('mManualCost').value)||0;
+  v.extra.shaken = Number(document.getElementById('mShaken').value)||0;
+  v.extra.kashu = Number(document.getElementById('mKashu').value)||0;
+  v.extra.shuppinRyo = Number(document.getElementById('mShuppin').value)||0;
+  v.extra.rikuso = Number(document.getElementById('mRikuso').value)||0;
+  const mBodyRaw = document.getElementById('mBody').value;
+  const mAsRaw = document.getElementById('mAS').value;
+  v.body = mBodyRaw==='' ? null : Number(mBodyRaw)*1000;
+  v.as = mAsRaw==='' ? null : Number(mAsRaw)*1000;
+  v.marginTotal = Number(document.getElementById('mMarginTotal').value)||0;
+  v.marginWholesale = Number(document.getElementById('mMarginWholesale').value)||0;
+  document.getElementById('mTotal').value = v.body==null ? '' : Math.round((v.body+TOTAL_ADD)/1000);
+
+  const cost = costOf(v);
+  const profit = v.body==null ? null : v.body - cost;
+  const rank = rankOf(profit, v.marginTotal);
+
+  document.getElementById('rCost').textContent = fmtYen(cost);
+  document.getElementById('rFloorTotal').textContent = fmtYen(floorTotal(v));
+  document.getElementById('rFloorWholesale').textContent = fmtYen(floorWholesale(v));
+  document.getElementById('rFloorTotalNote').textContent = `(税込原価+目標小売粗利 ${fmtYen(v.marginTotal)})`;
+  document.getElementById('rFloorWholesaleNote').textContent = `(車検・リサイクル・消費税除く原価+目標業販粗利 ${fmtYen(v.marginWholesale)})`;
+  const rProfit = document.getElementById('rProfit');
+  rProfit.textContent = profit==null ? '―(車体価格未入力)' : fmtYen(profit);
+  rProfit.style.color = (profit==null) ? 'var(--text-muted)' : (profit>=0 ? 'var(--ok-text)' : 'var(--danger-text)');
+  document.getElementById('rRank').innerHTML = rank ? `<span class="rankBadge ${rank}">${rank}</span>` : `<span class="rankBadge none">―</span>`;
+
+  if(triggerSave!==false){
+    updateRowCalc(v.vin);
+    scheduleSave(v.vin);
+  }
+}
+
+['mManualCost','mShaken','mKashu','mShuppin','mRikuso','mBody','mAS','mMarginTotal','mMarginWholesale'].forEach(id=>{
+  document.getElementById(id).addEventListener('input', ()=>{ updateModalResult(true); });
+});
+
+document.getElementById('mCloseBtn').addEventListener('click', ()=>{
+  document.getElementById('detailOverlay').classList.remove('open');
+  renderTable();
+});
+document.getElementById('detailOverlay').addEventListener('click', e=>{
+  if(e.target.id==='detailOverlay'){
+    e.currentTarget.classList.remove('open');
+    renderTable();
+  }
+});
+
+// ===== AA出品票モーダル(表示のみ・登録はciel-systemハブ側で行う) =====
+async function openAa(vin){
+  document.getElementById('aaVinLabel').textContent = vin;
+  const row = document.getElementById('aaImagesRow');
+  row.innerHTML = '<p class="aaEmptyNote">読み込み中…</p>';
+  document.getElementById('aaOverlay').classList.add('open');
+  try{
+    const snap = await get(ref(db, `aaPhotos/${vin}`));
+    const data = snap.val() || {};
+    const imgs = ['img1','img2'].map(s=>data[s]).filter(Boolean);
+    if(!imgs.length){
+      row.innerHTML = '<p class="aaEmptyNote">この車台番号の出品票画像は登録されていません(登録はciel-systemハブから行えます)</p>';
+    } else {
+      row.innerHTML = imgs.map(src=>`<div class="aaSlot"><img src="${src}" class="aaZoomable"></div>`).join('');
+      row.querySelectorAll('.aaZoomable').forEach(img=>{
+        img.addEventListener('click', ()=>{
+          document.getElementById('aaZoomImg').src = img.src;
+          document.getElementById('aaZoomOverlay').classList.add('open');
+        });
+      });
+    }
+  }catch(err){
+    console.error('openAa error:', err);
+    row.innerHTML = '<p class="aaEmptyNote">読み込みエラー: ' + err.message + '</p>';
+  }
+}
+document.getElementById('aaCloseBtn').addEventListener('click', ()=>{
+  document.getElementById('aaOverlay').classList.remove('open');
+});
+document.getElementById('aaOverlay').addEventListener('click', e=>{
+  if(e.target.id==='aaOverlay') e.currentTarget.classList.remove('open');
+});
+document.getElementById('aaZoomOverlay').addEventListener('click', ()=>{
+  document.getElementById('aaZoomOverlay').classList.remove('open');
+});
+
+// ===== 全選択チェック =====
+document.getElementById('ckAll').addEventListener('change', e=>{
+  vehicles.forEach(v=> v.selected = e.target.checked);
+  renderTable();
+});
+
+// ===== 印刷 =====
+document.getElementById('printSelectedBtn').addEventListener('click', ()=>{
+  const selected = vehicles.filter(v=>v.selected);
+  if(!selected.length) return;
+  document.getElementById('printDate').textContent = new Date().toLocaleDateString('ja-JP');
+  document.getElementById('printTbody').innerHTML = selected.map(v=>`
+    <tr>
+      <td class="rule">&nbsp;</td>
+      <td class="rule">&nbsp;</td>
+      <td class="rule">&nbsp;</td>
+      <td class="rule">&nbsp;</td>
+      <td class="vinCell">${v.vin}</td>
+      <td class="nameCell">${v.name} ${v.grade}</td>
+      <td class="bigPrice">${fmtSen(v.body)}</td>
+      <td class="bigPrice">${fmtSen(v.body==null?null:v.body+TOTAL_ADD)}</td>
+      <td class="bigPrice">${fmtSen(v.as)}</td>
+    </tr>
+  `).join('');
+  window.print();
+});
+
+document.getElementById('refreshBtn').addEventListener('click', loadAll);
+
+// ===== 設定(ダークモード。ads.html等と同じ 'ciel-theme' キーを共有) =====
+const settingsBtn = document.getElementById('settingsBtn');
+const settingsOverlay = document.getElementById('settingsOverlay');
+const settingsCloseBtn = document.getElementById('settingsCloseBtn');
+const darkModeToggle = document.getElementById('darkModeToggle');
+darkModeToggle.checked = document.documentElement.getAttribute('data-theme')==='dark';
+settingsBtn.addEventListener('click', ()=> settingsOverlay.classList.add('open'));
+settingsCloseBtn.addEventListener('click', ()=> settingsOverlay.classList.remove('open'));
+settingsOverlay.addEventListener('click', e=>{ if(e.target===settingsOverlay) settingsOverlay.classList.remove('open'); });
+darkModeToggle.addEventListener('change', ()=>{
+  const t = darkModeToggle.checked ? 'dark' : 'light';
+  document.documentElement.setAttribute('data-theme', t);
+  localStorage.setItem('ciel-theme', t);
+});
+
+// ===== 精算書CSV取込み(ju-history.htmlと同じ解析ロジック・juHistoryノードに保存) =====
+function parseJuCsv(text){
+  const lines = text.split(/\r?\n/).filter(l=>l.trim().length);
+  if(!lines.length) return [];
+  const header = lines[0].split(',').map(h=>h.trim());
+  const idx = {};
+  header.forEach((h,i)=>{ idx[h]=i; });
+  const rows = [];
+  for(let i=1;i<lines.length;i++){
+    const cols = lines[i].split(',');
+    const g = k => idx[k]!==undefined ? (cols[idx[k]]??'').trim() : '';
+    const vin = g('vin');
+    if(!vin) continue;
+    rows.push({
+      source: g('source')||'JU',
+      kai: g('kai'), date: g('date'), shuppinNo: g('shuppin_no'),
+      vin, carName: g('car_name'), grade: g('grade'), nendo: g('nendo'),
+      category: g('category')||'shuppin', status: g('status'),
+      pref: g('pref'),
+      sharyDai: Number(g('shary_dai')||0),
+      recycle: Number(g('recycle')||0),
+      shuppinRyo: Number(g('shuppin_ryo')||0),
+      seiyakuRyo: Number(g('seiyaku_ryo')||0),
+      rakusatsuRyo: Number(g('rakusatsu_ryo')||0),
+      jizei: Number(g('jizei')||0),
+      maxBid: Number(g('max_bid')||0),
+    });
+  }
+  return rows;
+}
+async function importSeisanCsvText(text, statusEl){
+  try{
+    const rows = parseJuCsv(text);
+    if(!rows.length){ statusEl.textContent='取込対象の行がありませんでした。'; statusEl.className='uploadStatus err'; return; }
+    const updates = {};
+    rows.forEach(r=>{
+      const vin = normVin(r.vin);
+      const key = `${r.source}_${r.kai}_${r.shuppinNo}`;
+      const { vin: _v, shuppinNo, ...rest } = r;
+      updates[`juHistory/${vin}/${key}`] = { shuppinNo, ...rest };
+    });
+    await update(ref(db), updates);
+    statusEl.textContent = `${rows.length}件を取り込みました。`;
+    statusEl.className='uploadStatus ok';
+    await loadAll();
+  }catch(err){
+    console.error('importSeisanCsvText error:', err);
+    statusEl.textContent = '取込エラー: '+err.message;
+    statusEl.className='uploadStatus err';
+  }
+}
+const seisanDropZone = document.getElementById('seisanDropZone');
+const seisanFileInput = document.getElementById('seisanFileInput');
+const seisanUploadStatus = document.getElementById('seisanUploadStatus');
+seisanDropZone.addEventListener('click', ()=> seisanFileInput.click());
+seisanFileInput.addEventListener('change', e=>{
+  const f = e.target.files[0]; if(!f) return;
+  const reader = new FileReader();
+  reader.onload = ()=> importSeisanCsvText(reader.result, seisanUploadStatus);
+  reader.readAsText(f, 'utf-8');
+  seisanFileInput.value = '';
+});
+['dragenter','dragover'].forEach(evt=>seisanDropZone.addEventListener(evt, e=>{ e.preventDefault(); seisanDropZone.classList.add('dragover'); }));
+['dragleave','drop'].forEach(evt=>seisanDropZone.addEventListener(evt, e=>{ e.preventDefault(); seisanDropZone.classList.remove('dragover'); }));
+seisanDropZone.addEventListener('drop', e=>{
+  const f = e.dataTransfer.files && e.dataTransfer.files[0];
+  if(!f) return;
+  const reader = new FileReader();
+  reader.onload = ()=> importSeisanCsvText(reader.result, seisanUploadStatus);
+  reader.readAsText(f, 'utf-8');
+});
+
+// ===== 棚卸CSV取込み(ciel-systemハブと同じ解析ロジック・新規車台番号のみ登録) =====
+function parseLine(line){
+  const res=[];let cur='';let inQ=false;
+  for(const c of line){
+    if(c==='"'){inQ=!inQ;}
+    else if((c===','||c==='\t')&&!inQ){res.push(cur);cur='';}
+    else{cur+=c;}
+  }
+  res.push(cur);return res;
+}
+function fmtDate(s){
+  if(!s)return '';
+  let m=s.match(/令和\s*(\d+)\s*[\/．年]\s*(\d+)\s*[\/．月]\s*(\d+)/);
+  if(m)return`${2018+parseInt(m[1])}-${String(m[2]).padStart(2,'0')}-${String(m[3]).padStart(2,'0')}`;
+  m=s.match(/平成\s*(\d+)\s*[\/．年]\s*(\d+)\s*[\/．月]\s*(\d+)/);
+  if(m)return`${1988+parseInt(m[1])}-${String(m[2]).padStart(2,'0')}-${String(m[3]).padStart(2,'0')}`;
+  m=s.match(/昭和\s*(\d+)\s*[\/．年]\s*(\d+)\s*[\/．月]\s*(\d+)/);
+  if(m)return`${1925+parseInt(m[1])}-${String(m[2]).padStart(2,'0')}-${String(m[3]).padStart(2,'0')}`;
+  m=s.match(/^(\d{4})[\/\-\.](\d{1,2})[\/\-\.](\d{1,2})/);
+  if(m)return`${m[1]}-${String(m[2]).padStart(2,'0')}-${String(m[3]).padStart(2,'0')}`;
+  return s;
+}
+function toFullWidth(s){
+  if(!s)return s;
+  const kanaMap={
+    'ｦ':'ヲ','ｧ':'ァ','ｨ':'ィ','ｩ':'ゥ','ｪ':'ェ','ｫ':'ォ','ｬ':'ャ','ｭ':'ュ','ｮ':'ョ','ｯ':'ッ','ｰ':'ー',
+    'ｱ':'ア','ｲ':'イ','ｳ':'ウ','ｴ':'エ','ｵ':'オ','ｶ':'カ','ｷ':'キ','ｸ':'ク','ｹ':'ケ','ｺ':'コ',
+    'ｻ':'サ','ｼ':'シ','ｽ':'ス','ｾ':'セ','ｿ':'ソ','ﾀ':'タ','ﾁ':'チ','ﾂ':'ツ','ﾃ':'テ','ﾄ':'ト',
+    'ﾅ':'ナ','ﾆ':'ニ','ﾇ':'ヌ','ﾈ':'ネ','ﾉ':'ノ','ﾊ':'ハ','ﾋ':'ヒ','ﾌ':'フ','ﾍ':'ヘ','ﾎ':'ホ',
+    'ﾏ':'マ','ﾐ':'ミ','ﾑ':'ム','ﾒ':'メ','ﾓ':'モ','ﾔ':'ヤ','ﾕ':'ユ','ﾖ':'ヨ',
+    'ﾗ':'ラ','ﾘ':'リ','ﾙ':'ル','ﾚ':'レ','ﾛ':'ロ','ﾜ':'ワ','ﾝ':'ン','ﾞ':'゛','ﾟ':'゜'
+  };
+  const dk={'カ':'ガ','キ':'ギ','ク':'グ','ケ':'ゲ','コ':'ゴ','サ':'ザ','シ':'ジ','ス':'ズ','セ':'ゼ','ソ':'ゾ',
+    'タ':'ダ','チ':'ヂ','ツ':'ヅ','テ':'デ','ト':'ド','ハ':'バ','ヒ':'ビ','フ':'ブ','ヘ':'ベ','ホ':'ボ','ウ':'ヴ'};
+  const hdk={'ハ':'パ','ヒ':'ピ','フ':'プ','ヘ':'ペ','ホ':'ポ'};
+  const DAKUTEN  =['ﾞ','゛','゙','゛'];
+  const HANDAKUTEN=['ﾟ','゜','゚','゜'];
+  const chars=[...s].map(c=>kanaMap[c]||c);
+  let result='';
+  for(let i=0;i<chars.length;i++){
+    const c=chars[i];
+    if(DAKUTEN.includes(c)&&result.length>0){
+      const prev=result[result.length-1];
+      if(dk[prev]){result=result.slice(0,-1)+dk[prev];continue;}
+    }
+    if(HANDAKUTEN.includes(c)&&result.length>0){
+      const prev=result[result.length-1];
+      if(hdk[prev]){result=result.slice(0,-1)+hdk[prev];continue;}
+    }
+    result+=c;
+  }
+  return result.normalize('NFKC');
+}
+function decodeAuto(buf){
+  let txt = new TextDecoder('utf-8').decode(buf);
+  if(txt.charCodeAt(0) === 0xFEFF) txt = txt.slice(1);
+  if(txt.includes('�')) txt = new TextDecoder('shift-jis').decode(buf);
+  return txt;
+}
+function parseCSV2D(text){
+  const lines = text.replace(/\r\n/g,'\n').replace(/\r/g,'\n').split('\n').filter(l=>l.length);
+  return lines.map(parseLine);
+}
+async function handleTanaCsvFile(file, statusEl){
+  statusEl.textContent = '読込中…'; statusEl.className='uploadStatus';
+  try{
+    const buf = await file.arrayBuffer();
+    const text = decodeAuto(buf);
+    const rowsArr = parseCSV2D(text);
+    const hIdx = rowsArr.findIndex(r => r.includes('車台番号') && r.includes('車名'));
+    if(hIdx === -1) throw new Error('棚卸CSVのヘッダー行(車台番号・車名を含む行)が見つかりません');
+    const header = rowsArr[hIdx];
+    const fi = (...names) => { for(const n of names){ const i = header.indexOf(n); if(i>=0) return i; } return -1; };
+    const idx = {
+      date: fi('仕入日'), name: fi('車名'), sup: fi('仕入先名'),
+      color: fi('色'), vin: fi('車台番号'), year: fi('年式'),
+      shaken: fi('車検期限'), price: fi('仕入金額'), total: fi('合計'),
+    };
+    const g = (row, i) => (i>=0 && i<row.length) ? (row[i]||'').replace(/^"|"$/g,'').trim() : '';
+
+    const [tanaSnap, stockSnap2, archiveSnap2] = await Promise.all([
+      get(ref(db, 'adsData/tanaoroshi')),
+      get(ref(db, 'stock')),
+      get(ref(db, 'stockArchive')),
+    ]);
+    const tanaVins = new Set(Object.keys(tanaSnap.val() || {}));
+    const stockVins = new Set();
+    Object.values(stockSnap2.val() || {}).forEach(v => { if(v.vin) stockVins.add(normVin(v.vin)); });
+    Object.values(archiveSnap2.val() || {}).forEach(v => { if(v.vin) stockVins.add(normVin(v.vin)); });
+
+    const newTanaoroshi = {};
+    const newStock = {};
+    let addedBoth = 0, addedTanaOnly = 0, addedStockOnly = 0, skipped = 0;
+    for(const row of rowsArr.slice(hIdx+1)){
+      const first = g(row, 0);
+      if(!first || !/^(平成|令和|昭和|\d{4})/.test(first)) continue;
+      const vin = normVin(g(row, idx.vin));
+      if(!vin){ continue; }
+      const inTana = tanaVins.has(vin);
+      const inStock = stockVins.has(vin);
+      if(inTana && inStock){ skipped++; continue; }
+
+      if(!inTana){
+        newTanaoroshi[vin] = {
+          car_name: g(row, idx.name), color: g(row, idx.color),
+          shaken: g(row, idx.shaken), shiire_date: g(row, idx.date),
+        };
+        tanaVins.add(vin);
+      }
+      if(!inStock){
+        const sid = 'i' + Date.now() + Math.random().toString(36).slice(2,6);
+        newStock[sid] = {
+          id: sid, date: fmtDate(g(row, idx.date)),
+          name: toFullWidth(g(row, idx.name)), sup: g(row, idx.sup),
+          color: g(row, idx.color), vin, year: fmtDate(g(row, idx.year)),
+          shaken: fmtDate(g(row, idx.shaken)),
+          price: g(row, idx.price), total: g(row, idx.total),
+          regNo: '', status1: 'undelivered', status2: 'none',
+          cleaned: false, photographed: false, maintained: false, needsParts: false,
+          memo: '', isLoaner: false, addedAt: Date.now(),
+        };
+        stockVins.add(vin);
+      }
+      if(!inTana && !inStock) addedBoth++;
+      else if(!inTana) addedTanaOnly++;
+      else addedStockOnly++;
+    }
+    const totalAdded = addedBoth + addedTanaOnly + addedStockOnly;
+    if(!totalAdded){
+      statusEl.textContent = `新規車両はありませんでした(既存: ${skipped}台)`;
+      statusEl.className = 'uploadStatus ok';
+      return;
+    }
+    await Promise.all([
+      update(ref(db, 'adsData/tanaoroshi'), newTanaoroshi),
+      update(ref(db, 'stock'), newStock),
+    ]);
+    const newsId = 'n' + Date.now() + Math.random().toString(36).slice(2,6);
+    await set(ref(db, `newsLog/${newsId}`), {ts: Date.now(), vin: '', message: `プライシングツールから新規車両を${totalAdded}台登録しました`});
+    let statusMsg = `● 新規登録: ${addedBoth}台(棚卸/在庫 両方)`;
+    if(addedTanaOnly) statusMsg += ` / 棚卸のみ追加: ${addedTanaOnly}台`;
+    if(addedStockOnly) statusMsg += ` / 在庫のみ追加: ${addedStockOnly}台`;
+    statusMsg += ` / スキップ(両方に既存): ${skipped}台`;
+    statusEl.textContent = statusMsg;
+    statusEl.className = 'uploadStatus ok';
+    await loadAll();
+  }catch(err){
+    console.error('handleTanaCsvFile error:', err);
+    statusEl.textContent = '● エラー: ' + err.message;
+    statusEl.className = 'uploadStatus err';
+  }
+}
+const tanaCsvDropZone = document.getElementById('tanaCsvDropZone');
+const tanaCsvFileInput = document.getElementById('tanaCsvFileInput');
+const tanaCsvUploadStatus = document.getElementById('tanaCsvUploadStatus');
+tanaCsvDropZone.addEventListener('click', ()=> tanaCsvFileInput.click());
+tanaCsvFileInput.addEventListener('change', ()=>{
+  if(tanaCsvFileInput.files[0]) handleTanaCsvFile(tanaCsvFileInput.files[0], tanaCsvUploadStatus);
+  tanaCsvFileInput.value = '';
+});
+['dragenter','dragover'].forEach(evt=>tanaCsvDropZone.addEventListener(evt, e=>{ e.preventDefault(); tanaCsvDropZone.classList.add('dragover'); }));
+['dragleave','drop'].forEach(evt=>tanaCsvDropZone.addEventListener(evt, e=>{ e.preventDefault(); tanaCsvDropZone.classList.remove('dragover'); }));
+tanaCsvDropZone.addEventListener('drop', e=>{
+  const file = e.dataTransfer.files && e.dataTransfer.files[0];
+  if(file) handleTanaCsvFile(file, tanaCsvUploadStatus);
+});
+
+// ===== 起動 =====
+onAuthStateChanged(auth, async user=>{
+  if(!user){
+    try{ await signInAnonymously(auth); }
+    catch(err){ console.error('Auth error:', err); document.getElementById('loadingNote').textContent = '● 認証エラー: ' + err.message; }
+    return;
+  }
+  await loadAll();
+});
+</script>
+</body>
+</html>
