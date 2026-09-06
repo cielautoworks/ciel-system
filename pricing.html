@@ -206,7 +206,7 @@ tr.rowArchive{background:var(--neutral-bg);opacity:.7;}
 <header>
 <div class="header-row">
   <div>
-    <h1>プライシングツール <span style="font-size:12px;font-weight:400;opacity:.75;">v1.02</span></h1>
+    <h1>プライシングツール <span style="font-size:12px;font-weight:400;opacity:.75;">v1.03</span></h1>
     <p>原価から総額下限・業販下限を算出し、車体価格に対する粗利をランク表示します。※データはFirebaseで共有されます</p>
   </div>
   <div style="display:flex;gap:8px;flex-shrink:0;">
@@ -320,8 +320,12 @@ tr.rowArchive{background:var(--neutral-bg);opacity:.7;}
     <div class="fieldGroup" id="mManualCostGroup" style="display:none;">
       <h4>原価(手動入力・AA仕入記録なし)</h4>
       <div class="fieldRow">
-        <span>原価<span class="fieldNote">円単位</span></span>
+        <span>車両代金<span class="fieldNote">消費税10%あり</span></span>
         <input type="number" id="mManualCost">
+      </div>
+      <div class="fieldRow">
+        <span>リサイクル料金<span class="fieldNote">消費税なし</span></span>
+        <input type="number" id="mManualRecycle">
       </div>
     </div>
 
@@ -434,7 +438,7 @@ function fmtSen(n){ // 千円単位で表示(198000円→198)
 function seisanTotal(s){ return s.rakusatsu + s.recycle + s.rakusatsuRyo + s.jizei; }
 function extraTotal(e){ return (Number(e.shaken)||0)+(Number(e.kashu)||0)+(Number(e.shuppinRyo)||0)+(Number(e.rikuso)||0); }
 function costOf(v){
-  const seisanPart = v.hasSeisan ? seisanTotal(v.seisan) : (Number(v.manualCost)||0);
+  const seisanPart = v.hasSeisan ? seisanTotal(v.seisan) : (Number(v.manualCost)||0) + (Number(v.manualRecycle)||0);
   return seisanPart + extraTotal(v.extra);
 }
 // 消費税10%を加算する部分(車両価格・落札料・出品料・陸送・加修)
@@ -444,7 +448,7 @@ function taxableSum(v){
 }
 // 消費税を加算しない部分(リサイクル預託金・車検・自税相当額)
 function nonTaxableSum(v){
-  const seisanNonTaxable = v.hasSeisan ? (v.seisan.recycle + v.seisan.jizei) : 0;
+  const seisanNonTaxable = v.hasSeisan ? (v.seisan.recycle + v.seisan.jizei) : (Number(v.manualRecycle)||0);
   return seisanNonTaxable + (Number(v.extra.shaken)||0);
 }
 function floorTotal(v){ // 総額下限 = 税込原価 + 目標小売粗利
@@ -533,6 +537,7 @@ function build(){
         source: lastBuy.source || '',
       } : null,
       manualCost: pd.manualCost!=null ? pd.manualCost : null,
+      manualRecycle: pd.manualRecycle!=null ? pd.manualRecycle : null,
       extra,
       body: pd.body!=null ? pd.body : null,
       as: pd.as!=null ? pd.as : null,
@@ -623,7 +628,7 @@ async function doSave(vin){
       retailTarget: v.retailTarget,
       updatedAt: Date.now(),
     };
-    if(!v.hasSeisan) payload.manualCost = v.manualCost||0;
+    if(!v.hasSeisan){ payload.manualCost = v.manualCost||0; payload.manualRecycle = v.manualRecycle||0; }
     await set(ref(db, `pricingData/${vin}`), payload);
     statusEl.textContent = '✓ 保存しました(' + vin + ')';
     statusEl.className = 'saveStatus ok';
@@ -787,6 +792,7 @@ function openDetail(vin){
     seisanGroup.style.display='none';
     manualGroup.style.display='';
     document.getElementById('mManualCost').value = v.manualCost||0;
+    document.getElementById('mManualRecycle').value = v.manualRecycle||0;
   }
 
   document.getElementById('mShaken').value = v.extra.shaken||0;
@@ -806,7 +812,10 @@ function openDetail(vin){
 function updateModalResult(triggerSave){
   const v = vehicles.find(x=>x.vin===currentVin);
   if(!v) return;
-  if(!v.hasSeisan) v.manualCost = Number(document.getElementById('mManualCost').value)||0;
+  if(!v.hasSeisan){
+    v.manualCost = Number(document.getElementById('mManualCost').value)||0;
+    v.manualRecycle = Number(document.getElementById('mManualRecycle').value)||0;
+  }
   v.extra.shaken = Number(document.getElementById('mShaken').value)||0;
   v.extra.kashu = Number(document.getElementById('mKashu').value)||0;
   v.extra.shuppinRyo = Number(document.getElementById('mShuppin').value)||0;
@@ -839,7 +848,7 @@ function updateModalResult(triggerSave){
   }
 }
 
-['mManualCost','mShaken','mKashu','mShuppin','mRikuso','mBody','mAS','mMarginTotal','mMarginWholesale'].forEach(id=>{
+['mManualCost','mManualRecycle','mShaken','mKashu','mShuppin','mRikuso','mBody','mAS','mMarginTotal','mMarginWholesale'].forEach(id=>{
   document.getElementById(id).addEventListener('input', ()=>{ updateModalResult(true); });
 });
 
