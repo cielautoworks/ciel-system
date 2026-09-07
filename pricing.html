@@ -24,6 +24,9 @@
   --neutral-bg:#f1efe8; --neutral-text:#6b6b65; --neutral-border:#dcdad2;
   --b-bg:#eaf3f8; --b-text:#2f7ea3; --b-border:#bcdcea;
   --a-bg:#eef0fb; --a-text:#4a4fc0; --a-border:#c9cdf2;
+  --orange-bg:#fdece0; --orange-text:#b35900; --orange-border:#f3c8a3;
+  --pink-bg:#fbe8ef; --pink-text:#b23368; --pink-border:#f0c0d3;
+  --yellow-bg:#fff8d6; --yellow-text:#8a7300; --yellow-border:#f0e08a;
   --header-bg:linear-gradient(90deg,var(--sky),#3d8fae); --header-text:#fff;
   --thead-bg:#fafaf8; --hover-bg:#fafbfc;
   --filterbtn-bg:#fff; --filterbtn-active-bg:var(--sky);
@@ -37,6 +40,9 @@ html[data-theme="dark"]{
   --neutral-bg:#181a20; --neutral-text:#8a8f9c; --neutral-border:#3a3e4a;
   --b-bg:#0f1c22; --b-text:#4ecbf0; --b-border:#4ecbf0;
   --a-bg:#171a30; --a-text:#9297f5; --a-border:#9297f5;
+  --orange-bg:#2a1a0a; --orange-text:#ff9d33; --orange-border:#ff9d33;
+  --pink-bg:#2a1420; --pink-text:#ff8fbf; --pink-border:#ff8fbf;
+  --yellow-bg:#242000; --yellow-text:#ffe94d; --yellow-border:#ffe94d;
   --header-bg:#12141a; --header-text:#f0f0f0;
   --thead-bg:#181a20; --hover-bg:#20232b;
   --filterbtn-bg:#181a20; --filterbtn-active-bg:transparent;
@@ -96,15 +102,16 @@ tr.rowArchive{background:var(--neutral-bg);opacity:.7;}
 .priceInput{width:78px;padding:5px 6px;border:1px solid var(--border);border-radius:6px;background:var(--bg);color:var(--text);font-size:12.5px;text-align:right;}
 .priceInput:focus{outline:none;border-color:var(--sky);}
 .priceInput.big{width:70px;padding:8px 5px;font-size:21px;font-weight:700;}
+.priceInput.big::placeholder{font-size:10.5px;font-weight:400;color:var(--text-muted);}
 .priceInput.totalMatch{background:var(--bg);color:var(--text);border:1px solid var(--border);opacity:1;-webkit-text-fill-color:var(--text);}
 .rankBadge{display:inline-block;min-width:26px;text-align:center;font-size:12px;font-weight:700;padding:3px 8px;border-radius:6px;border:2px solid transparent;}
 .rankBadge.none{background:var(--neutral-bg);color:var(--text-muted);border-color:var(--neutral-border);}
 .rankBadge.X{background:var(--danger-bg);color:var(--danger-text);border-color:var(--danger-border);}
-.rankBadge.D{background:var(--warn-bg);color:var(--warn-text);border-color:var(--warn-border);}
-.rankBadge.C{background:var(--neutral-bg);color:var(--neutral-text);border-color:var(--neutral-border);}
-.rankBadge.B{background:var(--b-bg);color:var(--b-text);border-color:var(--b-border);}
-.rankBadge.A{background:var(--a-bg);color:var(--a-text);border-color:var(--a-border);}
-.rankBadge.S{background:var(--ok-bg);color:var(--ok-text);border-color:var(--ok-border);}
+.rankBadge.D{background:var(--b-bg);color:var(--b-text);border-color:var(--b-border);}
+.rankBadge.C{background:var(--ok-bg);color:var(--ok-text);border-color:var(--ok-border);}
+.rankBadge.B{background:var(--orange-bg);color:var(--orange-text);border-color:var(--orange-border);}
+.rankBadge.A{background:var(--pink-bg);color:var(--pink-text);border-color:var(--pink-border);}
+.rankBadge.S{background:var(--yellow-bg);color:var(--yellow-text);border-color:var(--yellow-border);}
 .detailBtn{font-size:11.5px;font-weight:600;padding:4px 10px;border:2px solid var(--sky);border-radius:6px;background:transparent;color:var(--sky);cursor:pointer;white-space:nowrap;}
 .detailBtn:hover{background:rgba(74,171,207,0.12);}
 .legend{font-size:11px;color:var(--text-sub);margin:10px 0 0;line-height:1.8;}
@@ -209,7 +216,7 @@ tr.rowArchive{background:var(--neutral-bg);opacity:.7;}
 <header>
 <div class="header-row">
   <div>
-    <h1>プライシングツール <span style="font-size:12px;font-weight:400;opacity:.75;">v1.06</span></h1>
+    <h1>プライシングツール <span style="font-size:12px;font-weight:400;opacity:.75;">v1.08</span></h1>
     <p>原価から総額下限・業販下限を算出し、車体価格に対する粗利をランク表示します。※データはFirebaseで共有されます</p>
   </div>
   <div style="display:flex;gap:8px;flex-shrink:0;">
@@ -267,8 +274,8 @@ tr.rowArchive{background:var(--neutral-bg);opacity:.7;}
   <input type="text" id="searchBox" placeholder="車台番号・車名・グレード・仕入先・仕入日で検索">
 </div>
 <div class="toolbar">
-  <button class="filterbtn active" data-status="instock">在庫あり(納車完了以外)</button>
-  <button class="filterbtn" data-status="all">すべて</button>
+  <button class="filterbtn active" data-status="instock">在庫あり(すべての状態)</button>
+  <button class="filterbtn" data-status="all">すべて(アーカイブ含む)</button>
   <button class="filterbtn" data-status="undelivered">店頭未着</button>
   <button class="filterbtn" data-status="floor">店頭在庫</button>
   <button class="filterbtn" data-status="loaner">代車</button>
@@ -276,6 +283,7 @@ tr.rowArchive{background:var(--neutral-bg);opacity:.7;}
   <button class="filterbtn" data-status="listing">出品中</button>
   <button class="filterbtn" data-status="sold">納車待ち</button>
   <button class="filterbtn" data-status="delivered">納車完了</button>
+  <button class="filterbtn" data-status="archive">アーカイブ(売却済み)</button>
   <span style="flex:1"></span>
   <button class="filterbtn" id="targetToggleBtn">小売対象外も表示</button>
 </div>
@@ -310,7 +318,7 @@ tr.rowArchive{background:var(--neutral-bg);opacity:.7;}
 
 <div class="rankLegendRow" id="rankLegend"></div>
 <p class="legend">
-原価 = 精算書分(AA仕入記録から自動取得。記録がない車両は詳細から手動入力)＋追加費用(車検・加修・出品料・陸送費、車検は初期値35,000円・陸送は初期値4,000円、出品料はju-history集計の自動計算)　／　総額下限 = 原価を税区分に応じて計算した税込原価 + 目標小売粗利(車両価格・落札料・出品料・陸送・加修に消費税10%を加算、リサイクル預託金・車検・自税相当額には加算しない)　／　業販下限 = 原価から車検・リサイクル預託金・消費税を除いた額 + 目標業販粗利　／　目標小売粗利(初期値15万円)・目標業販粗利(初期値10万円)は詳細から車両ごとに変更可能　／　車体価格・支払総額・業販価格は千円単位で入力(例:198→198,000円)、支払総額=車体価格+10万円(自動)　／　ランクは車体価格−原価(税抜)を、その車両の目標小売粗利を基準に算出　／　対象車両はcar-appの在庫(stock)・納車済み(stockArchive)の全車両。入力内容は自動的に保存されます。　／　「状態」はcar-appの在庫ステータス(店頭未着・店頭在庫・代車・レンタカー・出品中・納車待ち・納車完了)をそのまま表示し、初期表示は納車完了以外・仕入日の新しい順・小売対象のみ。上部のボタンで状態を絞り込み、列見出しをクリックすると並べ替えできます(もう一度クリックで昇順⇄降順)。「対象」列のスイッチで車両ごとに小売対象かどうかを切り替えられます(オフにした車両は初期状態では一覧から非表示。上部の「小売対象外も表示」ボタンで表示できます)。検索欄では車台番号・車名・グレード・仕入先・仕入日を、ひらがな/カタカナ・全角/半角を区別しない部分一致で検索できます(仕入日は09-02・0902・260902・2611・202611などの入力にも対応)。
+原価 = 精算書分(AA仕入記録から自動取得。記録がない車両は詳細から手動入力)＋追加費用(車検・加修・出品料・陸送費、車検は初期値35,000円・陸送は初期値4,000円、出品料はju-history集計の自動計算)　／　総額下限 = 原価を税区分に応じて計算した税込原価 + 目標小売粗利(車両価格・落札料・出品料・陸送・加修に消費税10%を加算、リサイクル預託金・車検・自税相当額には加算しない)　／　業販下限 = 原価から車検・リサイクル預託金・消費税を除いた額 + 目標業販粗利　／　目標小売粗利(初期値15万円)・目標業販粗利(初期値10万円)は詳細から車両ごとに変更可能　／　車体価格・支払総額・業販価格は千円単位で入力(例:198→198,000円)、支払総額=車体価格+10万円(自動)　／　ランクは車体価格−原価(税抜)を、その車両の目標小売粗利を基準に算出　／　対象車両はcar-appの在庫(stock)・納車済み(stockArchive)の全車両。入力内容は自動的に保存されます。　／　「状態」はcar-appの在庫ステータス(店頭未着・店頭在庫・代車・レンタカー・出品中・納車待ち・納車完了)をそのまま表示します。car-appは必ずしも「納車完了」にしてからアーカイブへ移動するとは限らない(例:USS仕入れ→JUでそのまま販売の場合、未入荷のままアーカイブに移動)ため、初期表示・絞り込みは状態(status1)ではなくcar-appのアーカイブ移動そのもの(stock/stockArchiveどちらのノードにあるか)を基準に判定します。初期表示は在庫あり(アーカイブに移動していない車両すべて)・仕入日の新しい順・小売対象のみで、既に売却済み(アーカイブ)の車両は上部の「アーカイブ(売却済み)」ボタンを押したときだけ表示されます。列見出しをクリックすると並べ替えできます(もう一度クリックで昇順⇄降順)。「対象」列のスイッチで車両ごとに小売対象かどうかを切り替えられます(オフにした車両は初期状態では一覧から非表示。上部の「小売対象外も表示」ボタンで表示できます)。検索欄では車台番号・車名・グレード・仕入先・仕入日を、ひらがな/カタカナ・全角/半角を区別しない部分一致で検索できます(仕入日は09-02・0902・260902・2611・202611などの入力にも対応)。
 </p>
 
 </div>
@@ -585,7 +593,7 @@ function build(){
 }
 
 // ===== 絞り込み・並べ替え =====
-let statusFilter = 'instock'; // 'instock'(納車完了以外・初期値) | 'all' | car-appのstatus1キー
+let statusFilter = 'instock'; // 'instock'(在庫あり・初期値) | 'all' | 'archive' | car-appのstatus1キー(在庫あり内のみで絞込)
 let showNonTarget = false; // false=小売対象(retailTarget!==false)のみ表示(初期値)
 let sortKey = 'date', sortDir = -1; // 初期値:仕入日の新しい順(降順)
 let searchQuery = ''; // 検索ボックスの入力値
@@ -671,8 +679,12 @@ function matchesSearch(v, rawQuery){
 
 function getVisibleVehicles(){
   let list = vehicles;
-  if(statusFilter === 'instock') list = list.filter(v=>v.status1!=='delivered');
-  else if(statusFilter !== 'all') list = list.filter(v=>v.status1===statusFilter);
+  // car-appはstatus1を必ずしも「納車完了」にしてからアーカイブへ移動するとは限らない
+  // (例:USS仕入れ→JUでそのまま販売の場合、未入荷のままアーカイブに移動する)。
+  // そのため「まだ手元にあるか」の判定はstatus1ではなくstockStatus(stock/stockArchiveどちらのノードか)を基準にする。
+  if(statusFilter === 'instock') list = list.filter(v=>v.stockStatus==='stock');
+  else if(statusFilter === 'archive') list = list.filter(v=>v.stockStatus==='archive');
+  else if(statusFilter !== 'all') list = list.filter(v=>v.stockStatus==='stock' && v.status1===statusFilter);
   if(!showNonTarget) list = list.filter(v=>v.retailTarget!==false);
   if(searchQuery.trim()) list = list.filter(v=>matchesSearch(v, searchQuery));
   return list.slice().sort(compareVehicles);
@@ -753,7 +765,7 @@ function renderTable(){
     const totalVal = total==null ? '' : Math.round(total/1000);
     const asVal = v.as==null ? '' : Math.round(v.as/1000);
     return `
-    <tr class="${v.status1==='delivered'?'rowArchive':''}" data-vin="${v.vin}">
+    <tr class="${v.stockStatus==='archive'?'rowArchive':''}" data-vin="${v.vin}">
       <td class="ckcol"><input type="checkbox" class="rowCk" data-vin="${v.vin}" ${v.selected?'checked':''}></td>
       <td class="vin">${v.vin}</td>
       <td><span class="carname">${displayCarName(v.name)}</span>${v.color?` <span class="carname">${v.color}</span>`:''}<br><span class="grade">${truncateText(v.grade, 15)}</span></td>
