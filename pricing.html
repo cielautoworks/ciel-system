@@ -173,6 +173,18 @@ tr.rowArchive{background:var(--neutral-bg);opacity:.7;}
 
 .settingsOverlay{position:fixed;inset:0;background:rgba(0,0,0,0.55);display:none;align-items:center;justify-content:center;z-index:100;}
 .settingsOverlay.open{display:flex;}
+.diffModalPanel{background:var(--card);border:2px solid var(--border);border-radius:14px;padding:22px 24px;width:90vw;max-width:820px;max-height:85vh;overflow-y:auto;position:relative;}
+.diffModalPanel p.diffNote{font-size:12.5px;color:var(--text-sub);margin:8px 0 14px;}
+table.diffTable{width:100%;border-collapse:collapse;font-size:12.5px;}
+table.diffTable th,table.diffTable td{border-bottom:1px solid var(--border);padding:6px 8px;text-align:left;white-space:nowrap;}
+table.diffTable th{color:var(--text-sub);font-weight:600;}
+table.diffTable td.diffOld{color:var(--text-muted);text-decoration:line-through;}
+table.diffTable td.diffNew{color:var(--danger-text);font-weight:600;}
+.diffModalBtnRow{display:flex;gap:10px;margin-top:18px;}
+.diffModalBtnRow button{flex:1;padding:9px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;}
+#diffApplyBtn{background:var(--sky);color:#fff;border:none;}
+#diffCancelBtn{background:transparent;border:2px solid var(--border);color:var(--text-sub);}
+#aaMismatchOkBtn{background:var(--sky);color:#fff;border:none;}
 .settingsPanel{background:var(--card);border:2px solid var(--border);border-radius:14px;padding:22px 24px;width:320px;max-width:90vw;}
 .settingsPanel h3{margin:0 0 16px;font-size:15px;font-weight:600;color:var(--text);}
 .settingsRow{display:flex;justify-content:space-between;align-items:center;padding:12px 0;}
@@ -216,7 +228,7 @@ tr.rowArchive{background:var(--neutral-bg);opacity:.7;}
 <header>
 <div class="header-row">
   <div>
-    <h1>プライシングツール <span style="font-size:12px;font-weight:400;opacity:.75;">v1.08</span></h1>
+    <h1>プライシングツール <span style="font-size:12px;font-weight:400;opacity:.75;">v1.10</span></h1>
     <p>原価から総額下限・業販下限を算出し、車体価格に対する粗利をランク表示します。※データはFirebaseで共有されます</p>
   </div>
   <div style="display:flex;gap:8px;flex-shrink:0;">
@@ -255,7 +267,7 @@ tr.rowArchive{background:var(--neutral-bg);opacity:.7;}
   <div>
     <div class="dropZone" id="tanaCsvDropZone">
       <p>📄 棚卸CSVをドラッグ&ドロップ</p>
-      <span>新規車台番号のみ登録(adsData/tanaoroshi・stockノードに保存・ciel-systemハブと共有)</span>
+      <span>新規車台番号を登録(adsData/tanaoroshi・stockノードに保存・ciel-systemハブと共有)。既存車両も車両代金(税抜仕入金額)を比較し、非AA仕入車両はプライシングの車両代金との差分を確認画面で反映可否選択、AA仕入車両は精算書とのずれを表示のみで通知します。</span>
     </div>
     <input type="file" id="tanaCsvFileInput" accept=".csv" style="display:none">
     <div class="uploadStatus" id="tanaCsvUploadStatus"></div>
@@ -391,6 +403,43 @@ tr.rowArchive{background:var(--neutral-bg);opacity:.7;}
     </div>
     <p class="aaVinLabel" id="aaVinLabel"></p>
     <div class="aaImagesRow" id="aaImagesRow"></div>
+  </div>
+</div>
+
+<!-- 車両代金 差分確認モーダル(精算書CSV取込み・棚卸CSV取込みで共用) -->
+<div class="overlay" id="diffConfirmOverlay">
+  <div class="diffModalPanel">
+    <div class="aaModalHeader">
+      <h3 id="diffModalTitle">車両代金の変更確認</h3>
+      <button class="modalCloseX" id="diffCloseX">✕</button>
+    </div>
+    <p class="diffNote" id="diffModalNote">以下の車両は、取込むCSVの車両代金が既存データと異なります。反映する場合は「反映する」を押してください。反映しない場合はキャンセルしてください(該当車両以外はすでに取り込み済みです)。</p>
+    <table class="diffTable">
+      <thead><tr><th>車台番号</th><th>車名</th><th id="diffModalCol3">会場・回・出品番号</th><th>既存の車両代金</th><th>新しい車両代金</th></tr></thead>
+      <tbody id="diffTableBody"></tbody>
+    </table>
+    <div class="diffModalBtnRow">
+      <button id="diffApplyBtn">反映する</button>
+      <button id="diffCancelBtn">キャンセル(反映しない)</button>
+    </div>
+  </div>
+</div>
+
+<!-- AA仕入車両の車両代金ずれ注意喚起(表示のみ・書き込みなし) -->
+<div class="overlay" id="aaMismatchOverlay">
+  <div class="diffModalPanel">
+    <div class="aaModalHeader">
+      <h3>AA仕入車両の車両代金ずれ(要確認・自動反映なし)</h3>
+      <button class="modalCloseX" id="aaMismatchCloseX">✕</button>
+    </div>
+    <p class="diffNote">以下の車両はAA仕入(精算書に落札記録あり)のため原価は精算書の値から自動計算されますが、棚卸CSVの税抜仕入金額と精算書の車両代金が一致しません。どちらが正しいか手動でご確認ください(このツールからは書き込みしません)。</p>
+    <table class="diffTable">
+      <thead><tr><th>車台番号</th><th>車名</th><th>棚卸CSVの税抜仕入金額</th><th>精算書の車両代金</th></tr></thead>
+      <tbody id="aaMismatchTableBody"></tbody>
+    </table>
+    <div class="diffModalBtnRow">
+      <button id="aaMismatchOkBtn">確認しました</button>
+    </div>
   </div>
 </div>
 <div class="aaZoomOverlay" id="aaZoomOverlay">
@@ -1115,26 +1164,134 @@ function parseJuCsv(text){
   }
   return rows;
 }
+function buildJuUpdateEntry(r){
+  const vin = normVin(r.vin);
+  const key = `${r.source}_${r.kai}_${r.shuppinNo}`;
+  const { vin: _v, shuppinNo, ...rest } = r;
+  return { vin, key, value: { shuppinNo, ...rest } };
+}
+
 async function importSeisanCsvText(text, statusEl){
   try{
     const rows = parseJuCsv(text);
     if(!rows.length){ statusEl.textContent='取込対象の行がありませんでした。'; statusEl.className='uploadStatus err'; return; }
-    const updates = {};
+
+    const straightforward = [];
+    const changed = [];
     rows.forEach(r=>{
-      const vin = normVin(r.vin);
-      const key = `${r.source}_${r.kai}_${r.shuppinNo}`;
-      const { vin: _v, shuppinNo, ...rest } = r;
-      updates[`juHistory/${vin}/${key}`] = { shuppinNo, ...rest };
+      const entry = buildJuUpdateEntry(r);
+      const existing = (juHistory[entry.vin] || {})[entry.key];
+      if(existing && Number(existing.sharyDai||0) !== Number(r.sharyDai||0)){
+        changed.push({ r, entry, oldSharyDai: Number(existing.sharyDai||0) });
+      } else {
+        straightforward.push(entry);
+      }
     });
-    await update(ref(db), updates);
-    statusEl.textContent = `${rows.length}件を取り込みました。`;
+
+    if(straightforward.length){
+      const updates = {};
+      straightforward.forEach(entry=>{ updates[`juHistory/${entry.vin}/${entry.key}`] = entry.value; });
+      await update(ref(db), updates);
+    }
+
+    if(!changed.length){
+      statusEl.textContent = `${rows.length}件を取り込みました。`;
+      statusEl.className='uploadStatus ok';
+      await loadAll();
+      return;
+    }
+
+    statusEl.textContent = `${straightforward.length}件を取り込みました。車両代金に差分がある${changed.length}件は確認してください。`;
     statusEl.className='uploadStatus ok';
     await loadAll();
+    showSeisanDiffConfirm(changed, statusEl, straightforward.length);
   }catch(err){
     console.error('importSeisanCsvText error:', err);
     statusEl.textContent = '取込エラー: '+err.message;
     statusEl.className='uploadStatus err';
   }
+}
+
+function showSeisanDiffConfirm(changed, statusEl, importedCount){
+  const overlay = document.getElementById('diffConfirmOverlay');
+  document.getElementById('diffModalTitle').textContent = '車両代金の変更確認(精算書CSV)';
+  document.getElementById('diffModalNote').textContent = '以下の車両は、取込む精算書CSVの車両代金が既存データと異なります。反映する場合は「反映する」を押してください。反映しない場合はキャンセルしてください(該当車両以外はすでに取り込み済みです)。';
+  document.getElementById('diffModalCol3').textContent = '会場・回・出品番号';
+  const tbody = document.getElementById('diffTableBody');
+  tbody.innerHTML = changed.map(({r, entry, oldSharyDai})=>`
+    <tr>
+      <td class="vin">${entry.vin}</td>
+      <td>${r.carName||''}</td>
+      <td>${r.source}_${r.kai}_${entry.value.shuppinNo||''}</td>
+      <td class="diffOld">¥${oldSharyDai.toLocaleString('ja-JP')}</td>
+      <td class="diffNew">¥${Number(r.sharyDai||0).toLocaleString('ja-JP')}</td>
+    </tr>
+  `).join('');
+  overlay.classList.add('open');
+
+  const close = ()=>{ overlay.classList.remove('open'); };
+  document.getElementById('diffCloseX').onclick = close;
+  document.getElementById('diffCancelBtn').onclick = ()=>{
+    close();
+    statusEl.textContent = `${importedCount}件を取り込みました。車両代金に差分があった${changed.length}件は反映しませんでした。`;
+  };
+  document.getElementById('diffApplyBtn').onclick = async ()=>{
+    const updates = {};
+    changed.forEach(({entry})=>{ updates[`juHistory/${entry.vin}/${entry.key}`] = entry.value; });
+    await update(ref(db), updates);
+    close();
+    statusEl.textContent = `${importedCount + changed.length}件を取り込みました(車両代金の差分${changed.length}件も反映しました)。`;
+    await loadAll();
+  };
+}
+
+// 棚卸CSV(税抜仕入金額)と既存の車両代金(手動入力・非AA車両のみ)との差分確認モーダル
+function showTanaCostDiffConfirm(costDiffs, statusEl, onDone){
+  const overlay = document.getElementById('diffConfirmOverlay');
+  document.getElementById('diffModalTitle').textContent = '車両代金の変更確認(棚卸CSV・非AA仕入車両)';
+  document.getElementById('diffModalNote').textContent = '以下の非AA仕入車両は、棚卸CSVの税抜仕入金額とプライシングツールの車両代金(手動入力)が異なります(未入力を含む)。反映する場合は「反映する」を押してください。';
+  document.getElementById('diffModalCol3').textContent = '';
+  const tbody = document.getElementById('diffTableBody');
+  tbody.innerHTML = costDiffs.map(d=>`
+    <tr>
+      <td class="vin">${d.vin}</td>
+      <td>${d.name||''}</td>
+      <td></td>
+      <td class="diffOld">${d.oldVal==null ? '(未入力)' : '¥'+d.oldVal.toLocaleString('ja-JP')}</td>
+      <td class="diffNew">¥${d.newVal.toLocaleString('ja-JP')}</td>
+    </tr>
+  `).join('');
+  overlay.classList.add('open');
+
+  const close = ()=>{ overlay.classList.remove('open'); };
+  document.getElementById('diffCloseX').onclick = ()=>{ close(); onDone(0); };
+  document.getElementById('diffCancelBtn').onclick = ()=>{ close(); onDone(0); };
+  document.getElementById('diffApplyBtn').onclick = async ()=>{
+    const updates = {};
+    costDiffs.forEach(d=>{ updates[`pricingData/${d.vin}/manualCost`] = d.newVal; });
+    await update(ref(db), updates);
+    close();
+    await loadAll();
+    onDone(costDiffs.length);
+  };
+}
+
+// AA仕入車両の棚卸CSV(税抜仕入金額)と精算書の車両代金のずれ(表示のみ・書き込みなし)
+function showAaMismatchAlert(aaMismatches){
+  const overlay = document.getElementById('aaMismatchOverlay');
+  const tbody = document.getElementById('aaMismatchTableBody');
+  tbody.innerHTML = aaMismatches.map(d=>`
+    <tr>
+      <td class="vin">${d.vin}</td>
+      <td>${d.name||''}</td>
+      <td class="diffNew">¥${d.csvVal.toLocaleString('ja-JP')}</td>
+      <td class="diffOld">¥${d.juVal.toLocaleString('ja-JP')}</td>
+    </tr>
+  `).join('');
+  overlay.classList.add('open');
+  const close = ()=>{ overlay.classList.remove('open'); };
+  document.getElementById('aaMismatchCloseX').onclick = close;
+  document.getElementById('aaMismatchOkBtn').onclick = close;
 }
 const seisanDropZone = document.getElementById('seisanDropZone');
 const seisanFileInput = document.getElementById('seisanFileInput');
@@ -1234,6 +1391,7 @@ async function handleTanaCsvFile(file, statusEl){
       date: fi('仕入日'), name: fi('車名'), sup: fi('仕入先名'),
       color: fi('色'), vin: fi('車台番号'), year: fi('年式'),
       shaken: fi('車検期限'), price: fi('仕入金額'), total: fi('合計'),
+      priceExTax: fi('税抜仕入金額'),
     };
     const g = (row, i) => (i>=0 && i<row.length) ? (row[i]||'').replace(/^"|"$/g,'').trim() : '';
 
@@ -1246,6 +1404,41 @@ async function handleTanaCsvFile(file, statusEl){
     const stockVins = new Set();
     Object.values(stockSnap2.val() || {}).forEach(v => { if(v.vin) stockVins.add(normVin(v.vin)); });
     Object.values(archiveSnap2.val() || {}).forEach(v => { if(v.vin) stockVins.add(normVin(v.vin)); });
+
+    // 車両代金(税抜仕入金額)の比較。既存の棚卸/在庫スキップ判定とは独立して、行がある限り毎回チェックする。
+    const costDiffs = [];   // 非AA車両: プライシングの車両代金(手動入力)と異なる場合、確認して反映
+    const aaMismatches = []; // AA仕入車両: 精算書の車両代金と異なる場合、表示のみ(書き込みなし)
+    if(idx.priceExTax >= 0){
+      for(const row of rowsArr.slice(hIdx+1)){
+        const first0 = g(row, 0);
+        if(!first0 || !/^(平成|令和|昭和|\d{4})/.test(first0)) continue;
+        const vin0 = normVin(g(row, idx.vin));
+        if(!vin0) continue;
+        const priceExTaxRaw = g(row, idx.priceExTax);
+        if(priceExTaxRaw === '') continue;
+        const priceExTax = Number(priceExTaxRaw) || 0;
+        const carName0 = g(row, idx.name);
+
+        const entries = Object.values(juHistory[vin0] || {}).filter(e=>e && typeof e==='object');
+        const rakusatsuEntries = entries
+          .filter(e=>e.category==='rakusatsu' && e.status!=='cancel')
+          .sort((a,b)=>(a.date||'').localeCompare(b.date||''));
+        const lastBuy = rakusatsuEntries.length ? rakusatsuEntries[rakusatsuEntries.length-1] : null;
+
+        if(lastBuy){
+          const juVal = Number(lastBuy.sharyDai||0);
+          if(juVal !== priceExTax){
+            aaMismatches.push({ vin: vin0, name: carName0, csvVal: priceExTax, juVal });
+          }
+        } else {
+          const pd = pricingData[vin0] || {};
+          const curVal = pd.manualCost!=null ? Number(pd.manualCost) : null;
+          if(curVal !== priceExTax){
+            costDiffs.push({ vin: vin0, name: carName0, oldVal: curVal, newVal: priceExTax });
+          }
+        }
+      }
+    }
 
     const newTanaoroshi = {};
     const newStock = {};
@@ -1285,24 +1478,36 @@ async function handleTanaCsvFile(file, statusEl){
       else addedStockOnly++;
     }
     const totalAdded = addedBoth + addedTanaOnly + addedStockOnly;
+    let statusMsg;
     if(!totalAdded){
-      statusEl.textContent = `新規車両はありませんでした(既存: ${skipped}台)`;
-      statusEl.className = 'uploadStatus ok';
-      return;
+      statusMsg = `新規車両はありませんでした(既存: ${skipped}台)`;
+    } else {
+      await Promise.all([
+        update(ref(db, 'adsData/tanaoroshi'), newTanaoroshi),
+        update(ref(db, 'stock'), newStock),
+      ]);
+      const newsId = 'n' + Date.now() + Math.random().toString(36).slice(2,6);
+      await set(ref(db, `newsLog/${newsId}`), {ts: Date.now(), vin: '', message: `プライシングツールから新規車両を${totalAdded}台登録しました`});
+      statusMsg = `● 新規登録: ${addedBoth}台(棚卸/在庫 両方)`;
+      if(addedTanaOnly) statusMsg += ` / 棚卸のみ追加: ${addedTanaOnly}台`;
+      if(addedStockOnly) statusMsg += ` / 在庫のみ追加: ${addedStockOnly}台`;
+      statusMsg += ` / スキップ(両方に既存): ${skipped}台`;
+      await loadAll();
     }
-    await Promise.all([
-      update(ref(db, 'adsData/tanaoroshi'), newTanaoroshi),
-      update(ref(db, 'stock'), newStock),
-    ]);
-    const newsId = 'n' + Date.now() + Math.random().toString(36).slice(2,6);
-    await set(ref(db, `newsLog/${newsId}`), {ts: Date.now(), vin: '', message: `プライシングツールから新規車両を${totalAdded}台登録しました`});
-    let statusMsg = `● 新規登録: ${addedBoth}台(棚卸/在庫 両方)`;
-    if(addedTanaOnly) statusMsg += ` / 棚卸のみ追加: ${addedTanaOnly}台`;
-    if(addedStockOnly) statusMsg += ` / 在庫のみ追加: ${addedStockOnly}台`;
-    statusMsg += ` / スキップ(両方に既存): ${skipped}台`;
+    if(costDiffs.length) statusMsg += ` / 車両代金の差分(非AA仕入): ${costDiffs.length}台(要確認)`;
+    if(aaMismatches.length) statusMsg += ` / AA仕入車両の車両代金ずれ: ${aaMismatches.length}台(要確認)`;
     statusEl.textContent = statusMsg;
     statusEl.className = 'uploadStatus ok';
-    await loadAll();
+
+    const finish = ()=>{ if(aaMismatches.length) showAaMismatchAlert(aaMismatches); };
+    if(costDiffs.length){
+      showTanaCostDiffConfirm(costDiffs, statusEl, (appliedCount)=>{
+        if(appliedCount) statusEl.textContent += ` (${appliedCount}台反映しました)`;
+        finish();
+      });
+    } else {
+      finish();
+    }
   }catch(err){
     console.error('handleTanaCsvFile error:', err);
     statusEl.textContent = '● エラー: ' + err.message;
