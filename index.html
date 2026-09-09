@@ -62,6 +62,19 @@ html[data-theme="dark"] .settingsBtn:hover{background:rgba(74,171,207,0.12);box-
 .settingsRow{display:flex;justify-content:space-between;align-items:center;padding:12px 0;}
 .settingsRow span{font-size:13px;color:var(--text);}
 .settingsCloseBtn{margin-top:12px;width:100%;padding:8px;background:transparent;border:2px solid var(--sky);color:var(--sky);border-radius:8px;font-size:13px;cursor:pointer;font-weight:600;}
+
+.diffModalPanel{background:var(--card);border:2px solid var(--border);border-radius:14px;padding:22px 24px;width:90vw;max-width:820px;max-height:85vh;overflow-y:auto;position:relative;}
+.diffModalPanel h3{margin:0 0 8px;font-size:15px;font-weight:600;color:var(--text);}
+.diffModalPanel p.diffNote{font-size:12.5px;color:var(--text-sub);margin:0 0 14px;}
+table.diffTable{width:100%;border-collapse:collapse;font-size:12.5px;}
+table.diffTable th,table.diffTable td{border-bottom:1px solid var(--border);padding:6px 8px;text-align:left;white-space:nowrap;}
+table.diffTable th{color:var(--text-sub);font-weight:600;}
+table.diffTable td.diffOld{color:var(--text-muted);text-decoration:line-through;}
+table.diffTable td.diffNew{color:#c0392b;font-weight:600;}
+.diffModalBtnRow{display:flex;gap:10px;margin-top:18px;}
+.diffModalBtnRow button{flex:1;padding:9px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;}
+#hubDiffApplyBtn,#hubAaMismatchOkBtn{background:var(--sky);color:#fff;border:none;}
+#hubDiffCancelBtn{background:transparent;border:2px solid var(--border);color:var(--text-sub);}
 .settingsCloseBtn:hover{background:rgba(74,171,207,0.12);box-shadow:0 0 8px var(--sky);}
 .switch{position:relative;display:inline-block;width:46px;height:26px;flex-shrink:0;}
 .switch input{opacity:0;width:0;height:0;}
@@ -117,7 +130,7 @@ html[data-theme="dark"] .aaUploadStatus.err{color:#ff6b6b;}
 <header>
 <div class="header-row">
   <div>
-    <h1>Ciel System <span style="font-size:12px;font-weight:400;opacity:.75;">v1.03</span></h1>
+    <h1>Ciel System <span style="font-size:12px;font-weight:400;opacity:.75;">v1.04</span></h1>
     <p>シエルオートワークス 業務ツール一覧</p>
   </div>
   <button class="settingsBtn" id="settingsBtn">⚙ 設定</button>
@@ -166,7 +179,7 @@ html[data-theme="dark"] .aaUploadStatus.err{color:#ff6b6b;}
 <div class="section-label">車両登録</div>
 <div class="aaUploadCard">
   <h2 class="aaUploadTitle">📋 新規車両登録(棚卸CSV)</h2>
-  <p class="aaUploadDesc">棚卸CSVをアップロードすると、ads.html用の棚卸データとcar-appの在庫(stock)それぞれについて、まだ登録されていない車台番号だけを新規登録します(片方にしか登録されていない車台番号は、不足している側だけ追加登録されます)。既に両方に存在する車台番号はスキップされ、既存データは書き換えません。</p>
+  <p class="aaUploadDesc">棚卸CSVをアップロードすると、ads.html用の棚卸データとcar-appの在庫(stock)それぞれについて、まだ登録されていない車台番号だけを新規登録します(片方にしか登録されていない車台番号は、不足している側だけ追加登録されます)。既に両方に存在する車台番号はスキップされ、既存データは書き換えません。あわせて、既存車両も車両代金(税抜仕入金額)を比較し、非AA仕入車両はプライシングツールの車両代金との差分を確認画面で反映可否選択、AA仕入車両は精算書とのずれを表示のみで通知します。</p>
   <div class="csvDropZone" id="hubCsvDropZone">
     <div style="font-size:22px;margin-bottom:6px">📄</div>
     <p style="font-size:12px">棚卸CSVをドラッグ&ドロップ、またはクリックして選択</p>
@@ -194,6 +207,37 @@ html[data-theme="dark"] .aaUploadStatus.err{color:#ff6b6b;}
     <h3>車両一覧(仕入日 新しい順)</h3>
     <div class="vehicleListBody" id="hubVehicleListBody"></div>
     <button class="settingsCloseBtn" id="hubVehicleListCloseBtn">閉じる</button>
+  </div>
+</div>
+
+<!-- 車両代金 差分確認モーダル(棚卸CSV取込み・非AA仕入車両) -->
+<div class="settingsOverlay" id="hubDiffConfirmOverlay" style="display:none;">
+  <div class="diffModalPanel">
+    <h3>車両代金の変更確認(棚卸CSV・非AA仕入車両)</h3>
+    <p class="diffNote">以下の非AA仕入車両は、棚卸CSVの税抜仕入金額とプライシングツールの車両代金(手動入力)が異なります(未入力を含む)。反映する場合は「反映する」を押してください。</p>
+    <table class="diffTable">
+      <thead><tr><th>車台番号</th><th>車名</th><th>既存の車両代金</th><th>新しい車両代金</th></tr></thead>
+      <tbody id="hubDiffTableBody"></tbody>
+    </table>
+    <div class="diffModalBtnRow">
+      <button id="hubDiffApplyBtn">反映する</button>
+      <button id="hubDiffCancelBtn">キャンセル(反映しない)</button>
+    </div>
+  </div>
+</div>
+
+<!-- AA仕入車両の車両代金ずれ注意喚起(表示のみ・書き込みなし) -->
+<div class="settingsOverlay" id="hubAaMismatchOverlay" style="display:none;">
+  <div class="diffModalPanel">
+    <h3>AA仕入車両の車両代金ずれ(要確認・自動反映なし)</h3>
+    <p class="diffNote">以下の車両はAA仕入(精算書に落札記録あり)のため原価は精算書の値から自動計算されますが、棚卸CSVの税抜仕入金額と精算書の車両代金が一致しません。どちらが正しいか手動でご確認ください(このツールからは書き込みしません)。</p>
+    <table class="diffTable">
+      <thead><tr><th>車台番号</th><th>車名</th><th>棚卸CSVの税抜仕入金額</th><th>精算書の車両代金</th></tr></thead>
+      <tbody id="hubAaMismatchTableBody"></tbody>
+    </table>
+    <div class="diffModalBtnRow">
+      <button id="hubAaMismatchOkBtn">確認しました</button>
+    </div>
   </div>
 </div>
 
@@ -352,6 +396,7 @@ async function handleHubCsvFile(file){
       date: fi('仕入日'), name: fi('車名'), sup: fi('仕入先名'),
       color: fi('色'), vin: fi('車台番号'), year: fi('年式'),
       shaken: fi('車検期限'), price: fi('仕入金額'), total: fi('合計'),
+      priceExTax: fi('税抜仕入金額'),
     };
     const g = (row, i) => (i>=0 && i<row.length) ? (row[i]||'').replace(/^"|"$/g,'').trim() : '';
 
@@ -359,15 +404,55 @@ async function handleHubCsvFile(file){
     // tanaoroshiとstockは別々の登録経路(car-app単体のCSV読込・手入力等)を持ちうるため、
     // 「どちらかにあれば完全スキップ」ではなく、tanaoroshi/stockそれぞれの存在有無を別々に判定する。
     // これにより、片方にだけ登録されていて、もう片方に登録が漏れている車両を後から埋められる。
-    const [tanaSnap, stockSnap, archiveSnap] = await Promise.all([
+    const [tanaSnap, stockSnap, archiveSnap, juSnap, pdSnap] = await Promise.all([
       get(ref(db, 'adsData/tanaoroshi')),
       get(ref(db, 'stock')),
       get(ref(db, 'stockArchive')),
+      get(ref(db, 'juHistory')),
+      get(ref(db, 'pricingData')),
     ]);
     const tanaVins = new Set(Object.keys(tanaSnap.val() || {}));
     const stockVins = new Set();
     Object.values(stockSnap.val() || {}).forEach(v => { if(v.vin) stockVins.add(normVin(v.vin)); });
     Object.values(archiveSnap.val() || {}).forEach(v => { if(v.vin) stockVins.add(normVin(v.vin)); });
+    const juHistory = juSnap.val() || {};
+    const pricingData = pdSnap.val() || {};
+
+    // 車両代金(税抜仕入金額)の比較。既存の棚卸/在庫スキップ判定とは独立して、行がある限り毎回チェックする。
+    // pricing.html(v1.10)の棚卸CSV取込みと同じロジック(プライシングツールの原価データ・確認画面のUIと揃える)。
+    const costDiffs = [];   // 非AA車両: プライシングの車両代金(手動入力)と異なる場合、確認して反映
+    const aaMismatches = []; // AA仕入車両: 精算書の車両代金と異なる場合、表示のみ(書き込みなし)
+    if(idx.priceExTax >= 0){
+      for(const row of rowsArr.slice(hIdx+1)){
+        const first0 = g(row, 0);
+        if(!first0 || !/^(平成|令和|昭和|\d{4})/.test(first0)) continue;
+        const vin0 = normVin(g(row, idx.vin));
+        if(!vin0) continue;
+        const priceExTaxRaw = g(row, idx.priceExTax);
+        if(priceExTaxRaw === '') continue;
+        const priceExTax = Number(priceExTaxRaw) || 0;
+        const carName0 = g(row, idx.name);
+
+        const entries = Object.values(juHistory[vin0] || {}).filter(e=>e && typeof e==='object');
+        const rakusatsuEntries = entries
+          .filter(e=>e.category==='rakusatsu' && e.status!=='cancel')
+          .sort((a,b)=>(a.date||'').localeCompare(b.date||''));
+        const lastBuy = rakusatsuEntries.length ? rakusatsuEntries[rakusatsuEntries.length-1] : null;
+
+        if(lastBuy){
+          const juVal = Number(lastBuy.sharyDai||0);
+          if(juVal !== priceExTax){
+            aaMismatches.push({ vin: vin0, name: carName0, csvVal: priceExTax, juVal });
+          }
+        } else {
+          const pd = pricingData[vin0] || {};
+          const curVal = pd.manualCost!=null ? Number(pd.manualCost) : null;
+          if(curVal !== priceExTax){
+            costDiffs.push({ vin: vin0, name: carName0, oldVal: curVal, newVal: priceExTax });
+          }
+        }
+      }
+    }
 
     const newTanaoroshi = {};
     const newStock = {};
@@ -412,28 +497,82 @@ async function handleHubCsvFile(file){
       else addedStockOnly++;
     }
     const totalAdded = addedBoth + addedTanaOnly + addedStockOnly;
+    let statusMsg;
     if(!totalAdded){
-      setHubCsvStatus(`新規車両はありませんでした(既存: ${skipped}台)`, 'ok');
-      return;
+      statusMsg = `新規車両はありませんでした(既存: ${skipped}台)`;
+    } else {
+      await Promise.all([
+        update(ref(db, 'adsData/tanaoroshi'), newTanaoroshi),
+        update(ref(db, 'stock'), newStock),
+      ]);
+      // 車両一覧・候補検索のキャッシュに反映(次回取得を待たずに反映するため)
+      if(hubTanaoroshi) Object.assign(hubTanaoroshi, newTanaoroshi);
+      // car-appのNewsタブに表示されるログ(新規登録はまとめて1件)
+      const newsId = 'n' + Date.now() + Math.random().toString(36).slice(2,6);
+      await set(ref(db, `newsLog/${newsId}`), {ts: Date.now(), vin: '', message: `新規車両を${totalAdded}台登録しました`});
+      statusMsg = `● 新規登録: ${addedBoth}台(ads.html / car-app 両方)`;
+      if(addedTanaOnly) statusMsg += ` / ads.htmlのみ追加: ${addedTanaOnly}台(car-appには既存)`;
+      if(addedStockOnly) statusMsg += ` / car-appのみ追加: ${addedStockOnly}台(ads.htmlには既存)`;
+      statusMsg += ` / スキップ(両方に既存): ${skipped}台`;
     }
-    await Promise.all([
-      update(ref(db, 'adsData/tanaoroshi'), newTanaoroshi),
-      update(ref(db, 'stock'), newStock),
-    ]);
-    // 車両一覧・候補検索のキャッシュに反映(次回取得を待たずに反映するため)
-    if(hubTanaoroshi) Object.assign(hubTanaoroshi, newTanaoroshi);
-    // car-appのNewsタブに表示されるログ(新規登録はまとめて1件)
-    const newsId = 'n' + Date.now() + Math.random().toString(36).slice(2,6);
-    await set(ref(db, `newsLog/${newsId}`), {ts: Date.now(), vin: '', message: `新規車両を${totalAdded}台登録しました`});
-    let statusMsg = `● 新規登録: ${addedBoth}台(ads.html / car-app 両方)`;
-    if(addedTanaOnly) statusMsg += ` / ads.htmlのみ追加: ${addedTanaOnly}台(car-appには既存)`;
-    if(addedStockOnly) statusMsg += ` / car-appのみ追加: ${addedStockOnly}台(ads.htmlには既存)`;
-    statusMsg += ` / スキップ(両方に既存): ${skipped}台`;
+    if(costDiffs.length) statusMsg += ` / 車両代金の差分(非AA仕入): ${costDiffs.length}台(要確認)`;
+    if(aaMismatches.length) statusMsg += ` / AA仕入車両の車両代金ずれ: ${aaMismatches.length}台(要確認)`;
     setHubCsvStatus(statusMsg, 'ok');
+
+    const finish = ()=>{ if(aaMismatches.length) showHubAaMismatchAlert(aaMismatches); };
+    if(costDiffs.length){
+      showHubTanaCostDiffConfirm(costDiffs, (appliedCount)=>{
+        if(appliedCount) setHubCsvStatus(document.getElementById('hubCsvStatus').textContent + ` (${appliedCount}台反映しました)`, 'ok');
+        finish();
+      });
+    } else {
+      finish();
+    }
   } catch(err){
     console.error('handleHubCsvFile error:', err);
     setHubCsvStatus('● エラー: ' + err.message, 'err');
   }
+}
+
+// 棚卸CSV(税抜仕入金額)と既存の車両代金(手動入力・非AA車両のみ)との差分確認モーダル
+function showHubTanaCostDiffConfirm(costDiffs, onDone){
+  const overlay = document.getElementById('hubDiffConfirmOverlay');
+  const tbody = document.getElementById('hubDiffTableBody');
+  tbody.innerHTML = costDiffs.map(d=>`
+    <tr>
+      <td>${d.vin}</td>
+      <td>${d.name||''}</td>
+      <td class="diffOld">${d.oldVal==null ? '(未入力)' : '¥'+d.oldVal.toLocaleString('ja-JP')}</td>
+      <td class="diffNew">¥${d.newVal.toLocaleString('ja-JP')}</td>
+    </tr>
+  `).join('');
+  overlay.style.display = 'flex';
+
+  const close = ()=>{ overlay.style.display = 'none'; };
+  document.getElementById('hubDiffCancelBtn').onclick = ()=>{ close(); onDone(0); };
+  document.getElementById('hubDiffApplyBtn').onclick = async ()=>{
+    const updates = {};
+    costDiffs.forEach(d=>{ updates[`pricingData/${d.vin}/manualCost`] = d.newVal; });
+    await update(ref(db), updates);
+    close();
+    onDone(costDiffs.length);
+  };
+}
+
+// AA仕入車両の棚卸CSV(税抜仕入金額)と精算書の車両代金のずれ(表示のみ・書き込みなし)
+function showHubAaMismatchAlert(aaMismatches){
+  const overlay = document.getElementById('hubAaMismatchOverlay');
+  const tbody = document.getElementById('hubAaMismatchTableBody');
+  tbody.innerHTML = aaMismatches.map(d=>`
+    <tr>
+      <td>${d.vin}</td>
+      <td>${d.name||''}</td>
+      <td class="diffNew">¥${d.csvVal.toLocaleString('ja-JP')}</td>
+      <td class="diffOld">¥${d.juVal.toLocaleString('ja-JP')}</td>
+    </tr>
+  `).join('');
+  overlay.style.display = 'flex';
+  document.getElementById('hubAaMismatchOkBtn').onclick = ()=>{ overlay.style.display = 'none'; };
 }
 
 const hubCsvDropZone = document.getElementById('hubCsvDropZone');
