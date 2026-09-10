@@ -160,33 +160,28 @@ tr.rowArchive{background:var(--neutral-bg);opacity:.7;}
 .resultRow .taxNote{font-size:10px;color:var(--text-muted);}
 .modalSaveNote{font-size:11px;color:var(--text-muted);text-align:center;margin-top:10px;}
 
-.aaModalPanelPhotos{background:var(--card);border:2px solid var(--border);border-radius:14px;padding:22px 24px;width:96vw;max-width:900px;max-height:92vh;overflow-y:auto;position:relative;}
+.aaModalPanelPhotos{background:var(--card);border:2px solid var(--border);border-radius:14px;padding:22px 24px;width:98vw;max-width:1800px;max-height:97vh;overflow-y:auto;position:relative;}
 .aaModalHeader{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:4px;}
 .aaModalHeader h3{margin:0;font-size:15px;}
 .aaVinLabel{font-size:12px;color:var(--text-sub);margin:0 0 16px;}
-.aaImagesRow{display:flex;gap:20px;justify-content:center;flex-wrap:wrap;min-height:120px;align-items:flex-start;}
-.aaSlot{display:flex;flex-direction:column;align-items:center;gap:8px;flex:1 1 0;min-width:200px;max-width:420px;}
-.aaSlot img{width:100%;border-radius:8px;border:1px solid var(--border);display:block;cursor:zoom-in;}
 .aaEmptyNote{color:var(--text-muted);font-size:12px;padding:20px;}
-/* AA出品票アップロード(ciel-systemハブと同じUI・aaPhotos/{vin}を直接編集) */
-.aaSlotsRow{display:grid;grid-template-columns:1fr 1fr;gap:10px;max-width:420px;margin:0 auto;}
-.aaSlotEmpty{border:2px dashed var(--border);border-radius:10px;aspect-ratio:4/3;display:flex;align-items:center;justify-content:center;text-align:center;color:var(--text-muted);font-size:12px;cursor:pointer;transition:.15s;line-height:1.5;}
-.aaSlotEmpty:hover{border-color:var(--sky);color:var(--sky);}
-.aaSlotEmpty.dragover{border-color:var(--sky);color:var(--sky);background:rgba(74,171,207,0.08);}
-.aaSlotEmpty .subtle{font-size:10.5px;}
-.aaSlotFilled{position:relative;border:1px solid var(--border);border-radius:10px;overflow:hidden;aspect-ratio:4/3;}
-.aaSlotFilled img{width:100%;height:100%;object-fit:cover;display:block;cursor:zoom-in;}
-.aaSlotBtns{position:absolute;bottom:0;left:0;right:0;display:flex;background:rgba(0,0,0,.55);}
-.aaSlotBtns button{flex:1;padding:6px;border:none;background:transparent;color:#fff;font-size:11.5px;cursor:pointer;}
-.aaSlotBtns button:hover{background:rgba(255,255,255,.15);}
+/* AA出品票アップロード(ads.htmlと同じUI・大きく横2枚表示・aaPhotos/{vin}を直接編集) */
+.aaImagesRow{display:flex;gap:20px;justify-content:center;flex-wrap:nowrap;min-height:300px;align-items:flex-start;}
+.aaSlot{display:flex;flex-direction:column;align-items:center;gap:8px;flex:1 1 0;min-width:0;max-width:860px;}
+.aaSlot img{width:100%;border-radius:8px;border:1px solid var(--border);display:block;cursor:zoom-in;}
+.aaSlotBtns{display:flex;gap:8px;width:100%;}
+.aaSlotBtns button{flex:1;font-size:12.5px;padding:8px 8px;border-radius:6px;border:2px solid var(--border);background:var(--card);color:var(--text-sub);cursor:pointer;}
+.aaSlotBtns button:hover{background:var(--hover-bg);}
+.aaSlotBtns button.aaDeleteBtn{border-color:var(--danger-border);color:var(--danger-text);}
+.aaDropZone{flex:1 1 0;min-width:0;max-width:860px;min-height:340px;border:2px dashed var(--sky);border-radius:10px;display:flex;align-items:center;justify-content:center;text-align:center;color:var(--text-sub);font-size:13px;padding:12px;cursor:pointer;}
+.aaDropZone.dragover{background:rgba(74,171,207,0.12);}
+.aaDropZone .subtle{color:var(--text-muted);font-size:11px;}
 .aaUploadStatus{margin-top:12px;font-size:12px;color:var(--text-sub);min-height:16px;text-align:center;}
-.aaUploadStatus.ok{color:#2c9c4a;}
-html[data-theme="dark"] .aaUploadStatus.ok{color:#33ff6e;}
-.aaUploadStatus.err{color:#c0392b;}
-html[data-theme="dark"] .aaUploadStatus.err{color:#ff6b6b;}
+.aaUploadStatus.ok{color:var(--ok-text);}
+.aaUploadStatus.err{color:var(--danger-text);}
 .aaZoomOverlay{position:fixed;inset:0;background:rgba(0,0,0,0.85);display:none;align-items:center;justify-content:center;z-index:200;cursor:zoom-out;}
 .aaZoomOverlay.open{display:flex;}
-.aaZoomOverlay img{max-width:96vw;max-height:96vh;object-fit:contain;}
+.aaZoomOverlay img{max-width:96vw;max-height:96vh;object-fit:contain;cursor:zoom-in;transition:transform .05s linear;}
 
 .settingsOverlay{position:fixed;inset:0;background:rgba(0,0,0,0.55);display:none;align-items:center;justify-content:center;z-index:100;}
 .settingsOverlay.open{display:flex;}
@@ -245,7 +240,7 @@ table.diffTable td.diffNew{color:var(--danger-text);font-weight:600;}
 <header>
 <div class="header-row">
   <div>
-    <h1>プライシングツール <span style="font-size:12px;font-weight:400;opacity:.75;">v1.12</span></h1>
+    <h1>プライシングツール <span style="font-size:12px;font-weight:400;opacity:.75;">v1.13</span></h1>
     <p>原価から総額下限・業販下限を算出し、車体価格に対する粗利をランク表示します。※データはFirebaseで共有されます</p>
   </div>
   <div style="display:flex;gap:8px;flex-shrink:0;">
@@ -420,7 +415,7 @@ table.diffTable td.diffNew{color:var(--danger-text);font-weight:600;}
       <button class="modalCloseX" id="aaCloseBtn">✕</button>
     </div>
     <p class="aaVinLabel" id="aaVinLabel"></p>
-    <div class="aaSlotsRow" id="aaSlotsRow"></div>
+    <div class="aaImagesRow" id="aaImagesRow"></div>
     <div class="aaUploadStatus" id="aaUploadStatus"></div>
   </div>
 </div>
@@ -1084,32 +1079,31 @@ function setAaUploadStatus(msg, cls){
 }
 
 function renderAaSlots(data){
-  const row = document.getElementById('aaSlotsRow');
+  const row = document.getElementById('aaImagesRow');
   const slots = ['img1', 'img2'];
   let html = '';
   slots.forEach((slot, i)=>{
     const src = data?.[slot];
     if(src){
-      html += `<div class="aaSlotFilled">
-        <img src="${src}" data-slot="${slot}" class="aaZoomable">
+      html += `<div class="aaSlot">
+        <img src="${src}" class="aaZoomable" data-slot="${slot}" title="ダブルクリックで拡大">
         <div class="aaSlotBtns">
           <button type="button" class="aaChangeBtn" data-slot="${slot}">変更</button>
           <button type="button" class="aaDeleteBtn" data-slot="${slot}">削除</button>
         </div>
       </div>`;
     } else {
-      html += `<div class="aaSlotEmpty" data-slot="${slot}">📥 ${i===0?'1枚目':'2枚目'}<br><span class="subtle">クリックまたはドラッグ&ドロップ</span></div>`;
+      html += `<div class="aaDropZone" data-slot="${slot}">
+        📥 画像をドラッグ&ドロップ<br>またはクリックして選択<br><span class="subtle">(${i===0?'1枚目':'2枚目'})</span>
+      </div>`;
     }
   });
   row.innerHTML = html;
 
   row.querySelectorAll('.aaZoomable').forEach(img=>{
-    img.addEventListener('click', ()=>{
-      document.getElementById('aaZoomImg').src = img.src;
-      document.getElementById('aaZoomOverlay').classList.add('open');
-    });
+    img.addEventListener('dblclick', ()=> openAaZoom(img.src));
   });
-  row.querySelectorAll('.aaSlotEmpty').forEach(dz=>{
+  row.querySelectorAll('.aaDropZone').forEach(dz=>{
     dz.addEventListener('click', ()=> pickAaFile(dz.dataset.slot));
     ['dragenter','dragover'].forEach(evt=>dz.addEventListener(evt, e=>{
       e.preventDefault(); dz.classList.add('dragover');
@@ -1139,6 +1133,14 @@ function pickAaFile(slot){
     if(input.files[0]) handleAaUpload(slot, input.files[0]);
   });
   input.click();
+}
+
+// ズーム表示。オーバーレイ内でマウスを動かすと、カーソルのある部分をさらに拡大する(虫眼鏡的な動作)。ads.htmlと同じ挙動。
+function openAaZoom(src){
+  const zoomImg = document.getElementById('aaZoomImg');
+  zoomImg.src = src;
+  zoomImg.style.transform = 'scale(1)';
+  document.getElementById('aaZoomOverlay').classList.add('open');
 }
 
 async function updateAaPhotoCount(vin, data){
@@ -1193,7 +1195,7 @@ async function handleAaDelete(slot){
 async function openAa(vin){
   currentAaVin = vin;
   document.getElementById('aaVinLabel').textContent = vin;
-  const row = document.getElementById('aaSlotsRow');
+  const row = document.getElementById('aaImagesRow');
   row.innerHTML = '<p class="aaEmptyNote">読み込み中…</p>';
   setAaUploadStatus('');
   document.getElementById('aaOverlay').classList.add('open');
@@ -1211,8 +1213,19 @@ document.getElementById('aaCloseBtn').addEventListener('click', ()=>{
 document.getElementById('aaOverlay').addEventListener('click', e=>{
   if(e.target.id==='aaOverlay') e.currentTarget.classList.remove('open');
 });
-document.getElementById('aaZoomOverlay').addEventListener('click', ()=>{
-  document.getElementById('aaZoomOverlay').classList.remove('open');
+document.getElementById('aaZoomOverlay').addEventListener('click', (e)=>{
+  if(e.target.id==='aaZoomOverlay') document.getElementById('aaZoomOverlay').classList.remove('open');
+});
+document.getElementById('aaZoomImg').addEventListener('mousemove', (e)=>{
+  const img = e.target;
+  const rect = img.getBoundingClientRect();
+  const x = ((e.clientX - rect.left) / rect.width) * 100;
+  const y = ((e.clientY - rect.top) / rect.height) * 100;
+  img.style.transformOrigin = `${x}% ${y}%`;
+  img.style.transform = 'scale(2.5)';
+});
+document.getElementById('aaZoomImg').addEventListener('mouseleave', (e)=>{
+  e.target.style.transform = 'scale(1)';
 });
 
 // ===== 全選択チェック(表示中=絞り込み後の車両のみ対象) =====
