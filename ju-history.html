@@ -80,6 +80,9 @@ html[data-theme="dark"] .card:hover{box-shadow:0 2px 10px rgba(0,0,0,.5);}
 .viewToggle{display:flex;gap:0;border:2px solid var(--sky);border-radius:20px;overflow:hidden;}
 .viewToggle button{border:none;background:var(--card);color:var(--sky);font-size:12.5px;padding:6px 14px;cursor:pointer;font-weight:600;}
 .viewToggle button.active{background:var(--sky);color:#fff;}
+.countRow{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:0 0 8px;flex-wrap:wrap;}
+.exportBtn{font-size:12.5px;padding:6px 12px;border-radius:8px;border:2px solid var(--sky);background:var(--card);color:var(--sky);cursor:pointer;font-weight:600;white-space:nowrap;}
+.exportBtn:hover{background:var(--sky);color:#fff;}
 
 table{width:100%;border-collapse:collapse;background:var(--card);border-radius:10px;overflow:hidden;font-size:12.5px;}
 thead th{position:sticky;top:0;background:var(--thead-bg);text-align:left;padding:9px 8px;font-weight:600;color:var(--text-sub);border-bottom:1px solid var(--border);white-space:nowrap;}
@@ -201,7 +204,7 @@ html[data-theme="dark"] .badge.warn{border-color:var(--warn-text);}
 <header>
 <div class="header-row">
   <div>
-    <h1>オークション出品履歴チェックツール <span style="font-size:12px;font-weight:400;opacity:.75;">v1.05</span></h1>
+    <h1>オークション出品履歴チェックツール <span style="font-size:12px;font-weight:400;opacity:.75;">v1.06</span></h1>
     <p>JU新潟・USS新潟・USS東京・TAA東北への出品(売却)・落札(仕入)履歴を車両ごとに管理。累計手数料・出品/仕入それぞれの経過日数を確認できます。　※データはFirebaseで共有されます</p>
   </div>
   <div style="display:flex;gap:8px;flex-shrink:0;">
@@ -290,7 +293,10 @@ html[data-theme="dark"] .badge.warn{border-color:var(--warn-text);}
   </div>
 </div>
 
-<p class="count-hint" id="countHint"></p>
+<div class="countRow">
+  <p class="count-hint" id="countHint"></p>
+  <button class="exportBtn" id="exportCsvBtn">📥 CSVエクスポート</button>
+</div>
 
 <div class="tablewrap">
 <table id="vehicleTable">
@@ -332,7 +338,7 @@ html[data-theme="dark"] .badge.warn{border-color:var(--warn-text);}
 </table>
 </div>
 
-<p class="legend">※在庫状態は棚卸/在庫データとの車台番号突合で判定(在庫あり＝car-appの在庫または棚卸に存在／アーカイブ＝納車済み等で在庫から外れた車両／不明＝どちらにも見当たらない車両)。出品回数＝自社が出品(売却)側の回数(取消は除く)、仕入会場＝自社が落札(購入)した会場。累計手数料＝出品料+成約料(売却側)＋落札料(仕入側、AAで仕入れて別会場で出品した車両など)の合計(取消分は含まない)。自税相当額(自動車税等の日数按分)は手数料に含めず、車両詳細で参考表示。経過日数(出品)は直近の出品(売却)記録のみを基準にした日数(「3ヶ月以上出品なし」の絞込もこちらを基準)、経過日数(仕入)は直近の仕入(落札)記録のみを基準にした日数(仕入記録が無い車両は空欄)。出品票(🖼)ボタンはciel-systemハブに登録済みのAA出品票画像を表示のみ行うもので、この画面から画像の登録・削除はできません(登録はハブ側で行います)。</p>
+<p class="legend">※在庫状態は棚卸/在庫データとの車台番号突合で判定(在庫あり＝car-appの在庫または棚卸に存在／アーカイブ＝納車済み等で在庫から外れた車両／不明＝どちらにも見当たらない車両)。出品回数＝自社が出品(売却)側の回数(取消は除く)、仕入会場＝自社が落札(購入)した会場。累計手数料＝出品料+成約料(売却側)＋落札料(仕入側、AAで仕入れて別会場で出品した車両など)の合計(取消分は含まない)。自税相当額(自動車税等の日数按分)は手数料に含めず、車両詳細で参考表示。経過日数(出品)は直近の出品(売却)記録のみを基準にした日数(「3ヶ月以上出品なし」の絞込もこちらを基準)、経過日数(仕入)は直近の仕入(落札)記録のみを基準にした日数(仕入記録が無い車両は空欄)。出品票(🖼)ボタンはciel-systemハブに登録済みのAA出品票画像を表示のみ行うもので、この画面から画像の登録・削除はできません(登録はハブ側で行います)。「📥 CSVエクスポート」ボタン(車両ごと表示時のみ)は、今表示されている検索・絞り込み・並び替え結果をそのままCSVファイルとして出力します。</p>
 
 </div>
 
@@ -470,6 +476,57 @@ function build(){
   logRows.sort((a,b)=> b.date.localeCompare(a.date));
 }
 
+function stockStatusText(s){
+  if(s==='stock') return '在庫あり';
+  if(s==='archive') return 'アーカイブ';
+  return '不明';
+}
+function resultText(status, category){
+  if(status==='cancel') return '取消';
+  if(category==='rakusatsu') return '落札';
+  if(status==='seiyaku') return '成約';
+  if(status==='ryusatsu') return '流札';
+  return status || '';
+}
+// --- CSVエクスポート(車両一覧表。現在の絞り込み・並び替えをそのまま反映) ---
+function csvEscape(v){
+  const s = (v===null||v===undefined) ? '' : String(v);
+  return /[",\n\r]/.test(s) ? '"'+s.replace(/"/g,'""')+'"' : s;
+}
+function exportVehicleCsv(){
+  const rows = getSortedFilteredVehicles();
+  const headers = ['直近出品日','車台番号','車名','グレード','在庫状態','出品回数','仕入会場','直近結果','出品経過日数','仕入日','経過日数(仕入)','累計手数料'];
+  const lines = [headers.map(csvEscape).join(',')];
+  rows.forEach(v=>{
+    lines.push([
+      v.lastShuppinDate || '',
+      v.vin || '',
+      v.carName || '',
+      v.grade || '',
+      stockStatusText(v.stockStatus),
+      v.count,
+      v.buySources.join('/'),
+      resultText(v.lastStatus, v.lastCategory),
+      v.daysSinceShuppin!=null ? v.daysSinceShuppin : '',
+      v.lastBuyDate || '',
+      v.daysSinceBuy!=null ? v.daysSinceBuy : '',
+      v.totalFee,
+    ].map(csvEscape).join(','));
+  });
+  // 先頭にBOMを付けてUTF-8として出力(Excelでの文字化けを防ぐため)
+  const csvContent = '﻿' + lines.join('\r\n');
+  const blob = new Blob([csvContent], {type:'text/csv;charset=utf-8;'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  const ts = new Date();
+  const pad = n => String(n).padStart(2,'0');
+  a.href = url;
+  a.download = `ju-history_車両一覧_${ts.getFullYear()}${pad(ts.getMonth()+1)}${pad(ts.getDate())}.csv`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
 function statusBadge(status, category){
   if(status==='cancel') return '<span class="badge cancel">取消</span>';
   if(category==='rakusatsu') return '<span class="badge buy">落札</span>';
@@ -534,7 +591,7 @@ function applyFilters(list){
   return filtered;
 }
 
-function renderVehicleTable(){
+function getSortedFilteredVehicles(){
   let filtered = applyFilters(vehicles);
   if(sortKey){
     filtered = [...filtered].sort((a,b)=>{
@@ -553,6 +610,10 @@ function renderVehicleTable(){
   } else {
     filtered = [...filtered].sort((a,b)=> (b.lastShuppinDate||b.lastDate||'').localeCompare(a.lastShuppinDate||a.lastDate||''));
   }
+  return filtered;
+}
+function renderVehicleTable(){
+  const filtered = getSortedFilteredVehicles();
   document.getElementById('countHint').textContent = `${filtered.length}件 / 全${vehicles.length}件`;
   document.getElementById('vehicleTbody').innerHTML = filtered.map(v=>`
     <tr class="${v.stockStatus==='archive'?'rowArchive':''}" data-vin="${v.vin}">
@@ -792,6 +853,7 @@ document.getElementById('viewVehicleBtn').onclick=()=>{
   document.getElementById('viewLogBtn').classList.remove('active');
   document.getElementById('vehicleTable').style.display='';
   document.getElementById('logTable').style.display='none';
+  document.getElementById('exportCsvBtn').style.display='';
   renderTable();
 };
 document.getElementById('viewLogBtn').onclick=()=>{
@@ -800,8 +862,10 @@ document.getElementById('viewLogBtn').onclick=()=>{
   document.getElementById('viewVehicleBtn').classList.remove('active');
   document.getElementById('vehicleTable').style.display='none';
   document.getElementById('logTable').style.display='';
+  document.getElementById('exportCsvBtn').style.display='none';
   renderTable();
 };
+document.getElementById('exportCsvBtn').onclick=exportVehicleCsv;
 
 document.querySelectorAll('#vehicleTable thead th.sortable').forEach(th=>{
   th.addEventListener('click', ()=>{
