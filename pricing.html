@@ -78,6 +78,12 @@ html[data-theme="dark"] .headerBtn:hover{background:rgba(74,171,207,0.12);}
 .filterbtn.active{background:var(--filterbtn-active-bg);color:#fff;border-color:var(--sky);}
 .toolbar input[type=text]{flex:1;min-width:200px;padding:8px 12px;border:1px solid var(--border);border-radius:8px;font-size:13px;background:var(--card);color:var(--text);}
 .toolbar select{padding:7px 10px;border:1px solid var(--border);border-radius:8px;font-size:12.5px;background:var(--card);color:var(--text);}
+/* 検索欄：ワンタップで文字削除する×ボタン */
+.searchWrap{position:relative;flex:1;min-width:200px;}
+.searchWrap input[type=text]{width:100%;min-width:0;padding-right:28px;}
+.searchClearBtn{position:absolute;right:2px;top:50%;transform:translateY(-50%);width:24px;height:24px;border:none;background:transparent;color:var(--text-muted);font-size:16px;line-height:1;cursor:pointer;display:none;align-items:center;justify-content:center;border-radius:50%;}
+.searchClearBtn:hover{color:var(--text);}
+.searchWrap.hasValue .searchClearBtn{display:flex;}
 
 .tablewrap{overflow-x:auto;border:1px solid var(--border);border-radius:10px;}
 table{width:100%;border-collapse:collapse;background:var(--card);font-size:12.5px;}
@@ -240,7 +246,7 @@ table.diffTable td.diffNew{color:var(--danger-text);font-weight:600;}
 <header>
 <div class="header-row">
   <div>
-    <h1>プライシングツール <span style="font-size:12px;font-weight:400;opacity:.75;">v1.13</span></h1>
+    <h1>プライシングツール <span style="font-size:12px;font-weight:400;opacity:.75;">v1.14</span></h1>
     <p>原価から総額下限・業販下限を算出し、車体価格に対する粗利をランク表示します。※データはFirebaseで共有されます</p>
   </div>
   <div style="display:flex;gap:8px;flex-shrink:0;">
@@ -295,7 +301,10 @@ table.diffTable td.diffNew{color:var(--danger-text);font-weight:600;}
   </div>
 </div>
 <div class="toolbar">
-  <input type="text" id="searchBox" placeholder="車台番号・車名・グレード・仕入先・仕入日で検索">
+  <div class="searchWrap" id="searchWrap">
+    <input type="text" id="searchBox" placeholder="車台番号・車名・グレード・仕入先・仕入日で検索">
+    <button type="button" class="searchClearBtn" id="searchClearBtn">×</button>
+  </div>
 </div>
 <div class="toolbar">
   <button class="filterbtn active" data-status="instock">在庫あり(すべての状態)</button>
@@ -1247,8 +1256,24 @@ document.querySelectorAll('.toolbar .filterbtn[data-status]').forEach(b=>{
 // ===== 検索ボックス =====
 document.getElementById('searchBox').addEventListener('input', e=>{
   searchQuery = e.target.value;
+  document.getElementById('searchWrap').classList.toggle('hasValue', !!searchQuery);
   renderTable();
 });
+document.getElementById('searchClearBtn').addEventListener('click', ()=>{
+  const box = document.getElementById('searchBox');
+  box.value = '';
+  searchQuery = '';
+  document.getElementById('searchWrap').classList.remove('hasValue');
+  renderTable();
+  box.focus();
+});
+
+// ===== 数値入力欄：フォーカス中のホイール/トラックパッド操作で値が変わってしまうのを防止 =====
+// (ブラウザ標準の挙動。ページ全体で1箇所だけ監視し、動的に増える一覧表の入力欄にも自動的に効く)
+document.addEventListener('wheel', ()=>{
+  const el = document.activeElement;
+  if(el && el.tagName === 'INPUT' && el.type === 'number') el.blur();
+}, {passive:true});
 
 // ===== 小売対象外も表示トグル =====
 const targetToggleBtn = document.getElementById('targetToggleBtn');

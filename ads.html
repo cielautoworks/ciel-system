@@ -80,6 +80,12 @@ html[data-theme="dark"] .card:hover{box-shadow:0 2px 10px rgba(0,0,0,.5);}
 .toolbar{display:flex;gap:8px;align-items:center;margin-bottom:14px;flex-wrap:wrap;}
 .toolbar input[type=text]{flex:1;min-width:200px;padding:8px 12px;border:1px solid var(--border);border-radius:8px;font-size:13px;background:var(--card);color:var(--text);}
 input[type="file"]{color:var(--text-sub);}
+/* 検索欄：ワンタップで文字削除する×ボタン */
+.searchWrap{position:relative;flex:1;min-width:200px;}
+.searchWrap input[type=text]{width:100%;min-width:0;padding-right:28px;}
+.searchClearBtn{position:absolute;right:2px;top:50%;transform:translateY(-50%);width:24px;height:24px;border:none;background:transparent;color:var(--text-muted);font-size:16px;line-height:1;cursor:pointer;display:none;align-items:center;justify-content:center;border-radius:50%;}
+.searchClearBtn:hover{color:var(--text);}
+.searchWrap.hasValue .searchClearBtn{display:flex;}
 .filterbtn{font-size:12.5px;padding:6px 12px;border-radius:20px;border:2px solid var(--border);background:var(--filterbtn-bg);cursor:pointer;color:var(--text-sub);}
 .filterbtn.active{background:var(--filterbtn-active-bg);color:#fff;border-color:var(--sky);}
 .filterbtn.active.d{background:var(--filterbtn-active-bg);color:var(--danger-text);border-color:var(--danger-text);}
@@ -193,7 +199,7 @@ body:not(.debugMode) .debugOnly{display:none !important;}
 <header>
 <div class="header-row">
   <div>
-    <h1>広告掲載状況ダッシュボード <span style="font-size:12px;font-weight:400;opacity:.75;">v1.29</span></h1>
+    <h1>広告掲載状況ダッシュボード <span style="font-size:12px;font-weight:400;opacity:.75;">v1.30</span></h1>
     <p>カーセンサー ／ グーネット ／ QuickNetwork（業販） ／ オートサーバー（業販） ／ JUテントリ（業販） の5サイト突合(棚卸一覧は参考照合用)　※データはFirebaseで共有されます</p>
   </div>
   <div style="display:flex;gap:8px;flex-shrink:0;">
@@ -320,7 +326,10 @@ body:not(.debugMode) .debugOnly{display:none !important;}
 <div class="summary" id="summarySites"></div>
 
 <div class="toolbar">
-  <input type="text" id="searchBox" placeholder="車台番号・車名で検索">
+  <div class="searchWrap" id="searchWrap">
+    <input type="text" id="searchBox" placeholder="車台番号・車名で検索">
+    <button type="button" class="searchClearBtn" id="searchClearBtn">×</button>
+  </div>
   <button class="filterbtn active" data-filter="all">すべて</button>
   <button class="filterbtn d" data-filter="missing">掲載漏れのみ</button>
   <button class="filterbtn w" data-filter="notinstock">棚卸に該当なし(要確認)</button>
@@ -1003,7 +1012,16 @@ document.getElementById('summarySites').addEventListener('click', (e)=>{
 });
 document.getElementById('searchBox').addEventListener('input', (e)=>{
   currentSearch = e.target.value;
+  document.getElementById('searchWrap').classList.toggle('hasValue', !!currentSearch);
   applyFilters();
+});
+document.getElementById('searchClearBtn').addEventListener('click', ()=>{
+  const box = document.getElementById('searchBox');
+  box.value = '';
+  currentSearch = '';
+  document.getElementById('searchWrap').classList.remove('hasValue');
+  applyFilters();
+  box.focus();
 });
 document.querySelectorAll('th.sortable').forEach(th=>{
   th.addEventListener('click', ()=>{
