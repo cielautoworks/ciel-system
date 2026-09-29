@@ -246,11 +246,12 @@ table.diffTable td.diffNew{color:var(--danger-text);font-weight:600;}
 <header>
 <div class="header-row">
   <div>
-    <h1>プライシングツール <span style="font-size:12px;font-weight:400;opacity:.75;">v1.14</span></h1>
+    <h1>プライシングツール <span style="font-size:12px;font-weight:400;opacity:.75;">v1.15</span></h1>
     <p>原価から総額下限・業販下限を算出し、車体価格に対する粗利をランク表示します。※データはFirebaseで共有されます</p>
   </div>
   <div style="display:flex;gap:8px;flex-shrink:0;">
     <a class="headerBtn" href="./index.html">🏠 一覧へ</a>
+    <a class="headerBtn" id="crossToolLink" href="./ads.html" data-base-href="./ads.html">📊 広告掲載へ</a>
     <button class="headerBtn" id="refreshBtn">🔄 最新を取得</button>
     <button class="headerBtn" id="settingsBtn">⚙ 設定</button>
   </div>
@@ -1254,9 +1255,19 @@ document.querySelectorAll('.toolbar .filterbtn[data-status]').forEach(b=>{
 });
 
 // ===== 検索ボックス =====
+// ads.html⇔pricing.html相互リンク：現在の検索文字列をURLの?qパラメータに反映し、
+// 遷移先でも同じ検索文字列を引き継げるようにする
+function updateCrossToolLink(){
+  const link = document.getElementById('crossToolLink');
+  if(!link) return;
+  const base = link.dataset.baseHref;
+  const q = document.getElementById('searchBox')?.value || '';
+  link.href = q ? base + '?q=' + encodeURIComponent(q) : base;
+}
 document.getElementById('searchBox').addEventListener('input', e=>{
   searchQuery = e.target.value;
   document.getElementById('searchWrap').classList.toggle('hasValue', !!searchQuery);
+  updateCrossToolLink();
   renderTable();
 });
 document.getElementById('searchClearBtn').addEventListener('click', ()=>{
@@ -1264,9 +1275,22 @@ document.getElementById('searchClearBtn').addEventListener('click', ()=>{
   box.value = '';
   searchQuery = '';
   document.getElementById('searchWrap').classList.remove('hasValue');
+  updateCrossToolLink();
   renderTable();
   box.focus();
 });
+// ads.htmlからURLの?qパラメータ付きで遷移してきた場合、検索文字列を引き継ぐ
+(function(){
+  const q = new URLSearchParams(location.search).get('q');
+  if(q){
+    const box = document.getElementById('searchBox');
+    box.value = q;
+    searchQuery = q;
+    document.getElementById('searchWrap').classList.add('hasValue');
+    renderTable();
+  }
+  updateCrossToolLink();
+})();
 
 // ===== 数値入力欄：フォーカス中のホイール/トラックパッド操作で値が変わってしまうのを防止 =====
 // (ブラウザ標準の挙動。ページ全体で1箇所だけ監視し、動的に増える一覧表の入力欄にも自動的に効く)

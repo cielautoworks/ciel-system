@@ -199,11 +199,12 @@ body:not(.debugMode) .debugOnly{display:none !important;}
 <header>
 <div class="header-row">
   <div>
-    <h1>広告掲載状況ダッシュボード <span style="font-size:12px;font-weight:400;opacity:.75;">v1.30</span></h1>
+    <h1>広告掲載状況ダッシュボード <span style="font-size:12px;font-weight:400;opacity:.75;">v1.31</span></h1>
     <p>カーセンサー ／ グーネット ／ QuickNetwork（業販） ／ オートサーバー（業販） ／ JUテントリ（業販） の5サイト突合(棚卸一覧は参考照合用)　※データはFirebaseで共有されます</p>
   </div>
   <div style="display:flex;gap:8px;flex-shrink:0;">
     <a class="updateBtn headerRefreshBtn" href="./index.html" style="text-decoration:none;display:inline-flex;align-items:center;">🏠 一覧へ</a>
+    <a class="updateBtn headerRefreshBtn" id="crossToolLink" href="./pricing.html" data-base-href="./pricing.html" style="text-decoration:none;display:inline-flex;align-items:center;">💰 プライシングへ</a>
     <button class="updateBtn headerRefreshBtn" id="refreshBtn">🔄 最新を取得</button>
     <button class="updateBtn headerRefreshBtn" id="settingsBtn">⚙ 設定</button>
   </div>
@@ -1010,9 +1011,19 @@ document.getElementById('summarySites').addEventListener('click', (e)=>{
   const card = e.target.closest('.card[data-filter]');
   if(card) setFilter(card.dataset.filter);
 });
+// ads.html⇔pricing.html相互リンク：現在の検索文字列をURLの?qパラメータに反映し、
+// 遷移先でも同じ検索文字列を引き継げるようにする
+function updateCrossToolLink(){
+  const link = document.getElementById('crossToolLink');
+  if(!link) return;
+  const base = link.dataset.baseHref;
+  const q = document.getElementById('searchBox')?.value || '';
+  link.href = q ? base + '?q=' + encodeURIComponent(q) : base;
+}
 document.getElementById('searchBox').addEventListener('input', (e)=>{
   currentSearch = e.target.value;
   document.getElementById('searchWrap').classList.toggle('hasValue', !!currentSearch);
+  updateCrossToolLink();
   applyFilters();
 });
 document.getElementById('searchClearBtn').addEventListener('click', ()=>{
@@ -1020,9 +1031,22 @@ document.getElementById('searchClearBtn').addEventListener('click', ()=>{
   box.value = '';
   currentSearch = '';
   document.getElementById('searchWrap').classList.remove('hasValue');
+  updateCrossToolLink();
   applyFilters();
   box.focus();
 });
+// pricing.htmlからURLの?qパラメータ付きで遷移してきた場合、検索文字列を引き継ぐ
+(function(){
+  const q = new URLSearchParams(location.search).get('q');
+  if(q){
+    const box = document.getElementById('searchBox');
+    box.value = q;
+    currentSearch = q;
+    document.getElementById('searchWrap').classList.add('hasValue');
+    applyFilters();
+  }
+  updateCrossToolLink();
+})();
 document.querySelectorAll('th.sortable').forEach(th=>{
   th.addEventListener('click', ()=>{
     const key = th.dataset.sort;
