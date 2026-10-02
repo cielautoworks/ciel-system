@@ -233,6 +233,9 @@ table.diffTable td.diffNew{color:var(--danger-text);font-weight:600;}
 .printTable .bigPrice{font-size:22px;font-weight:700;}
 .printTitle{font-size:16px;font-weight:700;margin-bottom:10px;color:#000;}
 
+/* 用紙サイズを明示指定。指定が無いと、直前に他ツール(pricetag.html等)でA3を印刷した場合に
+   ブラウザが前回の用紙サイズを引き継いでしまうことがあるため、常にA4縦に固定する。 */
+@page{size:A4 portrait;margin:12mm;}
 @media print{
   body > *:not(#printArea){display:none!important;}
   #printArea{display:block!important;position:static;width:100%;color:#000!important;background:#fff!important;}
@@ -246,7 +249,7 @@ table.diffTable td.diffNew{color:var(--danger-text);font-weight:600;}
 <header>
 <div class="header-row">
   <div>
-    <h1>プライシングツール <span style="font-size:12px;font-weight:400;opacity:.75;">v1.16</span></h1>
+    <h1>プライシングツール <span style="font-size:12px;font-weight:400;opacity:.75;">v1.17</span></h1>
     <p>原価から総額下限・業販下限を算出し、車体価格に対する粗利をランク表示します。※データはFirebaseで共有されます</p>
   </div>
   <div style="display:flex;gap:8px;flex-shrink:0;">

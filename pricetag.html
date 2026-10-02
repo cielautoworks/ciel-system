@@ -7,7 +7,10 @@
 <style>
   @page{size:A3 landscape;margin:0;}
   *{-webkit-print-color-adjust:exact;print-color-adjust:exact;box-sizing:border-box;}
-  html,body{height:100%;margin:0;overflow:hidden;background:#e5e7eb;font-family:"Yu Gothic","Meiryo",sans-serif;color:#111827;}
+  html,body{height:100%;margin:0;background:#e5e7eb;font-family:"Yu Gothic","Meiryo",sans-serif;color:#111827;}
+  /* テンプレート編集タブの間だけスクロールを止める(プレビューの自動フィット計算が
+     ビューポート基準のため)。車両一覧タブでは通常通りスクロールできる必要がある。 */
+  body.tplMode{overflow:hidden;}
 
   /* ===== 上部：入力・調整パネル（印刷時は非表示） ===== */
   .panel{height:100vh;display:flex;flex-direction:column;background:#fff;font-size:14px;}
@@ -15,6 +18,10 @@
   .topBar h1{font-size:14px;margin:0;flex:none;}
   .btn{font-size:13px;padding:7px 14px;border:1px solid #111827;border-radius:6px;background:#fff;cursor:pointer;text-decoration:none;display:inline-flex;align-items:center;color:#111827;}
   .btn.main{background:#111827;color:#fff;}
+  .btn:disabled{opacity:.4;cursor:default;}
+  .viewTabs{display:flex;gap:6px;margin-left:auto;}
+  .viewTab{font-size:13px;padding:7px 14px;border:1px solid #111827;border-radius:6px;background:#fff;cursor:pointer;color:#111827;}
+  .viewTab.active{background:#111827;color:#fff;}
   details{margin-top:6px;border-top:1px solid #e2e8f0;padding-top:6px;}
   summary{cursor:pointer;font-weight:700;padding:4px 0;}
   .fieldsGrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:5px 10px;margin-top:6px;}
@@ -38,6 +45,29 @@
   .hint{font-size:12px;color:#64748b;margin-top:6px;}
   .lead{font-size:12px;color:#64748b;margin:0 0 10px;}
   .noteBox{background:#fef9c3;border:1px solid #fde047;border-radius:8px;padding:10px 12px;font-size:12.5px;color:#713f12;margin-bottom:10px;line-height:1.6;}
+
+  /* ===== 車両一覧タブ ===== */
+  .listView{padding:14px 16px;}
+  .tplBar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:8px 10px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;margin-bottom:10px;}
+  .tplBar select{font-size:13px;padding:5px 8px;border:1px solid #cbd5e1;border-radius:5px;}
+  .listToolbar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:10px;}
+  .searchWrap{position:relative;}
+  .searchWrap input{font-size:13px;padding:7px 30px 7px 10px;border:1px solid #cbd5e1;border-radius:6px;width:240px;}
+  .searchClearBtn{position:absolute;right:6px;top:50%;transform:translateY(-50%);border:none;background:none;cursor:pointer;color:#94a3b8;font-size:14px;display:none;}
+  .countHint{font-size:12.5px;color:#64748b;white-space:nowrap;}
+  .tablewrap{overflow-x:auto;border:1px solid #e2e8f0;border-radius:8px;max-width:100%;}
+  table.listTable{border-collapse:collapse;width:100%;font-size:12.5px;}
+  table.listTable th,table.listTable td{border-bottom:1px solid #e2e8f0;padding:6px 8px;text-align:left;vertical-align:middle;white-space:nowrap;}
+  table.listTable th{background:#f1f5f9;font-weight:700;position:sticky;top:0;z-index:1;}
+  table.listTable td input[type=text],table.listTable td select{font-size:12px;padding:3px 5px;border:1px solid #cbd5e1;border-radius:4px;box-sizing:border-box;}
+  .tplRadioGroup{display:flex;flex-direction:column;gap:2px;}
+  .tplRadioGroup label{display:flex;align-items:center;gap:4px;font-size:11.5px;white-space:nowrap;cursor:pointer;}
+  .vinCell{font-family:monospace;font-size:11.5px;}
+
+  /* ===== 印刷用ステージ(非表示領域。常に@media printと同じmm基準で配置し、
+     表示サイズに依存する価格自動フィット計算を印刷直前に実行できるようにする) ===== */
+  #printStage{position:fixed;left:-100000px;top:0;}
+  #printStage .paper{width:420mm;height:297mm;aspect-ratio:auto;font-size:calc(420mm/100);background:#fff;}
 
   /* ===== 左右分割：左＝プレビュー＋入力（スクロール無し）／右＝表示の調整（単独スクロール） ===== */
   .splitArea{flex:1;display:flex;min-height:0;}
@@ -132,12 +162,17 @@
   .hlBand.pillStyle .hlItem+.hlItem{border-left:calc(var(--hlBorderEm)*.1em) solid var(--headColor);}
   .hlBand.pillStyle .hlItem .k{background:transparent;color:var(--headColor);padding:0;font-size:calc(var(--hlKEm)*1em);font-weight:700;}
 
+  /* 印刷は常に#printStage内の用紙(複数可)だけを出力する。
+     以前は.panel{display:none}だけで済ませていたが、.paper が.panelの子孫だったため
+     プレビューの用紙ごと非表示になり、印刷すると白紙になってしまう不具合があった。
+     そのため「印刷」ボタン(単票プレビュー)・一括印刷(複数票)のどちらも、
+     一度#printStageに用紙を生成してから印刷する方式に統一して解消した。 */
   @media print{
     body{background:#fff;}
-    .panel{display:none;}
-    .wrap{width:420mm!important;height:297mm!important;max-width:none;font-size:calc(420mm/100)!important;margin:0;}
-    .paper{width:420mm;height:297mm;aspect-ratio:auto;}
-    .gradeNote:empty:before,.priceNum:empty:before,.repairDetail:empty:before{content:none;}
+    body > *:not(#printStage){display:none!important;}
+    #printStage{position:static!important;left:auto!important;top:auto!important;}
+    #printStage .paper{page-break-after:always;}
+    #printStage .paper:last-child{page-break-after:auto;}
   }
 </style>
 </head>
@@ -145,15 +180,54 @@
 
 <div class="panel">
   <div class="topBar">
-    <h1>プライスシート作成（A3横） <span style="font-size:12px;font-weight:400;opacity:.75;">v1.00</span></h1>
+    <h1>プライスシート作成（A3横） <span style="font-size:12px;font-weight:400;opacity:.75;">v1.01</span></h1>
     <a class="btn" href="./index.html">🏠 一覧へ</a>
     <a class="btn" id="backToAdsLink" href="./ads.html" data-base-href="./ads.html">📊 広告掲載へ</a>
     <a class="btn" id="backToPricingLink" href="./pricing.html" data-base-href="./pricing.html">💰 プライシングへ</a>
-    <button class="btn main" id="printBtn">印刷</button>
-    <button class="btn" id="exportBtn">この状態をHTMLで保存</button>
+    <div class="viewTabs">
+      <button type="button" class="viewTab active" id="tabListBtn">🚗 車両一覧・一括印刷</button>
+      <button type="button" class="viewTab" id="tabTemplateBtn">🎨 テンプレート編集</button>
+    </div>
   </div>
 
-  <div class="splitArea">
+  <div id="listView" class="listView">
+    <div class="tplBar">
+      <span class="countHint">テンプレート(文字サイズ・位置・色などのレイアウト)は「🎨 テンプレート編集」タブで作成・編集します。各車両に使うテンプレートは右端の列で選べます。</span>
+    </div>
+    <div class="listToolbar">
+      <div class="searchWrap">
+        <input type="text" id="listSearchBox" placeholder="車台番号・車名で検索">
+        <button type="button" class="searchClearBtn" id="listSearchClearBtn">×</button>
+      </div>
+      <span class="countHint" id="listCountHint"></span>
+      <span style="flex:1"></span>
+      <span class="countHint" id="selectedCountHint">0台選択中</span>
+      <button class="btn main" id="printSelectedBtn" disabled>🖨 選択車両を一括印刷</button>
+    </div>
+    <div class="tablewrap">
+      <table class="listTable">
+        <thead>
+          <tr>
+            <th><input type="checkbox" id="selectAllBox" title="表示中の車両をすべて選択/解除"></th>
+            <th>車台番号</th>
+            <th>メーカー</th>
+            <th>車名</th>
+            <th>グレード・型式</th>
+            <th>グレード補記</th>
+            <th>年式</th>
+            <th>走行距離</th>
+            <th>車検表示</th>
+            <th>修復歴</th>
+            <th>支払総額<br>(万円)</th>
+            <th>使用テンプレート</th>
+          </tr>
+        </thead>
+        <tbody id="listTbody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div id="templateView" class="splitArea" style="display:none;">
     <div class="leftCol">
       <div class="previewWrap">
         <div class="wrap">
@@ -220,8 +294,30 @@
         </div>
       </div>
 
-      <details open class="inputsBlock">
-        <summary>掲載内容を入力</summary>
+    </div>
+
+    <div class="rightCol">
+      <div class="tplBar">
+        <span class="countHint" style="font-weight:700;color:#111827;">編集中のテンプレート:</span>
+        <select id="tplSelect"></select>
+        <button class="btn" id="tplNewBtn">新規</button>
+        <button class="btn" id="tplDupBtn">複製</button>
+        <button class="btn" id="tplRenameBtn">名前変更</button>
+        <button class="btn" id="tplDeleteBtn">削除</button>
+        <span class="countHint" id="tplSaveStatus"></span>
+      </div>
+      <p class="lead">ここではテンプレート(文字サイズ・位置・色などのレイアウト)を調整します。実際の車両データは「🚗 車両一覧・一括印刷」タブに自動反映されるので、ここでは下のサンプル内容で見た目だけを確認します。左の用紙は直接クリックして書き換えられます。</p>
+      <div class="noteBox">
+        ※ここで調整した内容は、上で選択中のテンプレートとしてFirebaseに保存され、他のパソコンとも共有されます。各車両にどのテンプレートを使うかは「🚗 車両一覧・一括印刷」タブのラジオボタンで選べます。
+      </div>
+      <div class="hint" style="margin-top:0;margin-bottom:10px;">「🖨 このテンプレートを印刷」は現在のサンプル内容をA3用紙1枚として試し印刷します。印刷ダイアログで「用紙サイズ：A3」「余白：なし」「拡大縮小：100%」を選んでください。</div>
+      <div style="display:flex;gap:8px;margin-bottom:10px;">
+        <button class="btn main" id="printBtn">🖨 このテンプレートを印刷</button>
+        <button class="btn" id="exportBtn">この状態をHTMLで保存</button>
+      </div>
+
+      <details open class="inputsBlock" style="padding:0;">
+        <summary>プレビュー用のサンプル内容を編集</summary>
         <div class="fieldsGrid">
           <label class="field"><span>メーカー</span><input id="in-maker" type="text" value="ダイハツ"></label>
           <label class="field"><span>車名</span><input id="in-carname" type="text" value="タント"></label>
@@ -240,28 +336,90 @@
           <label class="field wide"><span>修復箇所（任意）</span><input id="in-repair-detail" type="text" value=""></label>
         </div>
       </details>
-    </div>
-
-    <div class="rightCol">
-      <p class="lead">レイアウト検討用の試作です。カーセンサーの現行シートの「年式・走行距離が小さい」「価格の桁数によって左側が空く」「色・レイアウトを調整できない」を解消する方向で作っています。左の用紙は直接クリックして書き換えられます。</p>
-      <div class="noteBox">
-        ※これはサンプルです。実際の運用では、ads.htmlに入力済みのカーセンサー掲載CSVの内容から自動でこの画面に反映される想定です（CSVアップロードは今まで通りadsのみで行い、ここでは二重入力しません）。まずはどの項目をどう見せるかを、この試作で確認させてください。<br>
-        ※調整した内容はブラウザに自動保存されますが、ブラウザが変わると引き継げません。「この状態をHTMLで保存」ボタンで書き出したファイルをそのままClaudeにアップロードすれば、調整後のレイアウト（色・サイズ・文言）をそのまま読み取れます。
-      </div>
-      <div class="hint" style="margin-top:0;margin-bottom:10px;">印刷ダイアログで「用紙サイズ：A3」「余白：なし」「拡大縮小：100%」を選んでください。</div>
 
       <details open>
         <summary>表示の調整（色・フォント・大きさ・レイアウト）</summary>
         <div class="grid" id="ctls"></div>
         <div style="margin-top:10px"><button class="btn" id="resetBtn">調整をリセット</button></div>
-        <div class="hint">調整内容はこのブラウザに自動保存されます。印刷時、この調整パネルは出力されません。</div>
+        <div class="hint">変更内容はこのテンプレートに自動保存されます(Firebaseで共有)。</div>
       </details>
     </div>
   </div>
 </div>
 
-<script>
-(function(){
+<!-- 印刷用の用紙を組み立てるための雛形(id無し・クラスのみ)。
+     既存の.paper内CSSをそのまま流用できるよう、ライブプレビューと同じクラス構成にしている。 -->
+<template id="paperTemplate">
+  <div class="head">
+    <div class="headLine">
+      <span class="maker"></span><span class="carName"></span><span class="gradeInline"></span><span class="gradeNote"></span>
+    </div>
+    <div class="repairRow">
+      <span class="repairBadge"></span><span class="repairDetail"></span>
+    </div>
+  </div>
+  <div class="priceRow">
+    <div class="priceMain">
+      <div class="priceLabelRow">
+        <span class="priceLabel">支払総額</span>
+        <span class="priceSub">(現金販売価格)</span>
+      </div>
+      <div class="priceBoxWrap">
+        <div class="priceBox">
+          <span class="priceNum"></span>
+        </div>
+        <div class="priceTail">
+          <span class="priceLabelWrap"><span class="priceLabelBadge">支払<br>総額</span></span>
+          <span class="priceDecTail"></span>
+          <span class="manyen">万円</span>
+          <span class="taxnote">(消費税込)</span>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="hlBand">
+    <div class="hlItem"><span class="k">年式</span><span class="val"></span></div>
+    <div class="hlItem"><span class="k">走行距離</span><span class="val"></span></div>
+    <div class="hlItem"><span class="k">車検</span><span class="val"></span></div>
+  </div>
+</template>
+<div id="printStage"></div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getDatabase, ref, get, set, update }
+  from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
+import { getAuth, onAuthStateChanged, signInAnonymously }
+  from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyAFJKdWkTa9WvX9W3ZA95P0BoDDugQUkuM",
+  authDomain: "ciel-autoworks.firebaseapp.com",
+  databaseURL: "https://ciel-autoworks-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "ciel-autoworks",
+};
+const fbApp = initializeApp(firebaseConfig);
+const db = getDatabase(fbApp);
+const auth = getAuth(fbApp);
+
+function normVin(v){ return (v||'').replace(/\s+/g,'').toUpperCase(); }
+// ads.htmlのnormShaken()と同じロジック(車検表示の自動反映に使用)
+function normShaken(s){
+  if(!s) return null;
+  s = String(s).trim();
+  if(s.includes('整備付') || s.includes('車検整備')) return {label:'整備付', ym:null};
+  if(s === '--.--' || s === '--/--' || s === '') return null;
+  let year, month, m;
+  if((m = s.match(/(\d{4})年(\d{1,2})月/))) { year=parseInt(m[1]); month=parseInt(m[2]); }
+  else if((m = s.match(/R(\d{1,2})[.\/](\d{1,2})/))) { year=2018+parseInt(m[1]); month=parseInt(m[2]); }
+  else if((m = s.match(/^(\d{1,2})\/(\d{1,2})$/))) { year=2018+parseInt(m[1]); month=parseInt(m[2]); }
+  else { return {label:s, ym:null}; }
+  const reiwa = year - 2018;
+  return {label:`R${reiwa}/${String(month).padStart(2,'0')}`, ym: year*12+month};
+}
+const TOTAL_ADD = 100000; // pricing.htmlと同じ:支払総額(万円) = 車体価格 + この額
+
+// ========== テンプレート編集(色・フォント・サイズ・レイアウトのプレビュー) ==========
   var KEY='priceSheetSettings.v1';
   var FONTS=[
     ['Arial Black（極太）','"Arial Black","Segoe UI Black","Yu Gothic",sans-serif'],
@@ -335,13 +493,31 @@
     priceColor:'#dc2626',headColor:'#111827',accentColor:'#dc2626',accentBg:'#fff1f0',manyenColor:'#dc2626',repairColor:'#dc2626',
     labelStyle:'badge',hlStyle:'pill',priceScaleXOther:1,priceScaleYOther:1};
   CFG.forEach(function(c){st[c.k]=c.def;});
+  // この時点のst(初期値のみ)を「標準」テンプレートの雛形として控えておく。
+  // テンプレートの実体はFirebase(priceTagTemplates)に保存され、下のloadAllData()で読み込まれる。
+  var DEFAULT_SETTINGS = JSON.parse(JSON.stringify(st));
+  var LAST_TPL_KEY='priceSheetLastTemplateId.v1';
+  var currentTemplateId=null;
+  var tplSaveTimer=null;
 
-  try{
-    var s=JSON.parse(localStorage.getItem(KEY)||'null');
-    if(s){for(var k in s){if(k in st)st[k]=s[k];}}
-  }catch(e){}
-
-  function save(){try{localStorage.setItem(KEY,JSON.stringify(st));}catch(e){}}
+  function save(){
+    if(!currentTemplateId) return;
+    var statusEl=document.getElementById('tplSaveStatus');
+    if(statusEl) statusEl.textContent='保存中…';
+    try{ localStorage.setItem(LAST_TPL_KEY, currentTemplateId); }catch(e){}
+    clearTimeout(tplSaveTimer);
+    tplSaveTimer=setTimeout(function(){
+      update(ref(db,'priceTagTemplates/'+currentTemplateId), {settings:JSON.parse(JSON.stringify(st)), updatedAt:Date.now()})
+        .then(function(){
+          if(priceTagTemplates[currentTemplateId]) priceTagTemplates[currentTemplateId].settings = JSON.parse(JSON.stringify(st));
+          if(statusEl) statusEl.textContent='● 保存済み(共有)';
+        })
+        .catch(function(err){
+          console.error('template save error:', err);
+          if(statusEl) statusEl.textContent='● 保存エラー: '+err.message;
+        });
+    }, 700);
+  }
   var root=document.documentElement;
   function apply(){
     root.style.setProperty('--priceFont',st.priceFont);
@@ -474,17 +650,19 @@
     l.appendChild(n);l.appendChild(r);l.appendChild(v);box.appendChild(l);
   });
 
-  document.getElementById('resetBtn').onclick=function(){
-    st.priceFont=FONTS[0][1];st.hlFont='"Yu Gothic","Meiryo",sans-serif';
-    st.headFont='"Yu Gothic","Meiryo",sans-serif';st.manyenFont='"Yu Gothic","Meiryo",sans-serif';st.priceLabelFont='"Yu Gothic","Meiryo",sans-serif';
-    st.gradeFont='"Yu Gothic","Meiryo",sans-serif';st.gradeNoteFont='"Yu Gothic","Meiryo",sans-serif';
-    st.priceColor='#dc2626';st.headColor='#111827';st.accentColor='#dc2626';st.accentBg='#fff1f0';st.manyenColor='#dc2626';st.repairColor='#dc2626';
-    st.labelStyle='badge';st.hlStyle='pill';st.priceScaleXOther=1;st.priceScaleYOther=1;
-    CFG.forEach(function(c){st[c.k]=c.def;inputs[c.k].r.value=c.def;inputs[c.k].v.textContent=c.def;});
+  // テンプレート切替時(loadTemplateIntoEditor)にも、リセット時にも、
+  // st の内容を各UIコントロール(スライダー・セレクト・カラー)に反映するために共通化。
+  function syncControlsUI(){
+    CFG.forEach(function(c){ if(inputs[c.k]){ inputs[c.k].r.value=st[c.k]; inputs[c.k].v.textContent=st[c.k]; } });
     sel.value=st.priceFont;hsel.value=st.hlFont;headSel.value=st.headFont;manyenSel.value=st.manyenFont;priceLabelSel.value=st.priceLabelFont;
     gradeSel.value=st.gradeFont;gradeNoteSel.value=st.gradeNoteFont;
     priceI.value=st.priceColor;headI.value=st.headColor;accentI.value=st.accentColor;manyenI.value=st.manyenColor;repairI.value=st.repairColor;
     labelStyleSel.value=st.labelStyle;hlStyleSel.value=st.hlStyle;
+  }
+  document.getElementById('resetBtn').onclick=function(){
+    Object.keys(st).forEach(function(k){delete st[k];});
+    Object.assign(st, JSON.parse(JSON.stringify(DEFAULT_SETTINGS)));
+    syncControlsUI();
     apply();save();
   };
 
@@ -778,7 +956,7 @@
     });
   })();
 
-  document.getElementById('printBtn').onclick=function(){window.print();};
+  document.getElementById('printBtn').onclick=function(){printCurrentPreview();};
 
   // ---- 現在の調整（色・サイズ・文言・帯ON/OFFなど）をそのままHTMLファイルとして書き出す ----
   // このファイルをそのままClaudeにアップロードし直せば、調整後の状態を直接読み取れる。
@@ -794,7 +972,481 @@
     document.body.appendChild(a);a.click();document.body.removeChild(a);
     setTimeout(function(){URL.revokeObjectURL(url);},1000);
   };
-})();
+
+/* ========================================================================
+   以下、v1.01で追加:車両一覧タブ・テンプレートのFirebase共有・一括印刷
+   ======================================================================== */
+
+// ---- ビュー切替(車両一覧 ⇔ テンプレート編集) ----
+document.getElementById('tabListBtn').addEventListener('click', function(){
+  document.getElementById('listView').style.display='';
+  document.getElementById('templateView').style.display='none';
+  document.getElementById('tabListBtn').classList.add('active');
+  document.getElementById('tabTemplateBtn').classList.remove('active');
+  document.body.classList.remove('tplMode');
+});
+document.getElementById('tabTemplateBtn').addEventListener('click', function(){
+  document.getElementById('listView').style.display='none';
+  document.getElementById('templateView').style.display='';
+  document.getElementById('tabTemplateBtn').classList.add('active');
+  document.getElementById('tabListBtn').classList.remove('active');
+  document.body.classList.add('tplMode');
+  // 非表示の間はプレビュー領域の寸法が0になっているため、表示時に再計算する
+  refitAll();
+});
+
+// ---- データ本体(車両一覧用) ----
+var stock={}, adsCarsensor={}, adsGoonet={}, manualShufukuList={}, pricingData={}, priceTagTemplates={}, priceTagData={};
+var templates=[]; // [{id,name,settings,updatedAt}]
+var rows=[];
+
+function newTemplateId(){ return 't'+Date.now().toString(36)+Math.random().toString(36).slice(2,6); }
+
+async function ensureDefaultTemplate(){
+  if(Object.keys(priceTagTemplates).length) return;
+  var id=newTemplateId();
+  priceTagTemplates[id]={name:'標準', settings:JSON.parse(JSON.stringify(DEFAULT_SETTINGS)), updatedAt:Date.now()};
+  await set(ref(db,'priceTagTemplates/'+id), priceTagTemplates[id]);
+}
+
+function buildTemplatesList(){
+  templates = Object.entries(priceTagTemplates).map(function(e){
+    return {id:e[0], name:(e[1]&&e[1].name)||'(無題)', settings:(e[1]&&e[1].settings)||{}, updatedAt:(e[1]&&e[1].updatedAt)||0};
+  });
+  templates.sort(function(a,b){ return a.name.localeCompare(b.name,'ja'); });
+  var sel=document.getElementById('tplSelect');
+  sel.innerHTML = templates.map(function(t){ return '<option value="'+t.id+'">'+escapeHtml(t.name)+'</option>'; }).join('');
+}
+
+function loadTemplateIntoEditor(id){
+  var t=priceTagTemplates[id];
+  if(!t) return;
+  currentTemplateId=id;
+  try{ localStorage.setItem(LAST_TPL_KEY, id); }catch(e){}
+  Object.keys(st).forEach(function(k){ delete st[k]; });
+  Object.assign(st, JSON.parse(JSON.stringify(t.settings||{})));
+  // 古いテンプレートに、後から追加された調整項目(CFGの新しいキー)が無い場合は初期値で補う
+  CFG.forEach(function(c){ if(!(c.k in st)) st[c.k]=c.def; });
+  ['priceFont','hlFont','headFont','manyenFont','priceLabelFont','gradeFont','gradeNoteFont',
+   'priceColor','headColor','accentColor','accentBg','manyenColor','repairColor',
+   'labelStyle','hlStyle','priceScaleXOther','priceScaleYOther'].forEach(function(k){
+    if(!(k in st)) st[k]=DEFAULT_SETTINGS[k];
+  });
+  document.getElementById('tplSelect').value=id;
+  var statusEl=document.getElementById('tplSaveStatus');
+  if(statusEl) statusEl.textContent='';
+  syncControlsUI();
+  apply();
+}
+
+async function loadAllData(){
+  try{
+    var results = await Promise.all([
+      get(ref(db,'stock')),
+      get(ref(db,'adsData')),
+      get(ref(db,'pricingData')),
+      get(ref(db,'priceTagTemplates')),
+      get(ref(db,'priceTagData')),
+    ]);
+    stock = results[0].val() || {};
+    var ads = results[1].val() || {};
+    adsCarsensor = ads.carsensor || {};
+    adsGoonet = ads.goonet || {};
+    manualShufukuList = ads.manualShufuku || {};
+    pricingData = results[2].val() || {};
+    priceTagTemplates = results[3].val() || {};
+    priceTagData = results[4].val() || {};
+
+    await ensureDefaultTemplate();
+    buildTemplatesList();
+    var lastId = (function(){ try{ return localStorage.getItem(LAST_TPL_KEY)||''; }catch(e){ return ''; } })();
+    var initialId = priceTagTemplates[lastId] ? lastId : (templates[0] && templates[0].id);
+    if(initialId) loadTemplateIntoEditor(initialId);
+
+    buildRows();
+    renderList();
+  }catch(err){
+    console.error('loadAllData error:', err);
+    var hint=document.getElementById('listCountHint');
+    if(hint) hint.textContent='データ読み込みエラー: '+err.message;
+  }
+}
+
+// ---- 車両一覧の行を組み立てる(car-appのstockを対象に、ads.htmlのCSVデータ・プライシングの価格・
+//      手動上書き(priceTagData)を突き合わせる。ロジックはads.htmlのrecompute()に準拠) ----
+function buildRows(){
+  var list=[];
+  Object.keys(stock).forEach(function(id){
+    var sv=stock[id];
+    var vin=normVin(sv.vin);
+    if(!vin) return;
+    var cs=adsCarsensor[vin]||null;
+    var goo=adsGoonet[vin]||null;
+    var pd=pricingData[vin]||{};
+    var ptd=priceTagData[vin]||{};
+    var manual=ptd.manual||{};
+
+    var autoMaker=(cs&&cs.maker)||(goo&&goo.maker)||'';
+    var autoCarName=sv.name||(cs&&cs.car_name)||(goo&&goo.car_name)||'';
+    var autoGrade=(cs&&cs.grade)||(goo&&goo.grade)||'';
+    var autoGradeNote=(cs&&cs.grade_note)||(goo&&goo.grade_note)||'';
+    var autoYear=(cs&&cs.year_disp)||(goo&&goo.year_disp)||'';
+    var mkm=(cs&&cs.mileage_km!=null)?cs.mileage_km:((goo&&goo.mileage_km!=null)?goo.mileage_km:null);
+    var autoMileage=mkm!=null?((mkm/10000).toFixed(1)+'万km'):'';
+    var rawShaken=(cs&&cs.shaken)||(goo&&goo.shaken)||'';
+    var shakenInfo=normShaken(rawShaken);
+    var autoShakenDisp=shakenInfo?shakenInfo.label:rawShaken;
+    var hasManualShufuku=Object.prototype.hasOwnProperty.call(manualShufukuList, vin);
+    var shufukuCsv=goo?!!goo.shufuku:null;
+    var autoRepairHas=hasManualShufuku?!!manualShufukuList[vin]:(shufukuCsv!=null?shufukuCsv:false);
+    var bodyYen=pd.body!=null?pd.body:null;
+    var autoPrice=bodyYen!=null?(((bodyYen+TOTAL_ADD)/10000).toFixed(1)):'';
+
+    list.push({
+      vin:vin,
+      maker: manual.maker!=null?manual.maker:autoMaker,
+      carName: manual.carName!=null?manual.carName:autoCarName,
+      grade: manual.grade!=null?manual.grade:autoGrade,
+      gradeNote: manual.gradeNote!=null?manual.gradeNote:autoGradeNote,
+      year: manual.year!=null?manual.year:autoYear,
+      mileage: manual.mileage!=null?manual.mileage:autoMileage,
+      shakenDisp: manual.shakenDisp!=null?manual.shakenDisp:autoShakenDisp,
+      repair: manual.repair!=null?manual.repair:(autoRepairHas?'has':'none'),
+      repairDetail: manual.repairDetail!=null?manual.repairDetail:'',
+      price: manual.price!=null?manual.price:autoPrice,
+      printTarget: !!ptd.printTarget,
+      templateId: ptd.templateId||null,
+    });
+  });
+  list.sort(function(a,b){ return a.vin.localeCompare(b.vin); });
+  rows=list;
+}
+
+function escapeHtml(s){
+  return (s==null?'':String(s)).replace(/[&<>"']/g, function(c){
+    return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];
+  });
+}
+
+function matchesSearch(r, q){
+  if(!q) return true;
+  var hay=(r.vin+' '+r.maker+' '+r.carName+' '+r.grade).toLowerCase();
+  return hay.indexOf(q.toLowerCase())>=0;
+}
+
+function renderList(){
+  var q=document.getElementById('listSearchBox').value.trim();
+  var tbody=document.getElementById('listTbody');
+  var visible=rows.filter(function(r){ return matchesSearch(r,q); });
+  tbody.innerHTML = visible.map(function(r){
+    var defaultTplId = templates[0] && templates[0].id;
+    var tplRadios = templates.map(function(t){
+      var checked = (r.templateId ? r.templateId===t.id : t.id===defaultTplId) ? 'checked' : '';
+      return '<label><input type="radio" name="tpl_'+r.vin+'" value="'+t.id+'" '+checked+'> '+escapeHtml(t.name)+'</label>';
+    }).join('');
+    return '<tr data-vin="'+r.vin+'">'+
+      '<td><input type="checkbox" class="printChk" data-vin="'+r.vin+'" '+(r.printTarget?'checked':'')+'></td>'+
+      '<td class="vinCell">'+r.vin+'</td>'+
+      '<td><input type="text" class="cellIn" data-vin="'+r.vin+'" data-field="maker" value="'+escapeHtml(r.maker)+'" style="width:70px;"></td>'+
+      '<td><input type="text" class="cellIn" data-vin="'+r.vin+'" data-field="carName" value="'+escapeHtml(r.carName)+'" style="width:90px;"></td>'+
+      '<td><input type="text" class="cellIn" data-vin="'+r.vin+'" data-field="grade" value="'+escapeHtml(r.grade)+'" style="width:160px;"></td>'+
+      '<td><input type="text" class="cellIn" data-vin="'+r.vin+'" data-field="gradeNote" value="'+escapeHtml(r.gradeNote)+'" style="width:140px;"></td>'+
+      '<td><input type="text" class="cellIn" data-vin="'+r.vin+'" data-field="year" value="'+escapeHtml(r.year)+'" style="width:90px;"></td>'+
+      '<td><input type="text" class="cellIn" data-vin="'+r.vin+'" data-field="mileage" value="'+escapeHtml(r.mileage)+'" style="width:80px;"></td>'+
+      '<td><input type="text" class="cellIn" data-vin="'+r.vin+'" data-field="shakenDisp" value="'+escapeHtml(r.shakenDisp)+'" style="width:90px;"></td>'+
+      '<td><select class="cellIn" data-vin="'+r.vin+'" data-field="repair">'+
+        '<option value="none"'+(r.repair==='none'?' selected':'')+'>なし</option>'+
+        '<option value="has"'+(r.repair==='has'?' selected':'')+'>あり</option>'+
+      '</select></td>'+
+      '<td><input type="text" class="cellIn" data-vin="'+r.vin+'" data-field="price" value="'+escapeHtml(r.price)+'" style="width:60px;" inputmode="decimal"></td>'+
+      '<td><div class="tplRadioGroup">'+(tplRadios||'<span class="countHint">テンプレート未作成</span>')+'</div></td>'+
+    '</tr>';
+  }).join('');
+  document.getElementById('listCountHint').textContent = visible.length+'件表示 / 全'+rows.length+'件';
+  updateSelectedCount();
+}
+
+function updateSelectedCount(){
+  var n=rows.filter(function(r){ return r.printTarget; }).length;
+  document.getElementById('selectedCountHint').textContent = n+'台選択中';
+  document.getElementById('printSelectedBtn').disabled = n===0;
+}
+
+async function setPrintTarget(vin, checked){
+  var row=rows.find(function(r){ return r.vin===vin; });
+  if(row) row.printTarget=checked;
+  updateSelectedCount();
+  try{ await set(ref(db,'priceTagData/'+vin+'/printTarget'), checked); }
+  catch(err){ console.error('printTarget save error:', err); }
+}
+
+async function setRowTemplate(vin, templateId){
+  var row=rows.find(function(r){ return r.vin===vin; });
+  if(row) row.templateId=templateId;
+  try{ await set(ref(db,'priceTagData/'+vin+'/templateId'), templateId); }
+  catch(err){ console.error('templateId save error:', err); }
+}
+
+// 一覧内の手動編集は、車両単位で0.8秒デバウンスしてまとめて書き込む(pricing.htmlと同じ方式)
+var manualBuf={}, manualTimers={};
+function queueManualEdit(vin, field, value){
+  manualBuf[vin]=manualBuf[vin]||{};
+  manualBuf[vin][field]=value;
+  var row=rows.find(function(r){ return r.vin===vin; });
+  if(row) row[field]=value;
+  clearTimeout(manualTimers[vin]);
+  manualTimers[vin]=setTimeout(function(){ flushManualEdit(vin); }, 800);
+}
+async function flushManualEdit(vin){
+  var buf=manualBuf[vin];
+  if(!buf) return;
+  delete manualBuf[vin];
+  clearTimeout(manualTimers[vin]);
+  try{ await update(ref(db,'priceTagData/'+vin+'/manual'), buf); }
+  catch(err){ console.error('manual edit save error:', err); }
+}
+
+document.getElementById('listTbody').addEventListener('input', function(e){
+  var cell=e.target.closest('.cellIn');
+  if(cell && cell.tagName==='INPUT'){ queueManualEdit(cell.dataset.vin, cell.dataset.field, cell.value); }
+});
+document.getElementById('listTbody').addEventListener('change', function(e){
+  var chk=e.target.closest('.printChk');
+  if(chk){ setPrintTarget(chk.dataset.vin, chk.checked); return; }
+  var radio=e.target.closest('input[type=radio]');
+  if(radio && radio.name.indexOf('tpl_')===0){ setRowTemplate(radio.name.slice(4), radio.value); return; }
+  var sel2=e.target.closest('.cellIn');
+  if(sel2 && sel2.tagName==='SELECT'){ queueManualEdit(sel2.dataset.vin, sel2.dataset.field, sel2.value); flushManualEdit(sel2.dataset.vin); }
+});
+
+document.getElementById('selectAllBox').addEventListener('change', async function(e){
+  var checked=e.target.checked;
+  var trs=document.querySelectorAll('#listTbody tr');
+  var updates={};
+  trs.forEach(function(tr){
+    var vin=tr.dataset.vin;
+    var row=rows.find(function(r){ return r.vin===vin; });
+    if(row) row.printTarget=checked;
+    updates['priceTagData/'+vin+'/printTarget']=checked;
+  });
+  document.querySelectorAll('.printChk').forEach(function(cb){ cb.checked=checked; });
+  updateSelectedCount();
+  try{ if(Object.keys(updates).length) await update(ref(db), updates); }
+  catch(err){ console.error('select-all save error:', err); }
+});
+
+document.getElementById('listSearchBox').addEventListener('input', function(){
+  document.getElementById('listSearchClearBtn').style.display = this.value ? '' : 'none';
+  renderList();
+});
+document.getElementById('listSearchClearBtn').addEventListener('click', function(){
+  document.getElementById('listSearchBox').value='';
+  this.style.display='none';
+  renderList();
+});
+
+// ---- テンプレート管理(新規・複製・名前変更・削除) ----
+document.getElementById('tplSelect').addEventListener('change', function(e){
+  loadTemplateIntoEditor(e.target.value);
+  renderList();
+});
+document.getElementById('tplNewBtn').addEventListener('click', async function(){
+  var name=window.prompt('新しいテンプレート名を入力してください', '新しいテンプレート');
+  if(name==null) return;
+  var id=newTemplateId();
+  priceTagTemplates[id]={name:name.trim()||'(無題)', settings:JSON.parse(JSON.stringify(DEFAULT_SETTINGS)), updatedAt:Date.now()};
+  try{
+    await set(ref(db,'priceTagTemplates/'+id), priceTagTemplates[id]);
+    buildTemplatesList();
+    loadTemplateIntoEditor(id);
+    renderList();
+  }catch(err){ alert('テンプレートの作成に失敗しました: '+err.message); }
+});
+document.getElementById('tplDupBtn').addEventListener('click', async function(){
+  if(!currentTemplateId) return;
+  var base=priceTagTemplates[currentTemplateId];
+  var name=window.prompt('複製後のテンプレート名を入力してください', (base.name||'')+'のコピー');
+  if(name==null) return;
+  var id=newTemplateId();
+  priceTagTemplates[id]={name:name.trim()||'(無題)', settings:JSON.parse(JSON.stringify(st)), updatedAt:Date.now()};
+  try{
+    await set(ref(db,'priceTagTemplates/'+id), priceTagTemplates[id]);
+    buildTemplatesList();
+    loadTemplateIntoEditor(id);
+    renderList();
+  }catch(err){ alert('テンプレートの複製に失敗しました: '+err.message); }
+});
+document.getElementById('tplRenameBtn').addEventListener('click', async function(){
+  if(!currentTemplateId) return;
+  var cur=priceTagTemplates[currentTemplateId];
+  var name=window.prompt('新しいテンプレート名を入力してください', cur.name||'');
+  if(name==null || !name.trim()) return;
+  priceTagTemplates[currentTemplateId].name=name.trim();
+  try{
+    await update(ref(db,'priceTagTemplates/'+currentTemplateId), {name:name.trim()});
+    buildTemplatesList();
+    document.getElementById('tplSelect').value=currentTemplateId;
+    renderList();
+  }catch(err){ alert('名前の変更に失敗しました: '+err.message); }
+});
+document.getElementById('tplDeleteBtn').addEventListener('click', async function(){
+  if(!currentTemplateId) return;
+  if(templates.length<=1){ alert('テンプレートは最低1つ必要なため削除できません。'); return; }
+  var cur=priceTagTemplates[currentTemplateId];
+  if(!window.confirm('テンプレート「'+cur.name+'」を削除します。このテンプレートを使用している車両は、一覧の先頭のテンプレートに切り替わります。よろしいですか？')) return;
+  var deletedId=currentTemplateId;
+  try{
+    await set(ref(db,'priceTagTemplates/'+deletedId), null);
+    delete priceTagTemplates[deletedId];
+    buildTemplatesList();
+    var fallbackId=templates[0].id;
+    var updates={};
+    rows.forEach(function(r){ if(r.templateId===deletedId){ r.templateId=fallbackId; updates['priceTagData/'+r.vin+'/templateId']=fallbackId; } });
+    if(Object.keys(updates).length) await update(ref(db), updates);
+    loadTemplateIntoEditor(fallbackId);
+    renderList();
+  }catch(err){ alert('削除に失敗しました: '+err.message); }
+});
+
+// ---- 一括印刷(車両ごとに異なるテンプレートを使える) ----
+var FONT_CSS_MAP={priceFont:'--priceFont',hlFont:'--hlFont',headFont:'--headFont',manyenFont:'--manyenFont',priceLabelFont:'--priceLabelFont',gradeFont:'--gradeFont',gradeNoteFont:'--gradeNoteFont'};
+var COLOR_CSS_MAP={priceColor:'--priceColor',headColor:'--headColor',accentColor:'--accentColor',accentBg:'--accentBg',manyenColor:'--manyenColor',repairColor:'--repairColor'};
+
+function applySettingsToPaperEl(paperEl, settings){
+  Object.keys(FONT_CSS_MAP).forEach(function(k){ paperEl.style.setProperty(FONT_CSS_MAP[k], settings[k]); });
+  Object.keys(COLOR_CSS_MAP).forEach(function(k){ paperEl.style.setProperty(COLOR_CSS_MAP[k], settings[k]); });
+  CFG.forEach(function(c){ if(c.css) paperEl.style.setProperty(c.css, settings[c.k]); });
+  paperEl.querySelector('.priceMain').classList.toggle('labelBadge', settings.labelStyle==='badge');
+  paperEl.querySelector('.hlBand').classList.toggle('pillStyle', settings.hlStyle==='pill');
+}
+// fitPriceWidth()・fitHlItems()(テンプレート編集プレビュー用)と同じロジックを、
+// 任意の用紙要素(印刷ステージ内の複製)に対して行えるよう汎用化したもの。
+function fitPriceWidthFor(paperEl, settings){
+  var el=paperEl.querySelector('.priceNum');
+  var b=paperEl.querySelector('.priceBox');
+  if(!el.textContent){ el.style.fontSize=''; return; }
+  var d=el.textContent.replace(/\D/g,'').length;
+  var xKey = d===2?'priceScaleX2':(d===3?'priceScaleX3':'priceScaleXOther');
+  var yKey = d===2?'priceScaleY2':(d===3?'priceScaleY3':'priceScaleYOther');
+  var scaleX=parseFloat(settings[xKey])||1;
+  var scaleY=parseFloat(settings[yKey])||1;
+  paperEl.style.setProperty('--priceScaleX', scaleX);
+  paperEl.style.setProperty('--priceScaleY', scaleY);
+  var size=PRICE_MIN; el.style.fontSize=size+'em';
+  while(size<PRICE_MAX){
+    var next=size+PRICE_STEP; el.style.fontSize=next+'em';
+    var effWidth=el.scrollWidth*scaleX;
+    if(effWidth>b.clientWidth || el.scrollHeight>b.clientHeight){ el.style.fontSize=size+'em'; break; }
+    size=next;
+  }
+  var mult=1;
+  if(d===2) mult=parseFloat(settings.priceDigits2Mult)||1;
+  else if(d===3) mult=parseFloat(settings.priceDigits3Mult)||1;
+  if(mult!==1) el.style.fontSize=(size*mult)+'em';
+}
+function fitHlItemsFor(paperEl){
+  var items=paperEl.querySelectorAll('.hlItem');
+  if(!items.length) return;
+  items.forEach(function(it){ it.style.fontSize=''; });
+  var base=parseFloat(getComputedStyle(items[0]).fontSize)||16;
+  var min=base*0.45, size=base, guard=0;
+  function anyOverflow(){
+    for(var i=0;i<items.length;i++){
+      var item=items[i], val=item.querySelector('.val');
+      if(!val||!val.textContent) continue;
+      if(item.scrollWidth>item.clientWidth+0.5) return true;
+    }
+    return false;
+  }
+  while(anyOverflow() && size>min && guard<60){
+    size-=base*0.02;
+    items.forEach(function(it){ it.style.fontSize=size+'px'; });
+    guard++;
+  }
+}
+
+function buildPaperFromFields(fields, settings){
+  var paperEl=document.createElement('div');
+  paperEl.className='paper';
+  paperEl.appendChild(document.getElementById('paperTemplate').content.cloneNode(true));
+  paperEl.querySelector('.maker').textContent=fields.maker||'';
+  paperEl.querySelector('.carName').textContent=fields.carName||'';
+  paperEl.querySelector('.gradeInline').textContent=fields.grade||'';
+  paperEl.querySelector('.gradeNote').textContent=fields.gradeNote||'';
+  paperEl.querySelector('.repairBadge').textContent = fields.repair==='has' ? '修復歴あり' : '修復歴なし';
+  paperEl.querySelector('.repairDetail').textContent=fields.repairDetail||'';
+  var priceStr=(fields.price==null?'':String(fields.price));
+  var m=/^([^.]*)(\..*)?$/.exec(priceStr);
+  paperEl.querySelector('.priceNum').textContent = m?(m[1]||''):priceStr;
+  paperEl.querySelector('.priceDecTail').textContent = m?(m[2]||''):'';
+  var vals=paperEl.querySelectorAll('.hlItem .val');
+  vals[0].textContent=fields.year||'';
+  vals[1].textContent=fields.mileage||'';
+  vals[2].textContent=fields.shakenDisp||'';
+  applySettingsToPaperEl(paperEl, settings);
+  return paperEl;
+}
+
+function printCurrentPreview(){
+  var stage=document.getElementById('printStage');
+  stage.innerHTML='';
+  var fields={
+    maker:document.getElementById('p-maker').textContent,
+    carName:document.getElementById('p-carname').textContent,
+    grade:document.getElementById('p-grade').textContent,
+    gradeNote:document.getElementById('p-gradenote').textContent,
+    repair:document.getElementById('in-repair').value,
+    repairDetail:document.getElementById('p-repair-detail').textContent,
+    price:document.getElementById('in-price').value,
+    year:document.getElementById('p-year').textContent,
+    mileage:document.getElementById('p-mileage').textContent,
+    shakenDisp:document.getElementById('p-shaken-disp').textContent,
+  };
+  var paperEl=buildPaperFromFields(fields, st);
+  stage.appendChild(paperEl);
+  requestAnimationFrame(function(){
+    fitPriceWidthFor(paperEl, st);
+    fitHlItemsFor(paperEl);
+    window.print();
+  });
+}
+
+async function printSelectedVehicles(){
+  var targets=rows.filter(function(r){ return r.printTarget; });
+  if(!targets.length) return;
+  var stage=document.getElementById('printStage');
+  stage.innerHTML='';
+  var papers=targets.map(function(row){
+    var tplId = (row.templateId && priceTagTemplates[row.templateId]) ? row.templateId : (templates[0] && templates[0].id);
+    var tpl = priceTagTemplates[tplId];
+    var settings = tpl ? tpl.settings : DEFAULT_SETTINGS;
+    var paperEl=buildPaperFromFields(row, settings);
+    stage.appendChild(paperEl);
+    return {paperEl:paperEl, settings:settings};
+  });
+  await new Promise(function(r){ requestAnimationFrame(r); });
+  papers.forEach(function(p){
+    fitPriceWidthFor(p.paperEl, p.settings);
+    fitHlItemsFor(p.paperEl);
+  });
+  window.print();
+}
+document.getElementById('printSelectedBtn').addEventListener('click', printSelectedVehicles);
+window.addEventListener('afterprint', function(){
+  document.getElementById('printStage').innerHTML='';
+});
+
+// ---- 認証(car-app/ads.html/pricing.htmlと同じ匿名認証) ----
+var authStarted=false;
+onAuthStateChanged(auth, async function(user){
+  if(user && !authStarted){
+    authStarted=true;
+    loadAllData();
+  } else if(!user && !authStarted){
+    try{ await signInAnonymously(auth); }
+    catch(err){ console.error('Auth error:', err); }
+  }
+});
 </script>
 </body>
 </html>
