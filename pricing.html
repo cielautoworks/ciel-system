@@ -246,12 +246,13 @@ table.diffTable td.diffNew{color:var(--danger-text);font-weight:600;}
 <header>
 <div class="header-row">
   <div>
-    <h1>プライシングツール <span style="font-size:12px;font-weight:400;opacity:.75;">v1.15</span></h1>
+    <h1>プライシングツール <span style="font-size:12px;font-weight:400;opacity:.75;">v1.16</span></h1>
     <p>原価から総額下限・業販下限を算出し、車体価格に対する粗利をランク表示します。※データはFirebaseで共有されます</p>
   </div>
   <div style="display:flex;gap:8px;flex-shrink:0;">
     <a class="headerBtn" href="./index.html">🏠 一覧へ</a>
     <a class="headerBtn" id="crossToolLink" href="./ads.html" data-base-href="./ads.html">📊 広告掲載へ</a>
+    <a class="headerBtn" id="sheetToolLink" href="./pricetag.html" data-base-href="./pricetag.html">📝 シート作成へ</a>
     <button class="headerBtn" id="refreshBtn">🔄 最新を取得</button>
     <button class="headerBtn" id="settingsBtn">⚙ 設定</button>
   </div>
@@ -1258,11 +1259,13 @@ document.querySelectorAll('.toolbar .filterbtn[data-status]').forEach(b=>{
 // ads.html⇔pricing.html相互リンク：現在の検索文字列をURLの?qパラメータに反映し、
 // 遷移先でも同じ検索文字列を引き継げるようにする
 function updateCrossToolLink(){
-  const link = document.getElementById('crossToolLink');
-  if(!link) return;
-  const base = link.dataset.baseHref;
   const q = document.getElementById('searchBox')?.value || '';
-  link.href = q ? base + '?q=' + encodeURIComponent(q) : base;
+  ['crossToolLink','sheetToolLink'].forEach(id=>{
+    const link = document.getElementById(id);
+    if(!link) return;
+    const base = link.dataset.baseHref;
+    link.href = q ? base + '?q=' + encodeURIComponent(q) : base;
+  });
 }
 document.getElementById('searchBox').addEventListener('input', e=>{
   searchQuery = e.target.value;

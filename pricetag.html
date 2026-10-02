@@ -1,0 +1,800 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>プライスシート作成（A3横）</title>
+<style>
+  @page{size:A3 landscape;margin:0;}
+  *{-webkit-print-color-adjust:exact;print-color-adjust:exact;box-sizing:border-box;}
+  html,body{height:100%;margin:0;overflow:hidden;background:#e5e7eb;font-family:"Yu Gothic","Meiryo",sans-serif;color:#111827;}
+
+  /* ===== 上部：入力・調整パネル（印刷時は非表示） ===== */
+  .panel{height:100vh;display:flex;flex-direction:column;background:#fff;font-size:14px;}
+  .topBar{flex:none;display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:8px 14px;border-bottom:1px solid #cbd5e1;}
+  .topBar h1{font-size:14px;margin:0;flex:none;}
+  .btn{font-size:13px;padding:7px 14px;border:1px solid #111827;border-radius:6px;background:#fff;cursor:pointer;text-decoration:none;display:inline-flex;align-items:center;color:#111827;}
+  .btn.main{background:#111827;color:#fff;}
+  details{margin-top:6px;border-top:1px solid #e2e8f0;padding-top:6px;}
+  summary{cursor:pointer;font-weight:700;padding:4px 0;}
+  .fieldsGrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:5px 10px;margin-top:6px;}
+  .field{display:flex;flex-direction:column;gap:2px;}
+  .field span{font-size:10.5px;color:#64748b;font-weight:700;}
+  .field input,.field select,.field textarea{font-size:12.5px;padding:4px 6px;border:1px solid #cbd5e1;border-radius:5px;font-family:inherit;}
+  .field textarea{resize:vertical;min-height:52px;}
+  .field.wide{grid-column:1/-1;}
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:8px 20px;margin-top:10px;}
+  .ctl{display:flex;align-items:center;gap:8px;}
+  .ctl span.n{width:132px;flex:none;font-size:13px;}
+  .ctl input[type=range]{flex:1;}
+  .ctl span.v{width:44px;text-align:right;font-variant-numeric:tabular-nums;font-size:13px;}
+  .ctl select{flex:1;min-width:0;font-size:14px;padding:3px;}
+  .ctl input[type=color]{width:44px;height:28px;padding:2px;border:1px solid #cbd5e1;border-radius:4px;background:#fff;flex:none;cursor:pointer;}
+  .ctl.wide{grid-column:1/-1;}
+  .ctl label.chk{display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;}
+  .swatches{display:flex;gap:4px;flex-wrap:wrap;align-items:center;}
+  .swatch{width:22px;height:22px;padding:0;border:1px solid #cbd5e1;border-radius:4px;cursor:pointer;}
+  .swatch:hover{border-color:#111827;}
+  .hint{font-size:12px;color:#64748b;margin-top:6px;}
+  .lead{font-size:12px;color:#64748b;margin:0 0 10px;}
+  .noteBox{background:#fef9c3;border:1px solid #fde047;border-radius:8px;padding:10px 12px;font-size:12.5px;color:#713f12;margin-bottom:10px;line-height:1.6;}
+
+  /* ===== 左右分割：左＝プレビュー＋入力（スクロール無し）／右＝表示の調整（単独スクロール） ===== */
+  .splitArea{flex:1;display:flex;min-height:0;}
+  .leftCol{flex:0 0 46%;max-width:46%;display:flex;flex-direction:column;min-height:0;padding:8px 10px;gap:6px;border-right:1px solid #e2e8f0;background:#e5e7eb;overflow:hidden;}
+  .previewWrap{flex:1 1 auto;min-height:0;display:flex;align-items:center;justify-content:center;overflow:hidden;}
+  .inputsBlock{flex:none;overflow:visible;background:#fff;border-radius:8px;padding:2px 10px 6px;}
+  .inputsBlock summary{font-size:13px;}
+  .rightCol{flex:1;min-height:0;overflow-y:auto;padding:10px 16px 24px;}
+
+  /* ===== 用紙側 ===== */
+  :root{
+    --priceFont:"Arial Black","Segoe UI Black","Yu Gothic",sans-serif;
+    --hlFont:"Yu Gothic","Meiryo",sans-serif;
+    --headFont:"Yu Gothic","Meiryo",sans-serif;
+    --manyenFont:"Yu Gothic","Meiryo",sans-serif;
+    --priceLabelFont:"Yu Gothic","Meiryo",sans-serif;
+    --gradeFont:"Yu Gothic","Meiryo",sans-serif;
+    --gradeNoteFont:"Yu Gothic","Meiryo",sans-serif;
+    --priceColor:#dc2626;--headColor:#111827;--accentColor:#dc2626;--accentBg:#fff1f0;--manyenColor:#dc2626;--repairColor:#dc2626;
+    --pricePosX:0;--pricePosY:0;--priceScaleX:1;--priceScaleY:1;
+    --labelPosX:0;--labelPosY:0;--labelScaleX:1;--labelScaleY:1;
+    --priceLabelEm:1.9;--priceDecTailEm:7;--suffixEm:9;
+    --hlValEm:5.6;--hlKEm:2.4;--hlBoxEm:1;--hlBorderEm:1;--headEm:2.2;--gradeNoteEm:1.6;--headBorderEm:1;--repairEm:1.8;
+  }
+  .wrap{margin:0 auto;}
+  .paper{
+    width:100%;height:100%;aspect-ratio:420/297;background:#fff;padding:1.3em 1.8em;
+    display:flex;flex-direction:column;gap:.55em;overflow:hidden;
+  }
+
+  /* ヘッダー：メーカー・車名・グレード・グレード補記（横並び1行）＋ 修復歴行 */
+  .head{border-bottom:calc(var(--headBorderEm)*.15em) solid var(--headColor);padding-bottom:.4em;}
+  .headLine{display:flex;flex-wrap:wrap;align-items:baseline;gap:.5em;font-size:calc(var(--headEm)*1em);color:var(--headColor);}
+  .headLine .maker{font-weight:700;font-family:var(--headFont);}
+  .headLine .carName{font-weight:900;font-size:1.15em;font-family:var(--headFont);}
+  .headLine .gradeInline{font-weight:500;color:#374151;font-size:.85em;font-family:var(--gradeFont);}
+  .headLine .gradeNote{font-weight:500;color:#374151;font-family:var(--gradeNoteFont);
+    font-size:calc(var(--gradeNoteEm)/var(--headEm)*1em);min-height:1em;}
+  .gradeNote:empty:before{content:attr(data-ph);opacity:.35;}
+  .repairRow{display:flex;flex-wrap:wrap;align-items:center;gap:.6em;margin-top:.3em;min-height:1.3em;}
+  .repairBadge{flex:none;display:inline-block;border:.14em solid var(--repairColor);color:var(--repairColor);font-weight:900;font-size:calc(var(--repairEm)*1em);padding:.12em .6em;border-radius:.3em;white-space:nowrap;font-family:var(--headFont);}
+  .repairDetail{flex:1;min-width:0;font-size:1em;color:#374151;}
+  .repairDetail:empty:before{content:attr(data-ph);opacity:.35;}
+  [contenteditable]{outline:none;}
+  [contenteditable]:hover,[contenteditable]:focus{box-shadow:0 0 0 .05em var(--accentColor);border-radius:.1em;}
+  @media print{[contenteditable]:hover,[contenteditable]:focus{box-shadow:none;}}
+
+  /* 価格ブロック */
+  .priceRow{display:flex;align-items:stretch;gap:1.4em;flex:1 1 0;min-height:0;}
+  .priceMain{flex:1;display:flex;flex-direction:column;min-height:0;}
+  .priceLabelRow{display:flex;align-items:center;gap:.8em;}
+  .priceLabel{border:.18em solid var(--accentColor);color:var(--accentColor);font-weight:900;font-size:calc(var(--priceLabelEm)*1em);padding:.15em .5em;border-radius:.25em;font-family:var(--priceLabelFont);}
+  .priceSub{font-size:1.1em;color:#374151;font-weight:700;}
+  .priceBoxWrap{flex:1;display:flex;align-items:center;gap:.3em;min-height:0;}
+  .priceBox{flex:1;height:100%;display:flex;align-items:center;justify-content:flex-start;overflow:visible;min-width:0;position:relative;}
+  .priceNum{display:inline-block;font-family:var(--priceFont);font-weight:900;color:var(--priceColor);white-space:nowrap;letter-spacing:-.02em;line-height:1;cursor:pointer;
+    transform:translate(calc(var(--pricePosX)*1em),calc(var(--pricePosY)*1em)) scale(var(--priceScaleX),var(--priceScaleY));
+    transform-origin:left center;}
+  .priceNum:empty:before{content:attr(data-ph);opacity:.3;}
+  .priceSelBox{position:absolute;border:1px dashed #2563eb;box-sizing:border-box;cursor:move;z-index:20;opacity:0;pointer-events:none;}
+  .priceSelBox.active{opacity:1;pointer-events:auto;}
+  .priceHandle{position:absolute;width:14px;height:14px;margin:-7px;background:#2563eb;border:2px solid #fff;border-radius:3px;box-shadow:0 1px 4px rgba(0,0,0,.5);z-index:30;}
+  .priceHandle[data-h="nw"]{left:0;top:0;cursor:nwse-resize;}
+  .priceHandle[data-h="n"]{left:50%;top:0;cursor:ns-resize;}
+  .priceHandle[data-h="ne"]{left:100%;top:0;cursor:nesw-resize;}
+  .priceHandle[data-h="e"]{left:100%;top:50%;cursor:ew-resize;}
+  .priceHandle[data-h="se"]{left:100%;top:100%;cursor:nwse-resize;}
+  .priceHandle[data-h="s"]{left:50%;top:100%;cursor:ns-resize;}
+  .priceHandle[data-h="sw"]{left:0;top:100%;cursor:nesw-resize;}
+  .priceHandle[data-h="w"]{left:0;top:50%;cursor:ew-resize;}
+  @media print{.priceSelBox{display:none!important;}}
+  .priceTail{flex:none;display:flex;flex-direction:column;align-items:flex-start;justify-content:center;gap:.05em;}
+  .priceLabelWrap{display:none;position:relative;margin-bottom:.06em;}
+  .labelBadge .priceLabelRow{display:none;}
+  .labelBadge .priceLabelWrap{display:inline-block;}
+  .priceLabelBadge{display:inline-block;border:.14em solid #2563eb;color:#2563eb;font-weight:900;font-size:calc(var(--priceLabelEm)*.62em);line-height:1.15;text-align:center;padding:.18em .5em;border-radius:.35em;cursor:pointer;font-family:var(--priceLabelFont);
+    transform:translate(calc(var(--labelPosX)*1em),calc(var(--labelPosY)*1em)) scale(var(--labelScaleX),var(--labelScaleY));
+    transform-origin:left center;}
+  .priceDecTail{font-family:var(--priceFont);font-size:calc(var(--priceDecTailEm)*1em);font-weight:900;color:var(--priceColor);line-height:1;}
+  .priceDecTail:empty{display:none;}
+  .manyen{font-size:calc(var(--suffixEm)*1em);font-weight:900;color:var(--manyenColor);line-height:1;font-family:var(--manyenFont);}
+  .taxnote{font-size:1.1em;font-weight:700;color:#374151;}
+
+  /* 年式・走行距離・車検：強調表示（帯 or 個別バッジの2スタイルを切替可・文字と枠のサイズは別調整） */
+  .hlBand{display:flex;gap:.5em;background:var(--accentBg);border:calc(var(--hlBorderEm)*.12em) solid var(--accentColor);border-radius:.5em;overflow:hidden;flex:none;}
+  .hlItem{flex:1;min-width:0;display:flex;align-items:center;justify-content:center;gap:calc(var(--hlBoxEm)*.5em);padding:calc(var(--hlBoxEm)*.35em) calc(var(--hlBoxEm)*.6em);font-family:var(--hlFont);font-weight:900;color:var(--headColor);overflow:hidden;}
+  .hlItem+.hlItem{border-left:calc(var(--hlBorderEm)*.12em) solid var(--accentColor);}
+  .hlItem .k{font-size:calc(var(--hlKEm)*1em);font-weight:700;background:var(--accentColor);color:#fff;border-radius:.3em;padding:calc(var(--hlBoxEm)*.15em) calc(var(--hlBoxEm)*.6em);flex:none;}
+  .hlItem .val{font-size:calc(var(--hlValEm)*1em);white-space:nowrap;min-width:0;}
+  .hlBand.pillStyle{background:transparent;border:none;border-radius:0;overflow:visible;}
+  .hlBand.pillStyle .hlItem{background:#fff;border:calc(var(--hlBorderEm)*.1em) solid var(--headColor);border-radius:.6em;overflow:hidden;}
+  .hlBand.pillStyle .hlItem+.hlItem{border-left:calc(var(--hlBorderEm)*.1em) solid var(--headColor);}
+  .hlBand.pillStyle .hlItem .k{background:transparent;color:var(--headColor);padding:0;font-size:calc(var(--hlKEm)*1em);font-weight:700;}
+
+  @media print{
+    body{background:#fff;}
+    .panel{display:none;}
+    .wrap{width:420mm!important;height:297mm!important;max-width:none;font-size:calc(420mm/100)!important;margin:0;}
+    .paper{width:420mm;height:297mm;aspect-ratio:auto;}
+    .gradeNote:empty:before,.priceNum:empty:before,.repairDetail:empty:before{content:none;}
+  }
+</style>
+</head>
+<body>
+
+<div class="panel">
+  <div class="topBar">
+    <h1>プライスシート作成（A3横） <span style="font-size:12px;font-weight:400;opacity:.75;">v1.00</span></h1>
+    <a class="btn" href="./index.html">🏠 一覧へ</a>
+    <a class="btn" id="backToAdsLink" href="./ads.html" data-base-href="./ads.html">📊 広告掲載へ</a>
+    <a class="btn" id="backToPricingLink" href="./pricing.html" data-base-href="./pricing.html">💰 プライシングへ</a>
+    <button class="btn main" id="printBtn">印刷</button>
+    <button class="btn" id="exportBtn">この状態をHTMLで保存</button>
+  </div>
+
+  <div class="splitArea">
+    <div class="leftCol">
+      <div class="previewWrap">
+        <div class="wrap">
+          <div class="paper" id="paper">
+
+            <div class="head">
+              <div class="headLine">
+                <span class="maker" id="p-maker" contenteditable="true">ダイハツ</span><span class="carName" id="p-carname" contenteditable="true">タント</span><span class="gradeInline" id="p-grade" contenteditable="true">660 X SA バックカメラ ETC パワースライドドア</span><span class="gradeNote" id="p-gradenote" contenteditable="true" data-ph="グレード補記（任意）"></span>
+              </div>
+              <div class="repairRow">
+                <span class="repairBadge" id="p-repair-badge">修復歴なし</span><span class="repairDetail" id="p-repair-detail" contenteditable="true" data-ph="修復箇所（任意）"></span>
+              </div>
+            </div>
+
+            <div class="priceRow">
+              <div class="priceMain" id="priceMain">
+                <div class="priceLabelRow">
+                  <span class="priceLabel">支払総額</span>
+                  <span class="priceSub">(現金販売価格)</span>
+                </div>
+                <div class="priceBoxWrap">
+                  <div class="priceBox" id="priceBox">
+                    <span class="priceNum" id="priceNum" data-ph="0.0" title="クリックすると上の入力欄にフォーカスします"></span>
+                    <div class="priceSelBox" id="priceSelBox" title="ドラッグで移動（枠線上のハンドルでサイズ・縦横比を調整）">
+                      <div class="priceHandle" data-h="nw"></div>
+                      <div class="priceHandle" data-h="n"></div>
+                      <div class="priceHandle" data-h="ne"></div>
+                      <div class="priceHandle" data-h="e"></div>
+                      <div class="priceHandle" data-h="se"></div>
+                      <div class="priceHandle" data-h="s"></div>
+                      <div class="priceHandle" data-h="sw"></div>
+                      <div class="priceHandle" data-h="w"></div>
+                    </div>
+                  </div>
+                  <div class="priceTail">
+                    <span class="priceLabelWrap" id="priceLabelWrap">
+                      <span class="priceLabelBadge" id="priceLabelBadge">支払<br>総額</span>
+                      <div class="priceSelBox" id="labelSelBox" title="ドラッグで移動（枠線上のハンドルでサイズ・縦横比を調整）">
+                        <div class="priceHandle" data-h="nw"></div>
+                        <div class="priceHandle" data-h="n"></div>
+                        <div class="priceHandle" data-h="ne"></div>
+                        <div class="priceHandle" data-h="e"></div>
+                        <div class="priceHandle" data-h="se"></div>
+                        <div class="priceHandle" data-h="s"></div>
+                        <div class="priceHandle" data-h="sw"></div>
+                        <div class="priceHandle" data-h="w"></div>
+                      </div>
+                    </span>
+                    <span class="priceDecTail" id="priceDecTail"></span>
+                    <span class="manyen">万円</span>
+                    <span class="taxnote">(消費税込)</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="hlBand" id="hlBand">
+              <div class="hlItem"><span class="k">年式</span><span class="val" id="p-year" contenteditable="true">H25年12月</span></div>
+              <div class="hlItem"><span class="k">走行距離</span><span class="val" id="p-mileage" contenteditable="true">12.0万km</span></div>
+              <div class="hlItem"><span class="k">車検</span><span class="val" id="p-shaken-disp" contenteditable="true">2年付き</span></div>
+            </div>
+
+          </div>
+        </div>
+      </div>
+
+      <details open class="inputsBlock">
+        <summary>掲載内容を入力</summary>
+        <div class="fieldsGrid">
+          <label class="field"><span>メーカー</span><input id="in-maker" type="text" value="ダイハツ"></label>
+          <label class="field"><span>車名</span><input id="in-carname" type="text" value="タント"></label>
+          <label class="field wide"><span>グレード・型式など</span><input id="in-grade" type="text" value="660 X SA バックカメラ ETC パワースライドドア"></label>
+          <label class="field wide"><span>グレード補記（任意）</span><input id="in-gradenote" type="text" value=""></label>
+          <label class="field"><span>支払総額（万円・数字のみ）</span><input id="in-price" type="text" value="44.8" inputmode="decimal"></label>
+          <label class="field"><span>年式</span><input id="in-year" type="text" value="H25年12月"></label>
+          <label class="field"><span>走行距離</span><input id="in-mileage" type="text" value="12.0万km"></label>
+          <label class="field"><span>車検表示（お客様向け・強調バッジ）</span><input id="in-shaken-disp" type="text" value="2年付き"></label>
+          <label class="field"><span>修復歴</span>
+            <select id="in-repair">
+              <option value="none">なし</option>
+              <option value="has">あり</option>
+            </select>
+          </label>
+          <label class="field wide"><span>修復箇所（任意）</span><input id="in-repair-detail" type="text" value=""></label>
+        </div>
+      </details>
+    </div>
+
+    <div class="rightCol">
+      <p class="lead">レイアウト検討用の試作です。カーセンサーの現行シートの「年式・走行距離が小さい」「価格の桁数によって左側が空く」「色・レイアウトを調整できない」を解消する方向で作っています。左の用紙は直接クリックして書き換えられます。</p>
+      <div class="noteBox">
+        ※これはサンプルです。実際の運用では、ads.htmlに入力済みのカーセンサー掲載CSVの内容から自動でこの画面に反映される想定です（CSVアップロードは今まで通りadsのみで行い、ここでは二重入力しません）。まずはどの項目をどう見せるかを、この試作で確認させてください。<br>
+        ※調整した内容はブラウザに自動保存されますが、ブラウザが変わると引き継げません。「この状態をHTMLで保存」ボタンで書き出したファイルをそのままClaudeにアップロードすれば、調整後のレイアウト（色・サイズ・文言）をそのまま読み取れます。
+      </div>
+      <div class="hint" style="margin-top:0;margin-bottom:10px;">印刷ダイアログで「用紙サイズ：A3」「余白：なし」「拡大縮小：100%」を選んでください。</div>
+
+      <details open>
+        <summary>表示の調整（色・フォント・大きさ・レイアウト）</summary>
+        <div class="grid" id="ctls"></div>
+        <div style="margin-top:10px"><button class="btn" id="resetBtn">調整をリセット</button></div>
+        <div class="hint">調整内容はこのブラウザに自動保存されます。印刷時、この調整パネルは出力されません。</div>
+      </details>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  var KEY='priceSheetSettings.v1';
+  var FONTS=[
+    ['Arial Black（極太）','"Arial Black","Segoe UI Black","Yu Gothic",sans-serif'],
+    ['Segoe UI Black','"Segoe UI Black","Arial Black","Yu Gothic",sans-serif'],
+    ['Impact（欧文・コンパクト極太）','Impact,Haettenschweiler,"Arial Narrow Bold","Yu Gothic",sans-serif'],
+    ['メイリオ','Meiryo,"Meiryo UI",sans-serif'],
+    ['游ゴシック Medium','"Yu Gothic Medium","Yu Gothic","Meiryo",sans-serif'],
+    ['HG創英角ゴシックUB（極太）','"HGSoeiKakugothicUB","HG創英角ｺﾞｼｯｸUB","Meiryo",sans-serif'],
+    ['HGPゴシックE（太め）','"HGPGothicE","HGP創英角ｺﾞｼｯｸUB","HGPｺﾞｼｯｸE","Meiryo",sans-serif'],
+    ['HG丸ゴシックM-PRO（丸め）','"HGMaruGothicMPRO","HG丸ｺﾞｼｯｸM-PRO","Meiryo",sans-serif'],
+    ['HGP創英角ポップ体（ポップ）','"HGPSoeiKakupoptai","HGP創英角ﾎﾟｯﾌﾟ体","Meiryo",sans-serif'],
+    ['BIZ UDPゴシック','"BIZ UDPGothic","Yu Gothic",sans-serif'],
+    ['MSゴシック','"MS Gothic","MSGothic",sans-serif'],
+    ['Franklin Gothic Heavy','"Franklin Gothic Heavy","Franklin Gothic Medium","Yu Gothic",sans-serif'],
+    ['Century Gothic Bold','"Century Gothic","Yu Gothic",sans-serif'],
+    ['Arial Narrow Bold','"Arial Narrow",Arial,"Meiryo",sans-serif'],
+    ['Arial','Arial,"Meiryo",sans-serif'],
+    ['Noto Sans JP','"Noto Sans JP","Yu Gothic","Meiryo",sans-serif'],
+    ['Bahnschrift（コンパクト極太・数字向き）','Bahnschrift,"Yu Gothic","Meiryo",sans-serif'],
+    ['Rockwell Extra Bold（セリフ極太）','"Rockwell Extra Bold","Rockwell","Yu Gothic",serif'],
+    ['UD デジタル教科書体 NK-B（丸め・視認性）','"UD Digital KyoKasho NK-B","BIZ UDPGothic","Meiryo",sans-serif'],
+    ['游ゴシック Bold','"Yu Gothic Bold","Yu Gothic","Meiryo",sans-serif'],
+    ['Calibri Bold','Calibri,"Yu Gothic",sans-serif'],
+    ['BIZ UDゴシック Bold','"BIZ UDGothic","BIZ UDPGothic","Yu Gothic",sans-serif'],
+    ['Verdana Bold','Verdana,"Yu Gothic",sans-serif'],
+    ['Segoe UI Semibold','"Segoe UI Semibold","Segoe UI","Yu Gothic",sans-serif'],
+    ['游明朝 Demibold（セリフ）','"Yu Mincho Demibold","Yu Mincho","MS Mincho",serif'],
+    ['UD新ゴ NT B（サイン・POP向け）','"UD Shin Go NT B","UD Shin Go Pr6N B","Meiryo",sans-serif'],
+    ['小塚ゴシック Pro B','"Kozuka Gothic Pro B","KozGoPr6N-Bold","Meiryo",sans-serif'],
+    ['小塚明朝 Pro B（セリフ）','"Kozuka Mincho Pro B","KozMinPr6N-Bold","MS Mincho",serif'],
+    ['メイリオ Bold','Meiryo,"Meiryo UI",sans-serif'],
+    ['Yu Gothic UI Semibold','"Yu Gothic UI Semibold","Yu Gothic UI","Yu Gothic",sans-serif'],
+    ['Tahoma Bold','Tahoma,"Yu Gothic",sans-serif'],
+    ['Trebuchet MS Bold','"Trebuchet MS","Yu Gothic",sans-serif'],
+    ['Georgia Bold（セリフ）','Georgia,"Yu Gothic",serif'],
+    ['Corbel Bold','Corbel,"Yu Gothic",sans-serif']
+  ];
+  var CFG=[
+    {k:'pricePosX',n:'総額数字の位置（左右）',min:-25,max:25,step:.2,def:0,css:'--pricePosX'},
+    {k:'pricePosY',n:'総額数字の位置（上下）',min:-25,max:25,step:.2,def:0,css:'--pricePosY'},
+    {k:'priceDigits2Mult',n:'価格が2桁の時の倍率',min:.5,max:1.5,step:.02,def:1,css:null},
+    {k:'priceDigits3Mult',n:'価格が3桁の時の倍率',min:.5,max:1.5,step:.02,def:1,css:null},
+    {k:'priceScaleX2',n:'価格が2桁の時の横幅（アスペクト比）',min:.15,max:5,step:.02,def:1,css:null},
+    {k:'priceScaleX3',n:'価格が3桁の時の横幅（アスペクト比）',min:.15,max:5,step:.02,def:1,css:null},
+    {k:'priceScaleY2',n:'価格が2桁の時の高さ拡大率（枠をはみ出せます）',min:.15,max:5,step:.02,def:1,css:null},
+    {k:'priceScaleY3',n:'価格が3桁の時の高さ拡大率（枠をはみ出せます）',min:.15,max:5,step:.02,def:1,css:null},
+    {k:'labelPosX',n:'総額バッジの位置（左右）',min:-25,max:25,step:.2,def:0,css:'--labelPosX'},
+    {k:'labelPosY',n:'総額バッジの位置（上下）',min:-25,max:25,step:.2,def:0,css:'--labelPosY'},
+    {k:'labelScaleX',n:'総額バッジの横幅（アスペクト比）',min:.15,max:5,step:.02,def:1,css:'--labelScaleX'},
+    {k:'labelScaleY',n:'総額バッジの拡大率',min:.15,max:5,step:.02,def:1,css:'--labelScaleY'},
+    {k:'priceLabelEm',n:'「支払総額」バッジの大きさ',min:1,max:18,step:.2,def:1.9,css:'--priceLabelEm'},
+    {k:'priceDecTailEm',n:'小数部（.8等）の大きさ',min:2,max:20,step:.2,def:7,css:'--priceDecTailEm'},
+    {k:'suffixEm',n:'「万円」の大きさ',min:4,max:20,step:.2,def:9,css:'--suffixEm'},
+    {k:'hlValEm',n:'年式・距離・車検：入力内容の文字サイズ',min:2.5,max:9,step:.1,def:5.6,css:'--hlValEm'},
+    {k:'hlKEm',n:'年式・距離・車検：見出し文字（年式等）の大きさ',min:1,max:6,step:.1,def:2.4,css:'--hlKEm'},
+    {k:'hlBoxEm',n:'年式・距離・車検の枠サイズ（余白）',min:0,max:3,step:.02,def:1,css:'--hlBoxEm'},
+    {k:'hlBorderEm',n:'年式・距離・車検の枠線の太さ',min:0,max:5,step:.05,def:1,css:'--hlBorderEm'},
+    {k:'headEm',n:'メーカー・車名・グレード行の大きさ',min:1.2,max:5,step:.1,def:2.2,css:'--headEm'},
+    {k:'gradeNoteEm',n:'グレード補記の大きさ',min:1,max:3.5,step:.1,def:1.6,css:'--gradeNoteEm'},
+    {k:'headBorderEm',n:'グレード補記下の線の太さ',min:0,max:5,step:.05,def:1,css:'--headBorderEm'},
+    {k:'repairEm',n:'修復歴バッジの大きさ',min:1,max:5,step:.1,def:1.8,css:'--repairEm'}
+  ];
+  var paper=document.getElementById('paper');
+  var box=document.getElementById('ctls');
+  var priceMainEl=document.getElementById('priceMain');
+  var hlBandEl=document.getElementById('hlBand');
+  var priceBox=document.getElementById('priceBox');
+  var st={priceFont:FONTS[0][1],hlFont:'"Yu Gothic","Meiryo",sans-serif',
+    headFont:'"Yu Gothic","Meiryo",sans-serif',manyenFont:'"Yu Gothic","Meiryo",sans-serif',priceLabelFont:'"Yu Gothic","Meiryo",sans-serif',
+    gradeFont:'"Yu Gothic","Meiryo",sans-serif',gradeNoteFont:'"Yu Gothic","Meiryo",sans-serif',
+    priceColor:'#dc2626',headColor:'#111827',accentColor:'#dc2626',accentBg:'#fff1f0',manyenColor:'#dc2626',repairColor:'#dc2626',
+    labelStyle:'badge',hlStyle:'pill',priceScaleXOther:1,priceScaleYOther:1};
+  CFG.forEach(function(c){st[c.k]=c.def;});
+
+  try{
+    var s=JSON.parse(localStorage.getItem(KEY)||'null');
+    if(s){for(var k in s){if(k in st)st[k]=s[k];}}
+  }catch(e){}
+
+  function save(){try{localStorage.setItem(KEY,JSON.stringify(st));}catch(e){}}
+  var root=document.documentElement;
+  function apply(){
+    root.style.setProperty('--priceFont',st.priceFont);
+    root.style.setProperty('--hlFont',st.hlFont);
+    root.style.setProperty('--headFont',st.headFont);
+    root.style.setProperty('--manyenFont',st.manyenFont);
+    root.style.setProperty('--priceLabelFont',st.priceLabelFont);
+    root.style.setProperty('--gradeFont',st.gradeFont);
+    root.style.setProperty('--gradeNoteFont',st.gradeNoteFont);
+    root.style.setProperty('--priceColor',st.priceColor);
+    root.style.setProperty('--headColor',st.headColor);
+    root.style.setProperty('--accentColor',st.accentColor);
+    root.style.setProperty('--accentBg',st.accentBg);
+    root.style.setProperty('--manyenColor',st.manyenColor);
+    root.style.setProperty('--repairColor',st.repairColor);
+    CFG.forEach(function(c){if(c.css)root.style.setProperty(c.css,st[c.k]);});
+    priceMainEl.classList.toggle('labelBadge',st.labelStyle==='badge');
+    hlBandEl.classList.toggle('pillStyle',st.hlStyle==='pill');
+    // 用紙の表示サイズ（em の基準となるwrapのfont-size）を先に確定させてから、
+    // それに依存する価格の自動フィット・年式距離車検のフィット・ハンドル位置を計算する。
+    // 順番を間違えると、古い基準サイズのまま価格の文字サイズ（2桁/3桁別アスペクト比含む）がずれる。
+    fitPreviewSize();
+    fitPriceWidth();
+    fitHlItems();
+    priceDrag.positionHandles();
+    labelDrag.positionHandles();
+  }
+
+  // ---- フォント選択 ----
+  var fd=document.createElement('label');fd.className='ctl wide';
+  fd.innerHTML='<span class="n">価格のフォント</span>';
+  var sel=document.createElement('select');
+  FONTS.forEach(function(f){var o=document.createElement('option');o.value=f[1];o.textContent=f[0];sel.appendChild(o);});
+  if(![].some.call(sel.options,function(o){return o.value===st.priceFont;})){
+    var o2=document.createElement('option');o2.value=st.priceFont;o2.textContent='(保存済みのフォント)';sel.appendChild(o2);
+  }
+  sel.value=st.priceFont;
+  sel.onchange=function(){st.priceFont=sel.value;apply();save();};
+  fd.appendChild(sel);box.appendChild(fd);
+
+  // ---- その他の項目のフォント選択（メーカー・車名／万円／支払総額／年式・距離・車検／グレード・型式／グレード補記） ----
+  function fontRow(label,stKey){
+    var l=document.createElement('label');l.className='ctl wide';
+    var n=document.createElement('span');n.className='n';n.textContent=label;
+    var opts=[['本文と同じ（游ゴシック等）','"Yu Gothic","Meiryo",sans-serif']].concat(FONTS);
+    var s=document.createElement('select');
+    opts.forEach(function(f){var o=document.createElement('option');o.value=f[1];o.textContent=f[0];s.appendChild(o);});
+    if(![].some.call(s.options,function(o){return o.value===st[stKey];})){
+      var o2=document.createElement('option');o2.value=st[stKey];o2.textContent='(保存済みのフォント)';s.appendChild(o2);
+    }
+    s.value=st[stKey];
+    s.onchange=function(){st[stKey]=s.value;apply();save();};
+    l.appendChild(n);l.appendChild(s);box.appendChild(l);
+    return s;
+  }
+  var hsel=fontRow('年式・距離・車検のフォント','hlFont');
+  var headSel=fontRow('メーカー・車名のフォント','headFont');
+  var manyenSel=fontRow('「万円」のフォント','manyenFont');
+  var priceLabelSel=fontRow('「支払総額」のフォント','priceLabelFont');
+  var gradeSel=fontRow('グレード・型式のフォント','gradeFont');
+  var gradeNoteSel=fontRow('グレード補記のフォント','gradeNoteFont');
+
+  // ---- 支払総額ラベルの位置／年式距離車検のスタイル ----
+  function selectRow(label,options,val,onset){
+    var l=document.createElement('label');l.className='ctl wide';
+    var n=document.createElement('span');n.className='n';n.textContent=label;
+    var s=document.createElement('select');
+    options.forEach(function(o){var op=document.createElement('option');op.value=o[0];op.textContent=o[1];s.appendChild(op);});
+    s.value=val;
+    s.onchange=function(){onset(s.value);apply();save();};
+    l.appendChild(n);l.appendChild(s);box.appendChild(l);
+    return s;
+  }
+  var labelStyleSel=selectRow('「支払総額」ラベルの位置',[['top','数字の上に横並び'],['badge','数字の右上に小さいバッジ']],st.labelStyle,function(v){st.labelStyle=v;});
+  var hlStyleSel=selectRow('年式・距離・車検の表示スタイル',[['band','帯（色で塗りつぶし）'],['pill','個別バッジ（枠線）']],st.hlStyle,function(v){st.hlStyle=v;});
+
+  // ---- 色設定（履歴スウォッチ付き） ----
+  var HKEY='priceSheetColorHistory.v1';
+  var hist={price:[],head:[],accent:[],manyen:[],repair:[]};
+  try{var hs=JSON.parse(localStorage.getItem(HKEY)||'null');if(hs){hist=Object.assign(hist,hs);}}catch(e){}
+  function saveHist(){try{localStorage.setItem(HKEY,JSON.stringify(hist));}catch(e){}}
+  function addHist(field,color){
+    var arr=hist[field].filter(function(c){return c.toLowerCase()!==color.toLowerCase();});
+    arr.unshift(color);hist[field]=arr.slice(0,8);saveHist();renderSwatches(field);
+  }
+  var swWraps={};
+  function renderSwatches(field){
+    var wrap=swWraps[field];if(!wrap)return;
+    wrap.innerHTML='';
+    hist[field].forEach(function(c){
+      var b=document.createElement('button');
+      b.type='button';b.className='swatch';b.style.background=c;b.title=c;
+      b.onclick=function(){
+        if(field==='price'){st.priceColor=c;priceI.value=c;}
+        else if(field==='head'){st.headColor=c;headI.value=c;}
+        else if(field==='manyen'){st.manyenColor=c;manyenI.value=c;}
+        else if(field==='repair'){st.repairColor=c;repairI.value=c;}
+        else{st.accentColor=c;accentI.value=c;}
+        apply();save();
+      };
+      wrap.appendChild(b);
+    });
+  }
+  function colorRow(label,field,val,onset){
+    var l=document.createElement('label');l.className='ctl wide';
+    var n=document.createElement('span');n.className='n';n.textContent=label;
+    var i=document.createElement('input');i.type='color';i.value=val;
+    var w=document.createElement('div');w.className='swatches';swWraps[field]=w;
+    i.oninput=function(){onset(i.value);apply();save();};
+    i.addEventListener('change',function(){addHist(field,i.value);});
+    l.appendChild(n);l.appendChild(i);l.appendChild(w);box.appendChild(l);
+    return i;
+  }
+  var priceI=colorRow('価格の色','price',st.priceColor,function(v){st.priceColor=v;});
+  var manyenI=colorRow('「万円」の色','manyen',st.manyenColor,function(v){st.manyenColor=v;});
+  var headI=colorRow('車名・見出しの色','head',st.headColor,function(v){st.headColor=v;});
+  var accentI=colorRow('アクセント色（枠・年式距離バンド）','accent',st.accentColor,function(v){st.accentColor=v;});
+  var repairI=colorRow('修復歴表示の色','repair',st.repairColor,function(v){st.repairColor=v;});
+  renderSwatches('price');renderSwatches('head');renderSwatches('accent');renderSwatches('manyen');renderSwatches('repair');
+
+  // ---- サイズスライダー ----
+  var inputs={};
+  CFG.forEach(function(c){
+    var l=document.createElement('label');l.className='ctl';
+    var n=document.createElement('span');n.className='n';n.textContent=c.n;
+    var r=document.createElement('input');r.type='range';r.min=c.min;r.max=c.max;r.step=c.step;r.value=st[c.k];
+    var v=document.createElement('span');v.className='v';v.textContent=st[c.k];
+    r.oninput=function(){st[c.k]=+r.value;v.textContent=r.value;apply();save();};
+    inputs[c.k]={r:r,v:v};
+    l.appendChild(n);l.appendChild(r);l.appendChild(v);box.appendChild(l);
+  });
+
+  document.getElementById('resetBtn').onclick=function(){
+    st.priceFont=FONTS[0][1];st.hlFont='"Yu Gothic","Meiryo",sans-serif';
+    st.headFont='"Yu Gothic","Meiryo",sans-serif';st.manyenFont='"Yu Gothic","Meiryo",sans-serif';st.priceLabelFont='"Yu Gothic","Meiryo",sans-serif';
+    st.gradeFont='"Yu Gothic","Meiryo",sans-serif';st.gradeNoteFont='"Yu Gothic","Meiryo",sans-serif';
+    st.priceColor='#dc2626';st.headColor='#111827';st.accentColor='#dc2626';st.accentBg='#fff1f0';st.manyenColor='#dc2626';st.repairColor='#dc2626';
+    st.labelStyle='badge';st.hlStyle='pill';st.priceScaleXOther=1;st.priceScaleYOther=1;
+    CFG.forEach(function(c){st[c.k]=c.def;inputs[c.k].r.value=c.def;inputs[c.k].v.textContent=c.def;});
+    sel.value=st.priceFont;hsel.value=st.hlFont;headSel.value=st.headFont;manyenSel.value=st.manyenFont;priceLabelSel.value=st.priceLabelFont;
+    gradeSel.value=st.gradeFont;gradeNoteSel.value=st.gradeNoteFont;
+    priceI.value=st.priceColor;headI.value=st.headColor;accentI.value=st.accentColor;manyenI.value=st.manyenColor;repairI.value=st.repairColor;
+    labelStyleSel.value=st.labelStyle;hlStyleSel.value=st.hlStyle;
+    apply();save();
+  };
+
+  // ---- 価格の自動フィット：桁数・横幅アスペクト比に関わらず枠いっぱいに表示する ----
+  // さらに、2桁万円／3桁万円でそれぞれ個別の倍率（priceDigits2Mult/3Mult）と
+  // 個別の横幅＝アスペクト比（priceScaleX2/3）を、現在の価格の桁数に応じて自動で切り替える
+  function currentPriceDigits(){
+    var el=document.getElementById('priceNum');
+    return (el.textContent||'').replace(/\D/g,'').length;
+  }
+  function priceScaleXKey(){
+    var d=currentPriceDigits();
+    if(d===2) return 'priceScaleX2';
+    if(d===3) return 'priceScaleX3';
+    return 'priceScaleXOther';
+  }
+  function pushEffectivePriceScaleX(){
+    root.style.setProperty('--priceScaleX',st[priceScaleXKey()]);
+  }
+  // 総額数字の高さ拡大率(--priceScaleY)も、横幅のアスペクト比と同じように2桁/3桁で別の値を使う。
+  function priceScaleYKey(){
+    var d=currentPriceDigits();
+    if(d===2) return 'priceScaleY2';
+    if(d===3) return 'priceScaleY3';
+    return 'priceScaleYOther';
+  }
+  function pushEffectivePriceScaleY(){
+    root.style.setProperty('--priceScaleY',st[priceScaleYKey()]);
+  }
+  var PRICE_MIN=4,PRICE_MAX=60,PRICE_STEP=.5;
+  function fitPriceWidth(){
+    var el=document.getElementById('priceNum');
+    var b=document.getElementById('priceBox');
+    if(!el.textContent){el.style.fontSize='';return;}
+    pushEffectivePriceScaleX();
+    pushEffectivePriceScaleY();
+    var scaleX=parseFloat(st[priceScaleXKey()])||1;
+    var size=PRICE_MIN;
+    el.style.fontSize=size+'em';
+    while(size<PRICE_MAX){
+      var next=size+PRICE_STEP;
+      el.style.fontSize=next+'em';
+      var effWidth=el.scrollWidth*scaleX;
+      if(effWidth>b.clientWidth || el.scrollHeight>b.clientHeight){
+        el.style.fontSize=size+'em';break;
+      }
+      size=next;
+    }
+    var digits=currentPriceDigits();
+    var mult=1;
+    if(digits===2) mult=parseFloat(st.priceDigits2Mult)||1;
+    else if(digits===3) mult=parseFloat(st.priceDigits3Mult)||1;
+    if(mult!==1) el.style.fontSize=(size*mult)+'em';
+  }
+
+  // ---- ペイントの選択枠のような8ハンドル（四隅＝縦横同時、辺＝片方向のみ）＋ 枠内ドラッグで移動 ----
+  // 支払総額の数字と「支払総額」バッジの両方に同じ仕組みを使う。クリックした方だけハンドルが有効になる。
+  function clamp(v,lo,hi){return Math.max(lo,Math.min(hi,v));}
+  var SCALE_MIN=.1,SCALE_MAX=6;
+  function activateSelBox(box){
+    [].forEach.call(document.querySelectorAll('.priceSelBox'),function(b){b.classList.toggle('active',b===box);});
+  }
+  function makeDraggable(cfg){
+    function elOf(){return document.getElementById(cfg.elId);}
+    function containerOf(){return document.getElementById(cfg.containerId);}
+    function boxOf(){return document.getElementById(cfg.selBoxId);}
+    function positionHandles(){
+      var e=elOf(),c=containerOf(),s=boxOf();
+      var br=c.getBoundingClientRect();
+      var nr=e.getBoundingClientRect();
+      if(!nr.width&&!nr.height)return;
+      s.style.left=(nr.left-br.left)+'px';
+      s.style.top=(nr.top-br.top)+'px';
+      s.style.width=nr.width+'px';
+      s.style.height=nr.height+'px';
+    }
+    // stKeys の各値は固定のst参照キー文字列、または「今どのキーを見るか」を返す関数（桁数で参照先を切り替える場合）
+    function rk(k){return typeof k==='function'?k():k;}
+    function applyTransformOnly(){
+      root.style.setProperty(cfg.cssVars.posX,st[rk(cfg.stKeys.posX)]);
+      root.style.setProperty(cfg.cssVars.posY,st[rk(cfg.stKeys.posY)]);
+      root.style.setProperty(cfg.cssVars.scaleX,st[rk(cfg.stKeys.scaleX)]);
+      root.style.setProperty(cfg.cssVars.scaleY,st[rk(cfg.stKeys.scaleY)]);
+    }
+    function syncSliders(){
+      [rk(cfg.stKeys.posX),rk(cfg.stKeys.posY),rk(cfg.stKeys.scaleX),rk(cfg.stKeys.scaleY)].forEach(function(k){
+        if(inputs[k]){inputs[k].r.value=st[k];inputs[k].v.textContent=(Math.round(st[k]*100)/100);}
+      });
+    }
+    // handle=='move' は枠内ドラッグで平行移動。それ以外（nw/n/ne/e/se/s/sw/w）は
+    // 「反対側の辺・角を固定したまま、つまんだ辺・角をマウスに追従させる」という
+    // ペイント等の選択枠と同じ考え方で、位置(translate)と拡大率(scale)を同時に解く。
+    function startDrag(e,handle){
+      e.preventDefault();
+      e.stopPropagation();
+      var el=elOf();
+      var fontPx=parseFloat(getComputedStyle(el).fontSize)||100;
+      var posXKey=rk(cfg.stKeys.posX),posYKey=rk(cfg.stKeys.posY),scaleXKey=rk(cfg.stKeys.scaleX),scaleYKey=rk(cfg.stKeys.scaleY);
+      if(handle==='move'){
+        var sx0=e.clientX,sy0=e.clientY;
+        var startX=st[posXKey],startY=st[posYKey];
+        function onMoveM(ev){
+          var dx=ev.clientX-sx0,dy=ev.clientY-sy0;
+          st[posXKey]=+(startX+dx/fontPx).toFixed(3);
+          st[posYKey]=+(startY+dy/fontPx).toFixed(3);
+          syncSliders();applyTransformOnly();positionHandles();
+        }
+        function onUpM(){document.removeEventListener('mousemove',onMoveM);document.removeEventListener('mouseup',onUpM);save();}
+        document.addEventListener('mousemove',onMoveM);
+        document.addEventListener('mouseup',onUpM);
+        return;
+      }
+      var sxOld=st[scaleXKey],syOld=st[scaleYKey];
+      var txOld=st[posXKey]*fontPx,tyOld=st[posYKey]*fontPx;
+      var rect=el.getBoundingClientRect();
+      var W=el.offsetWidth||1,H=el.offsetHeight||1;
+      var Ox=rect.left-txOld,Oy=(rect.top+rect.bottom)/2-tyOld;
+      var axisX=null,axisY=null;
+      if(handle.indexOf('w')>=0) axisX={qa:W,qd:0};
+      else if(handle.indexOf('e')>=0) axisX={qa:0,qd:W};
+      if(handle.indexOf('n')>=0) axisY={qa:H/2,qd:-H/2};
+      else if(handle.indexOf('s')>=0) axisY={qa:-H/2,qd:H/2};
+      var anchorScreenX=axisX?(rect.left+sxOld*axisX.qa):0;
+      var anchorScreenY=axisY?((rect.top+rect.bottom)/2+syOld*axisY.qa):0;
+      function onMove(ev){
+        if(axisX){
+          var sxNew=clamp((ev.clientX-anchorScreenX)/(axisX.qd-axisX.qa),SCALE_MIN,SCALE_MAX);
+          var txNew=anchorScreenX-Ox-sxNew*axisX.qa;
+          st[scaleXKey]=+sxNew.toFixed(3);
+          st[posXKey]=+(txNew/fontPx).toFixed(3);
+        }
+        if(axisY){
+          var syNew=clamp((ev.clientY-anchorScreenY)/(axisY.qd-axisY.qa),SCALE_MIN,SCALE_MAX);
+          var tyNew=anchorScreenY-Oy-syNew*axisY.qa;
+          st[scaleYKey]=+syNew.toFixed(3);
+          st[posYKey]=+(tyNew/fontPx).toFixed(3);
+        }
+        syncSliders();
+        applyTransformOnly();
+        positionHandles();
+      }
+      function onUp(){
+        document.removeEventListener('mousemove',onMove);
+        document.removeEventListener('mouseup',onUp);
+        save();
+      }
+      document.addEventListener('mousemove',onMove);
+      document.addEventListener('mouseup',onUp);
+    }
+    var selBoxEl=boxOf();
+    selBoxEl.addEventListener('mousedown',function(e){
+      if(e.target!==selBoxEl)return;
+      startDrag(e,'move');
+    });
+    [].forEach.call(selBoxEl.querySelectorAll('.priceHandle'),function(h){
+      h.addEventListener('mousedown',function(e){startDrag(e,h.getAttribute('data-h'));});
+    });
+    return {positionHandles:positionHandles};
+  }
+  var priceDrag=makeDraggable({elId:'priceNum',containerId:'priceBox',selBoxId:'priceSelBox',
+    stKeys:{posX:'pricePosX',posY:'pricePosY',scaleX:priceScaleXKey,scaleY:priceScaleYKey},
+    cssVars:{posX:'--pricePosX',posY:'--pricePosY',scaleX:'--priceScaleX',scaleY:'--priceScaleY'}});
+  var labelDrag=makeDraggable({elId:'priceLabelBadge',containerId:'priceLabelWrap',selBoxId:'labelSelBox',
+    stKeys:{posX:'labelPosX',posY:'labelPosY',scaleX:'labelScaleX',scaleY:'labelScaleY'},
+    cssVars:{posX:'--labelPosX',posY:'--labelPosY',scaleX:'--labelScaleX',scaleY:'--labelScaleY'}});
+  document.getElementById('priceNum').addEventListener('click',function(){
+    activateSelBox(document.getElementById('priceSelBox'));
+    priceDrag.positionHandles();
+  });
+  document.getElementById('priceLabelBadge').addEventListener('click',function(){
+    activateSelBox(document.getElementById('labelSelBox'));
+    labelDrag.positionHandles();
+  });
+  // ハンドルの外（数字・バッジ本体以外）をクリックしたら選択解除
+  document.addEventListener('mousedown',function(e){
+    [].forEach.call(document.querySelectorAll('.priceSelBox.active'),function(b){
+      if(!b.contains(e.target) && e.target!==document.getElementById('priceNum') && e.target!==document.getElementById('priceLabelBadge')){
+        b.classList.remove('active');
+      }
+    });
+  });
+
+  // 年式・走行距離・車検バンド：3項目の文字サイズを統一しつつ、
+  // どれか1つでもはみ出す場合は3項目まとめて同じだけ縮小する（文字数が少ない項目だけ大きくなるのを防ぐ）
+  function fitHlItems(){
+    var items=document.querySelectorAll('.hlItem');
+    if(!items.length)return;
+    for(var i=0;i<items.length;i++)items[i].style.fontSize='';
+    var base=parseFloat(getComputedStyle(items[0]).fontSize)||16;
+    var min=base*0.45;
+    var size=base;
+    var guard=0;
+    function anyOverflow(){
+      for(var i=0;i<items.length;i++){
+        var item=items[i];
+        var val=item.querySelector('.val');
+        if(!val||!val.textContent)continue;
+        if(item.scrollWidth>item.clientWidth+0.5)return true;
+      }
+      return false;
+    }
+    while(anyOverflow() && size>min && guard<60){
+      size-=base*0.02;
+      for(var i=0;i<items.length;i++)items[i].style.fontSize=size+'px';
+      guard++;
+    }
+  }
+
+  // ---- 左側プレビューを「はみ出さず・出来るだけ大きく」自動フィット（高さ優先） ----
+  // 左カラムはスクロールさせない方針のため、入力欄ブロックの下に残った高さに合わせて
+  // 420:297のアスペクト比を保ったまま用紙サイズ（px）を決め、.wrapに直接書き込む。
+  function fitPreviewSize(){
+    var pw=document.querySelector('.previewWrap');
+    var wrap=document.querySelector('.wrap');
+    if(!pw||!wrap)return;
+    var availW=pw.clientWidth,availH=pw.clientHeight;
+    if(availW<=0||availH<=0)return;
+    var ratio=420/297;
+    var w=availW,h=w/ratio;
+    if(h>availH){h=availH;w=h*ratio;}
+    wrap.style.width=w+'px';
+    wrap.style.height=h+'px';
+    wrap.style.fontSize=(w/100)+'px';
+  }
+
+  // ---- リサイズ時の再計算はすべてここに一本化する ----
+  // fitPreviewSize()がwrapのfont-size（＝em基準）を変えるので、それに依存する
+  // fitPriceWidth()・fitHlItems()・ハンドル位置は必ずこの後に実行する。
+  // （個別にresizeリスナーを複数登録すると実行順が register順になり、
+  //   基準サイズが更新される前に古い基準で価格サイズを計算してしまうバグの元になるため統一）
+  function refitAll(){
+    fitPreviewSize();
+    fitPriceWidth();
+    fitHlItems();
+    priceDrag.positionHandles();
+    labelDrag.positionHandles();
+  }
+  window.addEventListener('resize',refitAll);
+  if(window.ResizeObserver){
+    new ResizeObserver(refitAll).observe(document.querySelector('.previewWrap'));
+  }
+
+  // ---- 入力欄 ⇔ 用紙プレビュー 同期（上部フォームで編集 / 用紙を直接クリック編集の両対応） ----
+  var HL_IDS={'p-year':1,'p-mileage':1,'p-shaken-disp':1};
+  function bindText(inputId,paperId){
+    var i=document.getElementById(inputId),p=document.getElementById(paperId);
+    i.addEventListener('input',function(){p.textContent=i.value;if(p===document.getElementById('priceNum'))fitPriceWidth();if(HL_IDS[p.id])fitHlItems();});
+    p.addEventListener('input',function(){i.value=p.textContent;if(p===document.getElementById('priceNum'))fitPriceWidth();if(HL_IDS[p.id])fitHlItems();});
+  }
+  bindText('in-maker','p-maker');
+  bindText('in-carname','p-carname');
+  bindText('in-grade','p-grade');
+  bindText('in-gradenote','p-gradenote');
+  bindText('in-year','p-year');
+  bindText('in-mileage','p-mileage');
+  bindText('in-shaken-disp','p-shaken-disp');
+  bindText('in-repair-detail','p-repair-detail');
+
+  // 修復歴（なし／あり）：選択に応じて用紙側のバッジ文言を切替
+  var repairSel=document.getElementById('in-repair'),repairBadgeEl=document.getElementById('p-repair-badge');
+  function syncRepairBadge(){
+    repairBadgeEl.textContent = repairSel.value==='has' ? '修復歴あり' : '修復歴なし';
+  }
+  repairSel.addEventListener('change',syncRepairBadge);
+
+  // 支払総額（メイン価格）：整数部は数字ボックスに大きく、小数部（.8など）は右側の「支払総額」バッジ下に表示
+  var priceIn=document.getElementById('in-price'),priceNum=document.getElementById('priceNum'),priceDecTail=document.getElementById('priceDecTail');
+  function renderPriceNum(v){
+    v=v||'';
+    var m=/^([^.]*)(\..*)?$/.exec(v);
+    priceNum.textContent=m[1]||'';
+    priceDecTail.textContent=m[2]||'';
+  }
+  priceIn.addEventListener('input',function(){renderPriceNum(priceIn.value);fitPriceWidth();});
+  priceNum.addEventListener('click',function(){priceIn.focus();priceIn.select();});
+
+  // 初期反映
+  renderPriceNum(priceIn.value);
+  syncRepairBadge();
+  apply();
+
+  // ads.html / pricing.html からの遷移時、検索語(?q=)を保持したまま戻れるようにする。
+  // このツール自体には検索ボックスがないため、受け取った?q=をそのまま戻るリンクに引き渡すだけ。
+  (function(){
+    var q=new URLSearchParams(location.search).get('q')||'';
+    ['backToAdsLink','backToPricingLink'].forEach(function(id){
+      var link=document.getElementById(id);
+      if(!link) return;
+      var base=link.dataset.baseHref;
+      link.href = q ? base+'?q='+encodeURIComponent(q) : base;
+    });
+  })();
+
+  document.getElementById('printBtn').onclick=function(){window.print();};
+
+  // ---- 現在の調整（色・サイズ・文言・帯ON/OFFなど）をそのままHTMLファイルとして書き出す ----
+  // このファイルをそのままClaudeにアップロードし直せば、調整後の状態を直接読み取れる。
+  document.getElementById('exportBtn').onclick=function(){
+    var html='<!DOCTYPE html>\n'+document.documentElement.outerHTML;
+    var blob=new Blob([html],{type:'text/html'});
+    var url=URL.createObjectURL(blob);
+    var a=document.createElement('a');
+    var d=new Date();
+    function pad(n){return (n<10?'0':'')+n;}
+    a.href=url;
+    a.download='pricesheet_調整_'+d.getFullYear()+pad(d.getMonth()+1)+pad(d.getDate())+'_'+pad(d.getHours())+pad(d.getMinutes())+'.html';
+    document.body.appendChild(a);a.click();document.body.removeChild(a);
+    setTimeout(function(){URL.revokeObjectURL(url);},1000);
+  };
+})();
+</script>
+</body>
+</html>

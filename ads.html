@@ -126,6 +126,11 @@ html[data-theme="dark"] .card.warn{box-shadow:0 0 10px rgba(255,194,51,.2);}
 .aaBtn.has1{border-color:#ff9d33;color:#ff9d33;}
 .aaBtn.has2{border-color:var(--warn-text);color:var(--warn-text);}
 .aaBtn:hover{background:rgba(74,171,207,0.12);box-shadow:0 0 8px var(--sky);}
+.shufukuBtn{font-size:11.5px;font-weight:600;padding:4px 10px;border:2px solid var(--toggle-off-border);border-radius:6px;background:var(--toggle-off-bg);color:var(--toggle-off-text);cursor:pointer;white-space:nowrap;}
+.shufukuBtn.on{background:var(--toggle-on-bg);color:var(--toggle-on-text);border-color:var(--toggle-on-border);}
+.shufukuBtn.csonly{background:var(--warn-bg);color:var(--warn-text);border-color:var(--warn-border);}
+.shufukuBtn.diff{background:var(--danger-bg);color:var(--danger-text);border-color:var(--danger-border);}
+.shufukuBtn:hover{opacity:0.8;}
 
 .aaModalPanel{background:var(--card);border:2px solid var(--border);border-radius:14px;padding:22px 24px;width:98vw;max-width:1800px;max-height:97vh;overflow-y:auto;position:relative;}
 .aaModalHeader{position:sticky;top:-22px;margin:-22px -24px 0;padding:16px 24px 4px;background:var(--card);display:flex;align-items:center;justify-content:space-between;gap:10px;z-index:5;border-radius:14px 14px 0 0;}
@@ -199,12 +204,13 @@ body:not(.debugMode) .debugOnly{display:none !important;}
 <header>
 <div class="header-row">
   <div>
-    <h1>広告掲載状況ダッシュボード <span style="font-size:12px;font-weight:400;opacity:.75;">v1.31</span></h1>
+    <h1>広告掲載状況ダッシュボード <span style="font-size:12px;font-weight:400;opacity:.75;">v1.32</span></h1>
     <p>カーセンサー ／ グーネット ／ QuickNetwork（業販） ／ オートサーバー（業販） ／ JUテントリ（業販） の5サイト突合(棚卸一覧は参考照合用)　※データはFirebaseで共有されます</p>
   </div>
   <div style="display:flex;gap:8px;flex-shrink:0;">
     <a class="updateBtn headerRefreshBtn" href="./index.html" style="text-decoration:none;display:inline-flex;align-items:center;">🏠 一覧へ</a>
     <a class="updateBtn headerRefreshBtn" id="crossToolLink" href="./pricing.html" data-base-href="./pricing.html" style="text-decoration:none;display:inline-flex;align-items:center;">💰 プライシングへ</a>
+    <a class="updateBtn headerRefreshBtn" id="sheetToolLink" href="./pricetag.html" data-base-href="./pricetag.html" style="text-decoration:none;display:inline-flex;align-items:center;">📝 シート作成へ</a>
     <button class="updateBtn headerRefreshBtn" id="refreshBtn">🔄 最新を取得</button>
     <button class="updateBtn headerRefreshBtn" id="settingsBtn">⚙ 設定</button>
   </div>
@@ -349,6 +355,7 @@ body:not(.debugMode) .debugOnly{display:none !important;}
   <th class="sortable" data-sort="shiire" rowspan="2">仕入日<span class="arrow">↕</span></th>
   <th class="sortable" data-sort="vin" rowspan="2">車台番号<span class="arrow">↕</span></th>
   <th rowspan="2">業販不要</th>
+  <th rowspan="2">修復歴</th>
   <th rowspan="2">出品票</th>
   <th class="sortable" data-sort="carname" rowspan="2">車両<span class="arrow">↕</span></th>
   <th class="site-col sortable" data-sort="carsensor" rowspan="2">CS<span class="arrow">↕</span></th>
@@ -423,6 +430,7 @@ async function loadAdsData(){
     ADS_SITES_KEYS.forEach(k => { raw[k] = data[k] || {}; });
     noGyohanVins = data.noGyohanVins || {};
     aaPhotoCounts = data.aaPhotoCounts || {};
+    manualShufuku = data.manualShufuku || {};
     lastLoadedLabel = data.lastUpdated || null;
     document.getElementById('lastUpdated').textContent = lastLoadedLabel ? ('データ基準日: ' + lastLoadedLabel) : 'データがまだ保存されていません。CSVを読み込んで保存してください。';
     setSyncStatus('● 同期済み', 'ok');
@@ -444,6 +452,7 @@ async function saveAdsData(){
     payload.lastUpdated = label;
     payload.noGyohanVins = noGyohanVins || {}; // 業販不要フラグは上書きせず保持する
     payload.aaPhotoCounts = aaPhotoCounts || {}; // AA画像の枚数(軽量なメタ情報のみ)も上書きせず保持する
+    payload.manualShufuku = manualShufuku || {}; // 修復歴の手動設定も上書きせず保持する
     await set(ref(db, 'adsData'), payload);
     lastLoadedLabel = label;
     document.getElementById('lastUpdated').textContent = 'データ基準日: ' + label;
@@ -466,6 +475,21 @@ async function toggleNoGyohan(vin){
     await set(ref(db, 'adsData/noGyohanVins'), noGyohanVins);
   } catch(err){
     console.error('toggleNoGyohan error:', err);
+    setSyncStatus('● 保存エラー: ' + err.message, 'err');
+  }
+}
+
+// 修復歴の手動設定を切り替える(なし⇄あり)。グーネットのCSV値がある車両でも手動で上書きできる。
+// 現在表示されている実効値(手動設定があれば手動値、無ければグーネットのCSV値、どちらも無ければなし)の反転を保存する。
+async function toggleShufuku(vin){
+  const row = rows.find(r => r.vin === vin);
+  const current = row ? row.shufukuEffective : false;
+  manualShufuku[vin] = !current;
+  recompute();
+  try{
+    await set(ref(db, 'adsData/manualShufuku'), manualShufuku);
+  } catch(err){
+    console.error('toggleShufuku error:', err);
     setSyncStatus('● 保存エラー: ' + err.message, 'err');
   }
 }
@@ -667,6 +691,7 @@ async function openAaModal(vin){
 let raw = {carsensor:{}, goonet:{}, quicknetwork:{}, autoserver:{}, jutentori:{}, tanaoroshi:{}};
 let noGyohanVins = {};
 let aaPhotoCounts = {};
+let manualShufuku = {}; // 修復歴の手動設定(true=あり/false=なし)。未設定の車台番号はグーネットのCSV値に従う
 let lastLoadedLabel = null;
 const SITES = ['carsensor','goonet','quicknetwork','autoserver','jutentori'];
 const GYOHAN_ONLY_SITES = ['quicknetwork','autoserver','jutentori'];
@@ -812,10 +837,25 @@ function recompute(){
 
     const notInStock = !inStock;
 
+    // プライスシート用に拡充した項目(メーカー・グレード補記・年式表示・修復歴)。
+    // メーカー・グレード補記・年式表示はカーセンサーを優先し、無ければグーネットを使う。
+    const maker = (bySite.carsensor?.maker || bySite.goonet?.maker || '');
+    const gradeNote = (bySite.carsensor?.grade_note || bySite.goonet?.grade_note || '');
+    const yearDisp = (bySite.carsensor?.year_disp || bySite.goonet?.year_disp || '');
+    // 修復歴:グーネットのCSV値(無し/有り)を基本とし、手動設定があればそれを優先する。
+    // カーセンサーには修復歴の項目が無いため、グーネットの掲載が無い車両は手動設定が無ければ「なし」扱い。
+    const shufukuCsv = bySite.goonet ? !!bySite.goonet.shufuku : null; // null=グーネットのデータ自体が無い
+    const hasManualShufuku = Object.prototype.hasOwnProperty.call(manualShufuku, vin);
+    const shufukuManual = hasManualShufuku ? !!manualShufuku[vin] : null;
+    const shufukuEffective = hasManualShufuku ? shufukuManual : (shufukuCsv != null ? shufukuCsv : false);
+    const shufukuCsOnly = !bySite.goonet; // グーネットのデータが無い(カーセンサーのみ等)ため未確認
+    const shufukuDiff = hasManualShufuku && shufukuCsv != null && shufukuManual !== shufukuCsv; // 手動値がグーネットの値と異なる
+
     const flagCount = (missing?1:0) + (notInStock?1:0) + (priceMismatch?1:0) + (mileageMismatch?1:0) + (shakenMismatch?1:0);
 
-    return {vin, carName, bySite, inStock, notInStock, retailMismatch, gyohanMismatch, priceMismatch,
+    return {vin, carName, maker, gradeNote, yearDisp, bySite, inStock, notInStock, retailMismatch, gyohanMismatch, priceMismatch,
              mileages, mileageMismatch, shakenNorm, shakenMismatch, skipGyohan, shiireDate, aaCount,
+             shufukuCsv, shufukuManual, shufukuEffective, shufukuCsOnly, shufukuDiff,
              missing, missingSites: missing ? missingSitesAll : [], flagCount};
   });
 
@@ -967,6 +1007,7 @@ function render(list){
       <td class="numcol">${r.shiireDate ? r.shiireDate.label : '<span class="subtle">―</span>'}</td>
       <td class="vin">${r.vin}</td>
       <td class="togglecol"><button type="button" class="toggleBtn ${r.skipGyohan?'off':''}" data-vin="${r.vin}">${r.skipGyohan ? '不要' : '対象'}</button></td>
+      <td class="togglecol"><button type="button" class="shufukuBtn ${r.shufukuEffective?'on':''} ${r.shufukuCsOnly?'csonly':(r.shufukuDiff?'diff':'')}" data-vin="${r.vin}" title="${r.shufukuCsOnly?'グーネットのデータがなく未確認です(手動設定)':r.shufukuDiff?'グーネットのCSV値と異なる値に手動設定されています':'クリックで手動設定を切り替えます'}">${r.shufukuEffective ? 'あり' : 'なし'}</button></td>
       <td class="togglecol"><button type="button" class="aaBtn ${r.aaCount===1?'has1':r.aaCount===2?'has2':''}" data-vin="${r.vin}">AA</button></td>
       <td><div class="carname">${r.carName}</div></td>
       <td class="site-col">${siteCell('carsensor', r)}</td>
@@ -1014,11 +1055,13 @@ document.getElementById('summarySites').addEventListener('click', (e)=>{
 // ads.html⇔pricing.html相互リンク：現在の検索文字列をURLの?qパラメータに反映し、
 // 遷移先でも同じ検索文字列を引き継げるようにする
 function updateCrossToolLink(){
-  const link = document.getElementById('crossToolLink');
-  if(!link) return;
-  const base = link.dataset.baseHref;
   const q = document.getElementById('searchBox')?.value || '';
-  link.href = q ? base + '?q=' + encodeURIComponent(q) : base;
+  ['crossToolLink','sheetToolLink'].forEach(id=>{
+    const link = document.getElementById(id);
+    if(!link) return;
+    const base = link.dataset.baseHref;
+    link.href = q ? base + '?q=' + encodeURIComponent(q) : base;
+  });
 }
 document.getElementById('searchBox').addEventListener('input', (e)=>{
   currentSearch = e.target.value;
@@ -1132,6 +1175,17 @@ function senyenToYen(s){
   return /^\d+$/.test(t) ? parseInt(t,10)*1000 : null;
 }
 
+// カーセンサーCSVの「年式表示用」(例:H27)と「年式検索用（月）」(例:04)を組み合わせて
+// 「H27年4月」のような表示用文字列にする。月が無い/不正な場合は年のみ(「H27年」)にする。
+function carsensorYearDisp(nendoDisp, month){
+  nendoDisp = (nendoDisp||'').trim();
+  if(!nendoDisp) return '';
+  const base = nendoDisp.endsWith('年') ? nendoDisp.slice(0,-1) : nendoDisp;
+  const m = parseInt(month,10);
+  if(!m) return base+'年';
+  return `${base}年${m}月`;
+}
+
 function parseCarsensorCSV(text){
   const rowsArr = parseCSV(text);
   const hIdx = rowsArr.findIndex(r => r[0] === 'メーカー');
@@ -1146,7 +1200,10 @@ function parseCarsensorCSV(text){
     const honntai = r[idx['本体価格検索用']], total = r[idx['支払総額検索用']], mileage = r[idx['走行距離検索用']];
     out[vin] = {
       car_name: `${r[idx['メーカー']]||''} ${r[idx['車種']]||''}`.trim(),
+      maker: (r[idx['メーカー']]||'').trim(),
       grade: (r[idx['グレード']]||'').trim(),
+      grade_note: (r[idx['グレード補記']]||'').trim(),
+      year_disp: carsensorYearDisp(r[idx['年式表示用']], r[idx['年式検索用（月）']]),
       price_honntai: /^\d+$/.test(honntai) ? parseInt(honntai,10) : null,
       price_total: /^\d+$/.test(total) ? parseInt(total,10) : null,
       mileage_km: /^\d+$/.test(mileage) ? parseInt(mileage,10) : null,
@@ -1169,12 +1226,15 @@ function parseGoonetCSV(text){
     if(!vin) continue;
     const rec = {
       car_name: `${r[idx['ブランド']]||''} ${r[idx['車種']]||''}`.trim(),
+      maker: (r[idx['ブランド']]||'').trim(),
       grade: (r[idx['グレード']]||'').trim(),
+      year_disp: (r[idx['年式']]||'').trim(), // グーネットは西暦のみ(例:2025年)。月の情報は無い。
       price_honntai: manYenToInt(r[idx['車両本体価格']]),
       price_total: manYenToInt(r[idx['支払総額']]),
       mileage_km: kmAnyToInt(r[idx['走行']]),
       shaken: (r[idx['車検']]||'').trim(),
       status: (r[idx['グーネット中古車掲載']]||'').trim(),
+      shufuku: (r[idx['修復']]||'').trim() === '有り', // 無し/有りの2値。手動設定(manualShufuku)で上書き可能
     };
     // 同じ車台番号の行が複数ある場合、既に「掲載」中の行があれば非掲載の重複行では上書きしない
     if(out[vin] && out[vin].status === '掲載' && rec.status !== '掲載') continue;
@@ -1437,6 +1497,8 @@ document.getElementById('refreshBtn').addEventListener('click', ()=>{
 document.getElementById('tbody').addEventListener('click', e=>{
   const toggleBtn = e.target.closest('.toggleBtn');
   if(toggleBtn){ toggleNoGyohan(toggleBtn.dataset.vin); return; }
+  const shufukuBtn = e.target.closest('.shufukuBtn');
+  if(shufukuBtn){ toggleShufuku(shufukuBtn.dataset.vin); return; }
   const aaBtn = e.target.closest('.aaBtn');
   if(aaBtn){ openAaModal(aaBtn.dataset.vin); return; }
 });
