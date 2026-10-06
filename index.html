@@ -134,7 +134,7 @@ html[data-theme="dark"] .aaUploadStatus.err{color:#ff6b6b;}
 <header>
 <div class="header-row">
   <div>
-    <h1>Ciel System <span style="font-size:12px;font-weight:400;opacity:.75;">v1.05</span></h1>
+    <h1>Ciel System <span style="font-size:12px;font-weight:400;opacity:.75;">v1.06</span></h1>
     <p>シエルオートワークス 業務ツール一覧</p>
   </div>
   <button class="settingsBtn" id="settingsBtn">⚙ 設定</button>
@@ -176,6 +176,12 @@ html[data-theme="dark"] .aaUploadStatus.err{color:#ff6b6b;}
     <span class="icon">💰</span>
     <h2>プライシングツール</h2>
     <p>精算書分の原価と追加費用から、総額下限・業販下限・粗利ランクを自動算出。車体価格・支払総額・業販価格を管理し、選択車両の価格シートを印刷できます。</p>
+    <span class="tag">稼働中</span>
+  </a>
+  <a class="tool" href="./pricetag.html">
+    <span class="icon">📝</span>
+    <h2>プライスシート作成</h2>
+    <p>車両一覧からチェックボックス・テンプレート選択で価格シート(A3)を一括印刷。文字サイズ・色・レイアウトはテンプレート(A/B/C/D)として自由に調整・共有できます。</p>
     <span class="tag">稼働中</span>
   </a>
 </div>
@@ -354,8 +360,8 @@ function toFullWidth(s){
   const dk={'カ':'ガ','キ':'ギ','ク':'グ','ケ':'ゲ','コ':'ゴ','サ':'ザ','シ':'ジ','ス':'ズ','セ':'ゼ','ソ':'ゾ',
     'タ':'ダ','チ':'ヂ','ツ':'ヅ','テ':'デ','ト':'ド','ハ':'バ','ヒ':'ビ','フ':'ブ','ヘ':'ベ','ホ':'ボ','ウ':'ヴ'};
   const hdk={'ハ':'パ','ヒ':'ピ','フ':'プ','ヘ':'ペ','ホ':'ポ'};
-  const DAKUTEN  =['\uFF9E','\u309B','\u3099','゛'];
-  const HANDAKUTEN=['\uFF9F','\u309C','\u309A','゜'];
+  const DAKUTEN  =['ﾞ','゛','゙','゛'];
+  const HANDAKUTEN=['ﾟ','゜','゚','゜'];
   const chars=[...s].map(c=>kanaMap[c]||c);
   let result='';
   for(let i=0;i<chars.length;i++){
@@ -375,7 +381,7 @@ function toFullWidth(s){
 function decodeAuto(buf){
   let txt = new TextDecoder('utf-8').decode(buf);
   if(txt.charCodeAt(0) === 0xFEFF) txt = txt.slice(1);
-  if(txt.includes('\uFFFD')) txt = new TextDecoder('shift-jis').decode(buf);
+  if(txt.includes('�')) txt = new TextDecoder('shift-jis').decode(buf);
   return txt;
 }
 function parseCSV2D(text){

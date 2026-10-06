@@ -4,65 +4,127 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>プライスシート作成（A3横）</title>
+<script>
+// ダークモードの初期適用(画面のちらつき防止のため、CSS読み込み前に実行する)。
+// ads.html・pricing.html・ju-history.htmlと同じキー名(ciel-theme)を使うことで、設定を共有する。
+(function(){
+  var t = localStorage.getItem('ciel-theme');
+  if(t !== 'light' && t !== 'dark') t = 'dark';
+  document.documentElement.setAttribute('data-theme', t);
+})();
+</script>
 <style>
+  :root{
+    --sky:#4AABCF; --pink:#D97A9A;
+    --bg:#f5f6f4; --card:#ffffff; --border:#e2e2de;
+    --text:#232320; --text-sub:#6b6b65; --text-muted:#9a9a92;
+    --warn-bg:#fbf1de; --warn-text:#8a5a0a; --warn-border:#eecf9d;
+    --neutral-bg:#f1efe8; --neutral-text:#6b6b65; --neutral-border:#dcdad2;
+    --thead-bg:#fafaf8; --hover-bg:#fafbfc;
+    --filterbtn-bg:#fff; --filterbtn-active-bg:var(--sky);
+  }
+  html[data-theme="dark"]{
+    --bg:#0e0f13; --card:#181a20; --border:#2e313a;
+    --text:#f0f0f0; --text-sub:#a9adb8; --text-muted:#6e7280;
+    --warn-bg:#1c1f10; --warn-text:#e8ff4d; --warn-border:#e8ff4d;
+    --neutral-bg:#181a20; --neutral-text:#8a8f9c; --neutral-border:#3a3e4a;
+    --thead-bg:#181a20; --hover-bg:#20232b;
+    --filterbtn-bg:#181a20; --filterbtn-active-bg:transparent;
+  }
+  html[data-theme="dark"] .filterbtn.active{background:rgba(74,171,207,0.12);color:var(--sky);box-shadow:0 0 8px var(--sky);}
   @page{size:A3 landscape;margin:0;}
   *{-webkit-print-color-adjust:exact;print-color-adjust:exact;box-sizing:border-box;}
-  html,body{height:100%;margin:0;background:#e5e7eb;font-family:"Yu Gothic","Meiryo",sans-serif;color:#111827;}
+  html,body{height:100%;margin:0;background:var(--bg);font-family:"Yu Gothic","Meiryo",sans-serif;color:var(--text);}
   /* テンプレート編集タブの間だけスクロールを止める(プレビューの自動フィット計算が
      ビューポート基準のため)。車両一覧タブでは通常通りスクロールできる必要がある。 */
   body.tplMode{overflow:hidden;}
 
   /* ===== 上部：入力・調整パネル（印刷時は非表示） ===== */
-  .panel{height:100vh;display:flex;flex-direction:column;background:#fff;font-size:14px;}
-  .topBar{flex:none;display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:8px 14px;border-bottom:1px solid #cbd5e1;}
-  .topBar h1{font-size:14px;margin:0;flex:none;}
-  .btn{font-size:13px;padding:7px 14px;border:1px solid #111827;border-radius:6px;background:#fff;cursor:pointer;text-decoration:none;display:inline-flex;align-items:center;color:#111827;}
-  .btn.main{background:#111827;color:#fff;}
+  .panel{height:100vh;display:flex;flex-direction:column;background:var(--card);font-size:14px;}
+  .topBar{flex:none;display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:8px 14px;border-bottom:1px solid var(--border);}
+  .topBar h1{font-size:14px;margin:0;flex:none;color:var(--text);}
+  .btn{font-size:13px;padding:7px 14px;border:1px solid var(--border);border-radius:6px;background:var(--card);cursor:pointer;text-decoration:none;display:inline-flex;align-items:center;color:var(--text);}
+  .btn.main{background:var(--sky);color:#fff;border-color:var(--sky);}
   .btn:disabled{opacity:.4;cursor:default;}
   .viewTabs{display:flex;gap:6px;margin-left:auto;}
-  .viewTab{font-size:13px;padding:7px 14px;border:1px solid #111827;border-radius:6px;background:#fff;cursor:pointer;color:#111827;}
-  .viewTab.active{background:#111827;color:#fff;}
-  details{margin-top:6px;border-top:1px solid #e2e8f0;padding-top:6px;}
-  summary{cursor:pointer;font-weight:700;padding:4px 0;}
+  .viewTab{font-size:13px;padding:7px 14px;border:1px solid var(--border);border-radius:6px;background:var(--card);cursor:pointer;color:var(--text);}
+  .viewTab.active{background:var(--sky);color:#fff;border-color:var(--sky);}
+  .settingsBtn{background:transparent;border:1px solid var(--border);color:var(--text);border-radius:6px;padding:7px 14px;font-size:13px;cursor:pointer;font-weight:600;}
+  .settingsBtn:hover{background:rgba(74,171,207,0.12);box-shadow:0 0 8px var(--sky);border-color:var(--sky);color:var(--sky);}
+  .settingsOverlay{position:fixed;inset:0;background:rgba(0,0,0,0.55);display:none;align-items:center;justify-content:center;z-index:100;}
+  .settingsPanel{background:var(--card);border:2px solid var(--border);border-radius:14px;padding:22px 24px;width:320px;max-width:90vw;}
+  .settingsPanel h3{margin:0 0 16px;font-size:15px;font-weight:600;color:var(--text);}
+  .settingsRow{display:flex;justify-content:space-between;align-items:center;padding:12px 0;}
+  .settingsRow span{font-size:13px;color:var(--text);}
+  .settingsCloseBtn{margin-top:12px;width:100%;padding:8px;background:transparent;border:2px solid var(--sky);color:var(--sky);border-radius:8px;font-size:13px;cursor:pointer;font-weight:600;}
+  .switch{position:relative;display:inline-block;width:46px;height:26px;flex-shrink:0;}
+  .switch input{opacity:0;width:0;height:0;}
+  .switch .slider{position:absolute;top:0;left:0;right:0;bottom:0;background:var(--border);border-radius:26px;transition:.2s;cursor:pointer;}
+  .switch .slider:before{position:absolute;content:"";height:20px;width:20px;left:3px;top:3px;background:#fff;border-radius:50%;transition:.2s;box-shadow:0 1px 2px rgba(0,0,0,.3);}
+  .switch input:checked + .slider{background:var(--sky);box-shadow:0 0 8px var(--sky);}
+  .switch input:checked + .slider:before{transform:translateX(20px);}
+  .rowSwitch{position:relative;display:inline-block;width:34px;height:19px;flex-shrink:0;vertical-align:middle;}
+  .rowSwitch input{opacity:0;width:0;height:0;}
+  .rowSwitch .rowSlider{position:absolute;top:0;left:0;right:0;bottom:0;background:var(--neutral-border);border-radius:19px;transition:.2s;cursor:pointer;}
+  .rowSwitch .rowSlider:before{position:absolute;content:"";height:15px;width:15px;left:2px;top:2px;background:#fff;border-radius:50%;transition:.2s;box-shadow:0 1px 2px rgba(0,0,0,.3);}
+  .rowSwitch input:checked + .rowSlider{background:var(--sky);}
+  .rowSwitch input:checked + .rowSlider:before{transform:translateX(15px);}
+  .modalOverlay{position:fixed;inset:0;background:rgba(0,0,0,0.55);display:flex;align-items:center;justify-content:center;z-index:200;}
+  .modalPanel{background:var(--card);border:2px solid var(--border);border-radius:14px;padding:22px 24px;width:600px;max-width:92vw;max-height:88vh;overflow-y:auto;}
+  .modalHeader{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:4px;}
+  .modalHeader h3{margin:0;font-size:15px;font-weight:600;color:var(--text);}
+  .modalCloseX{width:30px;height:30px;border-radius:50%;border:2px solid var(--border);background:var(--card);color:var(--text);font-size:15px;cursor:pointer;line-height:1;}
+  .modalVin{font-family:monospace;font-size:12.5px;color:var(--text-sub);margin:0 0 14px;}
+  .modalFieldsGrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px 14px;}
+  .modalBtnRow{display:flex;gap:10px;margin-top:18px;}
+  .modalBtnRow .btn{flex:1;justify-content:center;}
+  .filterbtn{font-size:12.5px;padding:7px 14px;border:1px solid var(--border);border-radius:20px;background:var(--filterbtn-bg);color:var(--text-sub);cursor:pointer;font-weight:600;white-space:nowrap;}
+  .filterbtn.active{background:var(--filterbtn-active-bg);color:#fff;border-color:var(--sky);}
+  details{margin-top:6px;border-top:1px solid var(--border);padding-top:6px;}
+  summary{cursor:pointer;font-weight:700;padding:4px 0;color:var(--text);}
   .fieldsGrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:5px 10px;margin-top:6px;}
   .field{display:flex;flex-direction:column;gap:2px;}
-  .field span{font-size:10.5px;color:#64748b;font-weight:700;}
-  .field input,.field select,.field textarea{font-size:12.5px;padding:4px 6px;border:1px solid #cbd5e1;border-radius:5px;font-family:inherit;}
+  .field span{font-size:10.5px;color:var(--text-sub);font-weight:700;}
+  .field input,.field select,.field textarea{font-size:12.5px;padding:4px 6px;border:1px solid var(--border);border-radius:5px;font-family:inherit;background:var(--card);color:var(--text);}
   .field textarea{resize:vertical;min-height:52px;}
   .field.wide{grid-column:1/-1;}
   .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:8px 20px;margin-top:10px;}
-  .ctl{display:flex;align-items:center;gap:8px;}
+  .ctl{display:flex;align-items:center;gap:8px;color:var(--text);}
   .ctl span.n{width:132px;flex:none;font-size:13px;}
   .ctl input[type=range]{flex:1;}
   .ctl span.v{width:44px;text-align:right;font-variant-numeric:tabular-nums;font-size:13px;}
-  .ctl select{flex:1;min-width:0;font-size:14px;padding:3px;}
-  .ctl input[type=color]{width:44px;height:28px;padding:2px;border:1px solid #cbd5e1;border-radius:4px;background:#fff;flex:none;cursor:pointer;}
+  .ctl select{flex:1;min-width:0;font-size:14px;padding:3px;background:var(--card);color:var(--text);border:1px solid var(--border);}
+  .ctl input[type=color]{width:44px;height:28px;padding:2px;border:1px solid var(--border);border-radius:4px;background:var(--card);flex:none;cursor:pointer;}
   .ctl.wide{grid-column:1/-1;}
   .ctl label.chk{display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;}
   .swatches{display:flex;gap:4px;flex-wrap:wrap;align-items:center;}
-  .swatch{width:22px;height:22px;padding:0;border:1px solid #cbd5e1;border-radius:4px;cursor:pointer;}
-  .swatch:hover{border-color:#111827;}
-  .hint{font-size:12px;color:#64748b;margin-top:6px;}
-  .lead{font-size:12px;color:#64748b;margin:0 0 10px;}
-  .noteBox{background:#fef9c3;border:1px solid #fde047;border-radius:8px;padding:10px 12px;font-size:12.5px;color:#713f12;margin-bottom:10px;line-height:1.6;}
+  .swatch{width:22px;height:22px;padding:0;border:1px solid var(--border);border-radius:4px;cursor:pointer;}
+  .swatch:hover{border-color:var(--sky);}
+  .hint{font-size:12px;color:var(--text-sub);margin-top:6px;}
+  .lead{font-size:12px;color:var(--text-sub);margin:0 0 10px;}
+  .noteBox{background:var(--warn-bg);border:1px solid var(--warn-border);border-radius:8px;padding:10px 12px;font-size:12.5px;color:var(--warn-text);margin-bottom:10px;line-height:1.6;}
 
   /* ===== 車両一覧タブ ===== */
   .listView{padding:14px 16px;}
-  .tplBar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:8px 10px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;margin-bottom:10px;}
-  .tplBar select{font-size:13px;padding:5px 8px;border:1px solid #cbd5e1;border-radius:5px;}
+  .tplBar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:8px 10px;background:var(--thead-bg);border:1px solid var(--border);border-radius:8px;margin-bottom:10px;}
+  .tplBar select{font-size:13px;padding:5px 8px;border:1px solid var(--border);border-radius:5px;background:var(--card);color:var(--text);}
   .listToolbar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:10px;}
   .searchWrap{position:relative;}
-  .searchWrap input{font-size:13px;padding:7px 30px 7px 10px;border:1px solid #cbd5e1;border-radius:6px;width:240px;}
-  .searchClearBtn{position:absolute;right:6px;top:50%;transform:translateY(-50%);border:none;background:none;cursor:pointer;color:#94a3b8;font-size:14px;display:none;}
-  .countHint{font-size:12.5px;color:#64748b;white-space:nowrap;}
-  .tablewrap{overflow-x:auto;border:1px solid #e2e8f0;border-radius:8px;max-width:100%;}
-  table.listTable{border-collapse:collapse;width:100%;font-size:12.5px;}
-  table.listTable th,table.listTable td{border-bottom:1px solid #e2e8f0;padding:6px 8px;text-align:left;vertical-align:middle;white-space:nowrap;}
-  table.listTable th{background:#f1f5f9;font-weight:700;position:sticky;top:0;z-index:1;}
-  table.listTable td input[type=text],table.listTable td select{font-size:12px;padding:3px 5px;border:1px solid #cbd5e1;border-radius:4px;box-sizing:border-box;}
+  .searchWrap input{font-size:13px;padding:7px 30px 7px 10px;border:1px solid var(--border);border-radius:6px;width:240px;background:var(--card);color:var(--text);}
+  .searchClearBtn{position:absolute;right:6px;top:50%;transform:translateY(-50%);border:none;background:none;cursor:pointer;color:var(--text-muted);font-size:14px;display:none;}
+  .countHint{font-size:12.5px;color:var(--text-sub);white-space:nowrap;}
+  .tablewrap{overflow-x:auto;border:1px solid var(--border);border-radius:8px;max-width:100%;}
+  table.listTable{border-collapse:collapse;width:100%;font-size:12.5px;color:var(--text);}
+  table.listTable th,table.listTable td{border-bottom:1px solid var(--border);padding:6px 8px;text-align:left;vertical-align:middle;white-space:nowrap;}
+  table.listTable th{background:var(--thead-bg);font-weight:700;position:sticky;top:0;z-index:1;}
+  table.listTable td input[type=text],table.listTable td select{font-size:12px;padding:3px 5px;border:1px solid var(--border);border-radius:4px;box-sizing:border-box;background:var(--card);color:var(--text);}
   .tplRadioGroup{display:flex;flex-direction:column;gap:2px;}
   .tplRadioGroup label{display:flex;align-items:center;gap:4px;font-size:11.5px;white-space:nowrap;cursor:pointer;}
   .vinCell{font-family:monospace;font-size:11.5px;}
+  .textCell{white-space:normal;}
+  .textCell .sub{display:block;font-size:11px;color:var(--text-sub);margin-top:1px;}
+  .supplyCell{white-space:normal;font-size:11.5px;line-height:1.5;}
+  .supplyCell .venue{display:block;color:var(--text-sub);}
 
   /* ===== 印刷用ステージ(非表示領域。常に@media printと同じmm基準で配置し、
      表示サイズに依存する価格自動フィット計算を印刷直前に実行できるようにする) ===== */
@@ -71,9 +133,9 @@
 
   /* ===== 左右分割：左＝プレビュー＋入力（スクロール無し）／右＝表示の調整（単独スクロール） ===== */
   .splitArea{flex:1;display:flex;min-height:0;}
-  .leftCol{flex:0 0 46%;max-width:46%;display:flex;flex-direction:column;min-height:0;padding:8px 10px;gap:6px;border-right:1px solid #e2e8f0;background:#e5e7eb;overflow:hidden;}
+  .leftCol{flex:0 0 46%;max-width:46%;display:flex;flex-direction:column;min-height:0;padding:8px 10px;gap:6px;border-right:1px solid var(--border);background:var(--bg);overflow:hidden;}
   .previewWrap{flex:1 1 auto;min-height:0;display:flex;align-items:center;justify-content:center;overflow:hidden;}
-  .inputsBlock{flex:none;overflow:visible;background:#fff;border-radius:8px;padding:2px 10px 6px;}
+  .inputsBlock{flex:none;overflow:visible;background:var(--card);border-radius:8px;padding:2px 10px 6px;}
   .inputsBlock summary{font-size:13px;}
   .rightCol{flex:1;min-height:0;overflow-y:auto;padding:10px 16px 24px;}
 
@@ -180,13 +242,25 @@
 
 <div class="panel">
   <div class="topBar">
-    <h1>プライスシート作成（A3横） <span style="font-size:12px;font-weight:400;opacity:.75;">v1.01</span></h1>
+    <h1>プライスシート作成（A3横） <span style="font-size:12px;font-weight:400;opacity:.75;">v1.02</span></h1>
     <a class="btn" href="./index.html">🏠 一覧へ</a>
     <a class="btn" id="backToAdsLink" href="./ads.html" data-base-href="./ads.html">📊 広告掲載へ</a>
     <a class="btn" id="backToPricingLink" href="./pricing.html" data-base-href="./pricing.html">💰 プライシングへ</a>
     <div class="viewTabs">
       <button type="button" class="viewTab active" id="tabListBtn">🚗 車両一覧・一括印刷</button>
       <button type="button" class="viewTab" id="tabTemplateBtn">🎨 テンプレート編集</button>
+    </div>
+    <button type="button" class="settingsBtn" id="settingsBtn">⚙ 設定</button>
+  </div>
+
+  <div class="settingsOverlay" id="settingsOverlay">
+    <div class="settingsPanel">
+      <h3>設定</h3>
+      <div class="settingsRow">
+        <span>ダークモード</span>
+        <label class="switch"><input type="checkbox" id="darkModeToggle"><span class="slider"></span></label>
+      </div>
+      <button class="settingsCloseBtn" id="settingsCloseBtn">閉じる</button>
     </div>
   </div>
 
@@ -195,6 +269,7 @@
       <span class="countHint">テンプレート(文字サイズ・位置・色などのレイアウト)は「🎨 テンプレート編集」タブで作成・編集します。各車両に使うテンプレートは右端の列で選べます。</span>
     </div>
     <div class="listToolbar">
+      <button type="button" class="filterbtn active" id="showAllToggleBtn"></button>
       <div class="searchWrap">
         <input type="text" id="listSearchBox" placeholder="車台番号・車名で検索">
         <button type="button" class="searchClearBtn" id="listSearchClearBtn">×</button>
@@ -210,16 +285,16 @@
           <tr>
             <th><input type="checkbox" id="selectAllBox" title="表示中の車両をすべて選択/解除"></th>
             <th>車台番号</th>
-            <th>メーカー</th>
+            <th>仕入情報</th>
             <th>車名</th>
-            <th>グレード・型式</th>
-            <th>グレード補記</th>
+            <th>グレード</th>
+            <th>支払総額<br>(万円)</th>
             <th>年式</th>
             <th>走行距離</th>
-            <th>車検表示</th>
+            <th>車検</th>
             <th>修復歴</th>
-            <th>支払総額<br>(万円)</th>
             <th>使用テンプレート</th>
+            <th>操作</th>
           </tr>
         </thead>
         <tbody id="listTbody"></tbody>
@@ -298,7 +373,7 @@
 
     <div class="rightCol">
       <div class="tplBar">
-        <span class="countHint" style="font-weight:700;color:#111827;">編集中のテンプレート:</span>
+        <span class="countHint" style="font-weight:700;color:var(--text);">編集中のテンプレート:</span>
         <select id="tplSelect"></select>
         <button class="btn" id="tplNewBtn">新規</button>
         <button class="btn" id="tplDupBtn">複製</button>
@@ -385,6 +460,31 @@
 </template>
 <div id="printStage"></div>
 
+<div class="modalOverlay" id="editModalOverlay" style="display:none;">
+  <div class="modalPanel">
+    <div class="modalHeader">
+      <h3>車両情報の修正</h3>
+      <button type="button" class="modalCloseX" id="editModalCloseX">✕</button>
+    </div>
+    <p class="modalVin" id="editModalVin"></p>
+    <div class="modalFieldsGrid">
+      <label class="field"><span>メーカー</span><input type="text" id="em-maker"></label>
+      <label class="field"><span>車名</span><input type="text" id="em-carname"></label>
+      <label class="field wide"><span>グレード・型式</span><input type="text" id="em-grade"></label>
+      <label class="field wide"><span>グレード補記</span><input type="text" id="em-gradenote"></label>
+      <label class="field"><span>年式</span><input type="text" id="em-year"></label>
+      <label class="field"><span>走行距離</span><input type="text" id="em-mileage"></label>
+      <label class="field"><span>車検表示</span><input type="text" id="em-shaken"></label>
+      <label class="field"><span>支払総額(万円)</span><input type="text" id="em-price" inputmode="decimal"></label>
+      <label class="field wide"><span>修復箇所(任意)</span><input type="text" id="em-repairdetail"></label>
+    </div>
+    <div class="modalBtnRow">
+      <button class="btn main" id="editModalSaveBtn">保存</button>
+      <button class="btn" id="editModalCancelBtn">キャンセル</button>
+    </div>
+  </div>
+</div>
+
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 import { getDatabase, ref, get, set, update }
@@ -416,6 +516,15 @@ function normShaken(s){
   else { return {label:s, ym:null}; }
   const reiwa = year - 2018;
   return {label:`R${reiwa}/${String(month).padStart(2,'0')}`, ym: year*12+month};
+}
+// 車検表示が「整備付」の場合、お客様向けには「２年付き」と表示する(ラベル変換のみ。保存値は変えない)
+function displayShaken(label){ return label==='整備付' ? '２年付き' : label; }
+// pricing.htmlのdisplaySupplier()と同じ:仕入先名を会場名として短縮表示する
+function displaySupplier(sup){
+  if(!sup) return '';
+  if(sup.includes('新潟県中古車販売商工組合')) return 'JU新潟';
+  if(sup.includes('トヨタユーゼック') || sup.includes('TAA東北')) return 'TAA東北';
+  return sup;
 }
 const TOTAL_ADD = 100000; // pricing.htmlと同じ:支払総額(万円) = 車体価格 + この額
 
@@ -1002,11 +1111,40 @@ var rows=[];
 
 function newTemplateId(){ return 't'+Date.now().toString(36)+Math.random().toString(36).slice(2,6); }
 
-async function ensureDefaultTemplate(){
-  if(Object.keys(priceTagTemplates).length) return;
-  var id=newTemplateId();
-  priceTagTemplates[id]={name:'標準', settings:JSON.parse(JSON.stringify(DEFAULT_SETTINGS)), updatedAt:Date.now()};
-  await set(ref(db,'priceTagTemplates/'+id), priceTagTemplates[id]);
+// テンプレートを常に A/B/C/D の4つにする。
+// ・初回(テンプレートが1つも無い):A/B/C/Dを標準設定で新規作成。
+// ・既存データがある場合:以前の「標準」テンプレートがあれば同じID(=既存車両からの参照)を保ったまま
+//   名前だけ「A」にリネームし、まだ無いB/C/Dを標準設定で追加作成する。
+async function ensureDefaultTemplates(){
+  var entries=Object.entries(priceTagTemplates);
+  if(!entries.length){
+    var updates={};
+    ['A','B','C','D'].forEach(function(name){
+      var id=newTemplateId();
+      var tpl={name:name, settings:JSON.parse(JSON.stringify(DEFAULT_SETTINGS)), updatedAt:Date.now()};
+      priceTagTemplates[id]=tpl;
+      updates['priceTagTemplates/'+id]=tpl;
+    });
+    await update(ref(db), updates);
+    return;
+  }
+  var stdEntry=entries.find(function(e){ return e[1] && e[1].name==='標準'; });
+  if(stdEntry && priceTagTemplates[stdEntry[0]].name!=='A'){
+    priceTagTemplates[stdEntry[0]].name='A';
+    await update(ref(db,'priceTagTemplates/'+stdEntry[0]), {name:'A'});
+  }
+  var existingNames=Object.values(priceTagTemplates).map(function(t){ return t&&t.name; });
+  var toCreate=['A','B','C','D'].filter(function(n){ return existingNames.indexOf(n)<0; });
+  if(toCreate.length){
+    var updates2={};
+    toCreate.forEach(function(name){
+      var id=newTemplateId();
+      var tpl={name:name, settings:JSON.parse(JSON.stringify(DEFAULT_SETTINGS)), updatedAt:Date.now()};
+      priceTagTemplates[id]=tpl;
+      updates2['priceTagTemplates/'+id]=tpl;
+    });
+    await update(ref(db), updates2);
+  }
 }
 
 function buildTemplatesList(){
@@ -1057,7 +1195,7 @@ async function loadAllData(){
     priceTagTemplates = results[3].val() || {};
     priceTagData = results[4].val() || {};
 
-    await ensureDefaultTemplate();
+    await ensureDefaultTemplates();
     buildTemplatesList();
     var lastId = (function(){ try{ return localStorage.getItem(LAST_TPL_KEY)||''; }catch(e){ return ''; } })();
     var initialId = priceTagTemplates[lastId] ? lastId : (templates[0] && templates[0].id);
@@ -1101,9 +1239,14 @@ function buildRows(){
     var autoRepairHas=hasManualShufuku?!!manualShufukuList[vin]:(shufukuCsv!=null?shufukuCsv:false);
     var bodyYen=pd.body!=null?pd.body:null;
     var autoPrice=bodyYen!=null?(((bodyYen+TOTAL_ADD)/10000).toFixed(1)):'';
+    // 「広告掲載車両」=カーセンサーorグーネットで掲載状況が「掲載」中(ads.htmlのisActive()と同じ判定)
+    var isAdListed = !!((cs && cs.status==='掲載') || (goo && goo.status==='掲載'));
 
     list.push({
       vin:vin,
+      supplyDate: sv.date||'',
+      supplyVenue: displaySupplier(sv.sup||''),
+      isAdListed: isAdListed,
       maker: manual.maker!=null?manual.maker:autoMaker,
       carName: manual.carName!=null?manual.carName:autoCarName,
       grade: manual.grade!=null?manual.grade:autoGrade,
@@ -1134,10 +1277,19 @@ function matchesSearch(r, q){
   return hay.indexOf(q.toLowerCase())>=0;
 }
 
+// 初期値は広告掲載車両のみ表示。ボタンで全車両表示に切り替えられる(pricing.htmlのfilterbtnと同じ方式)。
+var showAllVehicles=false;
+function updateShowAllBtnUI(){
+  var btn=document.getElementById('showAllToggleBtn');
+  if(!btn) return;
+  if(showAllVehicles){ btn.classList.remove('active'); btn.textContent='📢 全車両を表示中(クリックで広告掲載車両のみに戻す)'; }
+  else { btn.classList.add('active'); btn.textContent='📢 広告掲載車両のみ表示中(クリックで全車両表示)'; }
+}
+
 function renderList(){
   var q=document.getElementById('listSearchBox').value.trim();
   var tbody=document.getElementById('listTbody');
-  var visible=rows.filter(function(r){ return matchesSearch(r,q); });
+  var visible=rows.filter(function(r){ return matchesSearch(r,q) && (showAllVehicles || r.isAdListed); });
   tbody.innerHTML = visible.map(function(r){
     var defaultTplId = templates[0] && templates[0].id;
     var tplRadios = templates.map(function(t){
@@ -1147,19 +1299,16 @@ function renderList(){
     return '<tr data-vin="'+r.vin+'">'+
       '<td><input type="checkbox" class="printChk" data-vin="'+r.vin+'" '+(r.printTarget?'checked':'')+'></td>'+
       '<td class="vinCell">'+r.vin+'</td>'+
-      '<td><input type="text" class="cellIn" data-vin="'+r.vin+'" data-field="maker" value="'+escapeHtml(r.maker)+'" style="width:70px;"></td>'+
-      '<td><input type="text" class="cellIn" data-vin="'+r.vin+'" data-field="carName" value="'+escapeHtml(r.carName)+'" style="width:90px;"></td>'+
-      '<td><input type="text" class="cellIn" data-vin="'+r.vin+'" data-field="grade" value="'+escapeHtml(r.grade)+'" style="width:160px;"></td>'+
-      '<td><input type="text" class="cellIn" data-vin="'+r.vin+'" data-field="gradeNote" value="'+escapeHtml(r.gradeNote)+'" style="width:140px;"></td>'+
-      '<td><input type="text" class="cellIn" data-vin="'+r.vin+'" data-field="year" value="'+escapeHtml(r.year)+'" style="width:90px;"></td>'+
-      '<td><input type="text" class="cellIn" data-vin="'+r.vin+'" data-field="mileage" value="'+escapeHtml(r.mileage)+'" style="width:80px;"></td>'+
-      '<td><input type="text" class="cellIn" data-vin="'+r.vin+'" data-field="shakenDisp" value="'+escapeHtml(r.shakenDisp)+'" style="width:90px;"></td>'+
-      '<td><select class="cellIn" data-vin="'+r.vin+'" data-field="repair">'+
-        '<option value="none"'+(r.repair==='none'?' selected':'')+'>なし</option>'+
-        '<option value="has"'+(r.repair==='has'?' selected':'')+'>あり</option>'+
-      '</select></td>'+
-      '<td><input type="text" class="cellIn" data-vin="'+r.vin+'" data-field="price" value="'+escapeHtml(r.price)+'" style="width:60px;" inputmode="decimal"></td>'+
+      '<td class="supplyCell">'+escapeHtml(r.supplyDate)+(r.supplyVenue?'<br><span class="venue">'+escapeHtml(r.supplyVenue)+'</span>':'')+'</td>'+
+      '<td class="textCell">'+escapeHtml(r.carName)+(r.maker?'<span class="sub">'+escapeHtml(r.maker)+'</span>':'')+'</td>'+
+      '<td class="textCell">'+escapeHtml(r.grade)+(r.gradeNote?'<span class="sub">'+escapeHtml(r.gradeNote)+'</span>':'')+'</td>'+
+      '<td class="textCell">'+escapeHtml(r.price)+'</td>'+
+      '<td class="textCell">'+escapeHtml(r.year)+'</td>'+
+      '<td class="textCell">'+escapeHtml(r.mileage)+'</td>'+
+      '<td class="textCell">'+escapeHtml(displayShaken(r.shakenDisp))+'</td>'+
+      '<td><label class="rowSwitch" title="修復歴あり"><input type="checkbox" class="repairCk" data-vin="'+r.vin+'" '+(r.repair==='has'?'checked':'')+'><span class="rowSlider"></span></label></td>'+
       '<td><div class="tplRadioGroup">'+(tplRadios||'<span class="countHint">テンプレート未作成</span>')+'</div></td>'+
+      '<td><button type="button" class="btn editRowBtn" data-vin="'+r.vin+'">✎ 編集</button></td>'+
     '</tr>';
   }).join('');
   document.getElementById('listCountHint').textContent = visible.length+'件表示 / 全'+rows.length+'件';
@@ -1187,6 +1336,14 @@ async function setRowTemplate(vin, templateId){
   catch(err){ console.error('templateId save error:', err); }
 }
 
+// 修復歴スイッチ(ON=修復歴あり)。pricing.htmlの小売対象スイッチと同じく、即時に保存する。
+async function setRepair(vin, checked){
+  var row=rows.find(function(r){ return r.vin===vin; });
+  if(row) row.repair = checked?'has':'none';
+  try{ await update(ref(db,'priceTagData/'+vin+'/manual'), {repair: checked?'has':'none'}); }
+  catch(err){ console.error('repair save error:', err); }
+}
+
 // 一覧内の手動編集は、車両単位で0.8秒デバウンスしてまとめて書き込む(pricing.htmlと同じ方式)
 var manualBuf={}, manualTimers={};
 function queueManualEdit(vin, field, value){
@@ -1206,18 +1363,93 @@ async function flushManualEdit(vin){
   catch(err){ console.error('manual edit save error:', err); }
 }
 
-document.getElementById('listTbody').addEventListener('input', function(e){
-  var cell=e.target.closest('.cellIn');
-  if(cell && cell.tagName==='INPUT'){ queueManualEdit(cell.dataset.vin, cell.dataset.field, cell.value); }
-});
 document.getElementById('listTbody').addEventListener('change', function(e){
   var chk=e.target.closest('.printChk');
   if(chk){ setPrintTarget(chk.dataset.vin, chk.checked); return; }
+  var repairCk=e.target.closest('.repairCk');
+  if(repairCk){ setRepair(repairCk.dataset.vin, repairCk.checked); return; }
   var radio=e.target.closest('input[type=radio]');
   if(radio && radio.name.indexOf('tpl_')===0){ setRowTemplate(radio.name.slice(4), radio.value); return; }
-  var sel2=e.target.closest('.cellIn');
-  if(sel2 && sel2.tagName==='SELECT'){ queueManualEdit(sel2.dataset.vin, sel2.dataset.field, sel2.value); flushManualEdit(sel2.dataset.vin); }
 });
+document.getElementById('listTbody').addEventListener('click', function(e){
+  var editBtn=e.target.closest('.editRowBtn');
+  if(editBtn){ openEditModal(editBtn.dataset.vin); }
+});
+
+// ---- 文字修正モーダル(車両1台の文字項目をまとめて編集し、保存すると即Firebaseに反映) ----
+var currentEditVin=null;
+function openEditModal(vin){
+  var row=rows.find(function(r){ return r.vin===vin; });
+  if(!row) return;
+  currentEditVin=vin;
+  document.getElementById('editModalVin').textContent='車台番号: '+vin;
+  document.getElementById('em-maker').value=row.maker||'';
+  document.getElementById('em-carname').value=row.carName||'';
+  document.getElementById('em-grade').value=row.grade||'';
+  document.getElementById('em-gradenote').value=row.gradeNote||'';
+  document.getElementById('em-year').value=row.year||'';
+  document.getElementById('em-mileage').value=row.mileage||'';
+  document.getElementById('em-shaken').value=displayShaken(row.shakenDisp||'');
+  document.getElementById('em-price').value=row.price||'';
+  document.getElementById('em-repairdetail').value=row.repairDetail||'';
+  document.getElementById('editModalOverlay').style.display='flex';
+}
+function closeEditModal(){
+  document.getElementById('editModalOverlay').style.display='none';
+  currentEditVin=null;
+}
+async function saveEditModal(){
+  if(!currentEditVin) return;
+  var vin=currentEditVin;
+  var buf={
+    maker:document.getElementById('em-maker').value,
+    carName:document.getElementById('em-carname').value,
+    grade:document.getElementById('em-grade').value,
+    gradeNote:document.getElementById('em-gradenote').value,
+    year:document.getElementById('em-year').value,
+    mileage:document.getElementById('em-mileage').value,
+    shakenDisp:document.getElementById('em-shaken').value,
+    price:document.getElementById('em-price').value,
+    repairDetail:document.getElementById('em-repairdetail').value,
+  };
+  var row=rows.find(function(r){ return r.vin===vin; });
+  if(row) Object.assign(row, buf);
+  closeEditModal();
+  renderList();
+  try{ await update(ref(db,'priceTagData/'+vin+'/manual'), buf); }
+  catch(err){ console.error('modal save error:', err); alert('保存に失敗しました: '+err.message); }
+}
+document.getElementById('editModalCloseX').addEventListener('click', closeEditModal);
+document.getElementById('editModalCancelBtn').addEventListener('click', closeEditModal);
+document.getElementById('editModalSaveBtn').addEventListener('click', saveEditModal);
+document.getElementById('editModalOverlay').addEventListener('click', function(e){
+  if(e.target.id==='editModalOverlay') closeEditModal();
+});
+
+// ---- 広告掲載車両のみ表示トグル ----
+document.getElementById('showAllToggleBtn').addEventListener('click', function(){
+  showAllVehicles=!showAllVehicles;
+  updateShowAllBtnUI();
+  renderList();
+});
+updateShowAllBtnUI();
+
+// ---- ⚙設定(ダークモード) ----
+(function(){
+  var settingsBtn=document.getElementById('settingsBtn');
+  var settingsOverlay=document.getElementById('settingsOverlay');
+  var settingsCloseBtn=document.getElementById('settingsCloseBtn');
+  var darkModeToggle=document.getElementById('darkModeToggle');
+  darkModeToggle.checked = document.documentElement.getAttribute('data-theme')==='dark';
+  settingsBtn.addEventListener('click', function(){ settingsOverlay.style.display='flex'; });
+  settingsCloseBtn.addEventListener('click', function(){ settingsOverlay.style.display='none'; });
+  settingsOverlay.addEventListener('click', function(e){ if(e.target===settingsOverlay) settingsOverlay.style.display='none'; });
+  darkModeToggle.addEventListener('change', function(){
+    var theme=darkModeToggle.checked?'dark':'light';
+    document.documentElement.setAttribute('data-theme', theme);
+    try{ localStorage.setItem('ciel-theme', theme); }catch(e){}
+  });
+})();
 
 document.getElementById('selectAllBox').addEventListener('change', async function(e){
   var checked=e.target.checked;
@@ -1382,7 +1614,7 @@ function buildPaperFromFields(fields, settings){
   var vals=paperEl.querySelectorAll('.hlItem .val');
   vals[0].textContent=fields.year||'';
   vals[1].textContent=fields.mileage||'';
-  vals[2].textContent=fields.shakenDisp||'';
+  vals[2].textContent=displayShaken(fields.shakenDisp||'');
   applySettingsToPaperEl(paperEl, settings);
   return paperEl;
 }
