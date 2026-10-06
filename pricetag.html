@@ -114,17 +114,26 @@
   .searchClearBtn{position:absolute;right:6px;top:50%;transform:translateY(-50%);border:none;background:none;cursor:pointer;color:var(--text-muted);font-size:14px;display:none;}
   .countHint{font-size:12.5px;color:var(--text-sub);white-space:nowrap;}
   .tablewrap{overflow-x:auto;border:1px solid var(--border);border-radius:8px;max-width:100%;}
-  table.listTable{border-collapse:collapse;width:100%;font-size:12.5px;color:var(--text);}
+  table.listTable{border-collapse:collapse;width:auto;max-width:100%;font-size:12.5px;color:var(--text);}
   table.listTable th,table.listTable td{border-bottom:1px solid var(--border);padding:6px 8px;text-align:left;vertical-align:middle;white-space:nowrap;}
-  table.listTable th{background:var(--thead-bg);font-weight:700;position:sticky;top:0;z-index:1;}
+  table.listTable th{background:var(--thead-bg);font-weight:700;position:sticky;top:0;z-index:1;white-space:normal;}
   table.listTable td input[type=text],table.listTable td select{font-size:12px;padding:3px 5px;border:1px solid var(--border);border-radius:4px;box-sizing:border-box;background:var(--card);color:var(--text);}
-  .tplRadioGroup{display:flex;flex-direction:column;gap:2px;}
-  .tplRadioGroup label{display:flex;align-items:center;gap:4px;font-size:11.5px;white-space:nowrap;cursor:pointer;}
-  .vinCell{font-family:monospace;font-size:11.5px;}
-  .textCell{white-space:normal;}
+  .tplRadioGroup{display:flex;flex-direction:column;gap:2px;align-items:center;}
+  .tplRadioGroup .tplNames,.tplRadioGroup .tplRadios{display:flex;gap:6px;}
+  .tplRadioGroup .tplNames span{width:16px;text-align:center;font-size:11px;font-weight:700;color:var(--text-sub);}
+  .tplRadioGroup .tplRadios label{width:16px;display:flex;justify-content:center;cursor:pointer;margin:0;}
+  .vinCell{font-family:monospace;font-size:11px;width:58px;white-space:nowrap;}
+  .textCell{white-space:normal;overflow-wrap:anywhere;}
   .textCell .sub{display:block;font-size:11px;color:var(--text-sub);margin-top:1px;}
-  .supplyCell{white-space:normal;font-size:11.5px;line-height:1.5;}
+  .supplyCell{white-space:normal;overflow-wrap:anywhere;font-size:11.5px;line-height:1.5;}
   .supplyCell .venue{display:block;color:var(--text-sub);}
+  table.listTable th:nth-child(3),table.listTable td:nth-child(3){max-width:68px;}
+  table.listTable th:nth-child(4),table.listTable td:nth-child(4){max-width:88px;}
+  table.listTable th:nth-child(5),table.listTable td:nth-child(5){max-width:130px;}
+  table.listTable th:nth-child(6),table.listTable td:nth-child(6){max-width:48px;}
+  table.listTable th:nth-child(7),table.listTable td:nth-child(7){max-width:58px;}
+  table.listTable th:nth-child(8),table.listTable td:nth-child(8){max-width:58px;}
+  table.listTable th:nth-child(9),table.listTable td:nth-child(9){max-width:58px;}
 
   /* ===== 印刷用ステージ(非表示領域。常に@media printと同じmm基準で配置し、
      表示サイズに依存する価格自動フィット計算を印刷直前に実行できるようにする) ===== */
@@ -242,7 +251,7 @@
 
 <div class="panel">
   <div class="topBar">
-    <h1>プライスシート作成（A3横） <span style="font-size:12px;font-weight:400;opacity:.75;">v1.02</span></h1>
+    <h1>プライスシート作成（A3横） <span style="font-size:12px;font-weight:400;opacity:.75;">v1.03</span></h1>
     <a class="btn" href="./index.html">🏠 一覧へ</a>
     <a class="btn" id="backToAdsLink" href="./ads.html" data-base-href="./ads.html">📊 広告掲載へ</a>
     <a class="btn" id="backToPricingLink" href="./pricing.html" data-base-href="./pricing.html">💰 プライシングへ</a>
@@ -374,12 +383,15 @@
     <div class="rightCol">
       <div class="tplBar">
         <span class="countHint" style="font-weight:700;color:var(--text);">編集中のテンプレート:</span>
-        <select id="tplSelect"></select>
-        <button class="btn" id="tplNewBtn">新規</button>
-        <button class="btn" id="tplDupBtn">複製</button>
-        <button class="btn" id="tplRenameBtn">名前変更</button>
-        <button class="btn" id="tplDeleteBtn">削除</button>
+        <div class="viewTabs" id="tplTabs" style="margin-left:0;"></div>
         <span class="countHint" id="tplSaveStatus"></span>
+      </div>
+      <div class="tplBar">
+        <span class="countHint">テンプレートをコピー:</span>
+        <select id="tplCopySrc"></select>
+        <span class="countHint">→</span>
+        <select id="tplCopyDst"></select>
+        <button class="btn" id="tplCopyBtn">コピー実行</button>
       </div>
       <p class="lead">ここではテンプレート(文字サイズ・位置・色などのレイアウト)を調整します。実際の車両データは「🚗 車両一覧・一括印刷」タブに自動反映されるので、ここでは下のサンプル内容で見た目だけを確認します。左の用紙は直接クリックして書き換えられます。</p>
       <div class="noteBox">
@@ -526,6 +538,14 @@ function displaySupplier(sup){
   if(sup.includes('トヨタユーゼック') || sup.includes('TAA東北')) return 'TAA東北';
   return sup;
 }
+// 車台番号を2行表示用に分割する。「-」があればその前後で分割(1行目=ハイフンより前、2行目=ハイフン以降)。
+// 外車等でハイフンが無い場合(最大17文字)は、1行目8文字・2行目9文字で分割する。
+function splitVinTwoLine(vin){
+  if(!vin) return ['',''];
+  var dashIdx=vin.indexOf('-');
+  if(dashIdx>=0) return [vin.slice(0,dashIdx), vin.slice(dashIdx)];
+  return [vin.slice(0,8), vin.slice(8)];
+}
 const TOTAL_ADD = 100000; // pricing.htmlと同じ:支払総額(万円) = 車体価格 + この額
 
 // ========== テンプレート編集(色・フォント・サイズ・レイアウトのプレビュー) ==========
@@ -567,8 +587,10 @@ const TOTAL_ADD = 100000; // pricing.htmlと同じ:支払総額(万円) = 車体
     ['Corbel Bold','Corbel,"Yu Gothic",sans-serif']
   ];
   var CFG=[
-    {k:'pricePosX',n:'総額数字の位置（左右）',min:-25,max:25,step:.2,def:0,css:'--pricePosX'},
-    {k:'pricePosY',n:'総額数字の位置（上下）',min:-25,max:25,step:.2,def:0,css:'--pricePosY'},
+    {k:'pricePosX2',n:'総額数字の位置（左右）：2桁の時',min:-25,max:25,step:.2,def:0,css:null},
+    {k:'pricePosX3',n:'総額数字の位置（左右）：3桁の時',min:-25,max:25,step:.2,def:0,css:null},
+    {k:'pricePosY2',n:'総額数字の位置（上下）：2桁の時',min:-25,max:25,step:.2,def:0,css:null},
+    {k:'pricePosY3',n:'総額数字の位置（上下）：3桁の時',min:-25,max:25,step:.2,def:0,css:null},
     {k:'priceDigits2Mult',n:'価格が2桁の時の倍率',min:.5,max:1.5,step:.02,def:1,css:null},
     {k:'priceDigits3Mult',n:'価格が3桁の時の倍率',min:.5,max:1.5,step:.02,def:1,css:null},
     {k:'priceScaleX2',n:'価格が2桁の時の横幅（アスペクト比）',min:.15,max:5,step:.02,def:1,css:null},
@@ -600,7 +622,7 @@ const TOTAL_ADD = 100000; // pricing.htmlと同じ:支払総額(万円) = 車体
     headFont:'"Yu Gothic","Meiryo",sans-serif',manyenFont:'"Yu Gothic","Meiryo",sans-serif',priceLabelFont:'"Yu Gothic","Meiryo",sans-serif',
     gradeFont:'"Yu Gothic","Meiryo",sans-serif',gradeNoteFont:'"Yu Gothic","Meiryo",sans-serif',
     priceColor:'#dc2626',headColor:'#111827',accentColor:'#dc2626',accentBg:'#fff1f0',manyenColor:'#dc2626',repairColor:'#dc2626',
-    labelStyle:'badge',hlStyle:'pill',priceScaleXOther:1,priceScaleYOther:1};
+    labelStyle:'badge',hlStyle:'pill',priceScaleXOther:1,priceScaleYOther:1,pricePosXOther:0,pricePosYOther:0};
   CFG.forEach(function(c){st[c.k]=c.def;});
   // この時点のst(初期値のみ)を「標準」テンプレートの雛形として控えておく。
   // テンプレートの実体はFirebase(priceTagTemplates)に保存され、下のloadAllData()で読み込まれる。
@@ -801,6 +823,25 @@ const TOTAL_ADD = 100000; // pricing.htmlと同じ:支払総額(万円) = 車体
   function pushEffectivePriceScaleY(){
     root.style.setProperty('--priceScaleY',st[priceScaleYKey()]);
   }
+  // 総額数字の位置(--pricePosX/--pricePosY)も、2桁/3桁で別の値を保存・使用する。
+  function pricePosXKey(){
+    var d=currentPriceDigits();
+    if(d===2) return 'pricePosX2';
+    if(d===3) return 'pricePosX3';
+    return 'pricePosXOther';
+  }
+  function pushEffectivePricePosX(){
+    root.style.setProperty('--pricePosX',st[pricePosXKey()]);
+  }
+  function pricePosYKey(){
+    var d=currentPriceDigits();
+    if(d===2) return 'pricePosY2';
+    if(d===3) return 'pricePosY3';
+    return 'pricePosYOther';
+  }
+  function pushEffectivePricePosY(){
+    root.style.setProperty('--pricePosY',st[pricePosYKey()]);
+  }
   var PRICE_MIN=4,PRICE_MAX=60,PRICE_STEP=.5;
   function fitPriceWidth(){
     var el=document.getElementById('priceNum');
@@ -808,6 +849,8 @@ const TOTAL_ADD = 100000; // pricing.htmlと同じ:支払総額(万円) = 車体
     if(!el.textContent){el.style.fontSize='';return;}
     pushEffectivePriceScaleX();
     pushEffectivePriceScaleY();
+    pushEffectivePricePosX();
+    pushEffectivePricePosY();
     var scaleX=parseFloat(st[priceScaleXKey()])||1;
     var size=PRICE_MIN;
     el.style.fontSize=size+'em';
@@ -932,7 +975,7 @@ const TOTAL_ADD = 100000; // pricing.htmlと同じ:支払総額(万円) = 車体
     return {positionHandles:positionHandles};
   }
   var priceDrag=makeDraggable({elId:'priceNum',containerId:'priceBox',selBoxId:'priceSelBox',
-    stKeys:{posX:'pricePosX',posY:'pricePosY',scaleX:priceScaleXKey,scaleY:priceScaleYKey},
+    stKeys:{posX:pricePosXKey,posY:pricePosYKey,scaleX:priceScaleXKey,scaleY:priceScaleYKey},
     cssVars:{posX:'--pricePosX',posY:'--pricePosY',scaleX:'--priceScaleX',scaleY:'--priceScaleY'}});
   var labelDrag=makeDraggable({elId:'priceLabelBadge',containerId:'priceLabelWrap',selBoxId:'labelSelBox',
     stKeys:{posX:'labelPosX',posY:'labelPosY',scaleX:'labelScaleX',scaleY:'labelScaleY'},
@@ -1152,8 +1195,16 @@ function buildTemplatesList(){
     return {id:e[0], name:(e[1]&&e[1].name)||'(無題)', settings:(e[1]&&e[1].settings)||{}, updatedAt:(e[1]&&e[1].updatedAt)||0};
   });
   templates.sort(function(a,b){ return a.name.localeCompare(b.name,'ja'); });
-  var sel=document.getElementById('tplSelect');
-  sel.innerHTML = templates.map(function(t){ return '<option value="'+t.id+'">'+escapeHtml(t.name)+'</option>'; }).join('');
+  var tabsWrap=document.getElementById('tplTabs');
+  tabsWrap.innerHTML = templates.map(function(t){
+    return '<button type="button" class="viewTab" data-tplid="'+t.id+'">'+escapeHtml(t.name)+'</button>';
+  }).join('');
+  ['tplCopySrc','tplCopyDst'].forEach(function(selId){
+    var sel=document.getElementById(selId);
+    var prev=sel.value;
+    sel.innerHTML = templates.map(function(t){ return '<option value="'+t.id+'">'+escapeHtml(t.name)+'</option>'; }).join('');
+    if(templates.some(function(t){ return t.id===prev; })) sel.value=prev;
+  });
 }
 
 function loadTemplateIntoEditor(id){
@@ -1163,14 +1214,19 @@ function loadTemplateIntoEditor(id){
   try{ localStorage.setItem(LAST_TPL_KEY, id); }catch(e){}
   Object.keys(st).forEach(function(k){ delete st[k]; });
   Object.assign(st, JSON.parse(JSON.stringify(t.settings||{})));
+  // 旧仕様(2桁/3桁共通の単一の位置)で保存されたテンプレートは、現在の値を
+  // 2桁用・3桁用それぞれの初期値としてコピーしておく(更新直後は見た目が変わらないようにする)。
+  if(!('pricePosX2' in st) && 'pricePosX' in st){ st.pricePosX2=st.pricePosX; st.pricePosX3=st.pricePosX; }
+  if(!('pricePosY2' in st) && 'pricePosY' in st){ st.pricePosY2=st.pricePosY; st.pricePosY3=st.pricePosY; }
+  delete st.pricePosX; delete st.pricePosY;
   // 古いテンプレートに、後から追加された調整項目(CFGの新しいキー)が無い場合は初期値で補う
   CFG.forEach(function(c){ if(!(c.k in st)) st[c.k]=c.def; });
   ['priceFont','hlFont','headFont','manyenFont','priceLabelFont','gradeFont','gradeNoteFont',
    'priceColor','headColor','accentColor','accentBg','manyenColor','repairColor',
-   'labelStyle','hlStyle','priceScaleXOther','priceScaleYOther'].forEach(function(k){
+   'labelStyle','hlStyle','priceScaleXOther','priceScaleYOther','pricePosXOther','pricePosYOther'].forEach(function(k){
     if(!(k in st)) st[k]=DEFAULT_SETTINGS[k];
   });
-  document.getElementById('tplSelect').value=id;
+  document.querySelectorAll('#tplTabs .viewTab').forEach(function(b){ b.classList.toggle('active', b.dataset.tplid===id); });
   var statusEl=document.getElementById('tplSaveStatus');
   if(statusEl) statusEl.textContent='';
   syncControlsUI();
@@ -1246,6 +1302,7 @@ function buildRows(){
       vin:vin,
       supplyDate: sv.date||'',
       supplyVenue: displaySupplier(sv.sup||''),
+      color: sv.color||'',
       isAdListed: isAdListed,
       maker: manual.maker!=null?manual.maker:autoMaker,
       carName: manual.carName!=null?manual.carName:autoCarName,
@@ -1292,22 +1349,24 @@ function renderList(){
   var visible=rows.filter(function(r){ return matchesSearch(r,q) && (showAllVehicles || r.isAdListed); });
   tbody.innerHTML = visible.map(function(r){
     var defaultTplId = templates[0] && templates[0].id;
+    var tplNames = templates.map(function(t){ return '<span>'+escapeHtml(t.name)+'</span>'; }).join('');
     var tplRadios = templates.map(function(t){
       var checked = (r.templateId ? r.templateId===t.id : t.id===defaultTplId) ? 'checked' : '';
-      return '<label><input type="radio" name="tpl_'+r.vin+'" value="'+t.id+'" '+checked+'> '+escapeHtml(t.name)+'</label>';
+      return '<label title="'+escapeHtml(t.name)+'"><input type="radio" name="tpl_'+r.vin+'" value="'+t.id+'" '+checked+'></label>';
     }).join('');
+    var vinLines = splitVinTwoLine(r.vin);
     return '<tr data-vin="'+r.vin+'">'+
       '<td><input type="checkbox" class="printChk" data-vin="'+r.vin+'" '+(r.printTarget?'checked':'')+'></td>'+
-      '<td class="vinCell">'+r.vin+'</td>'+
+      '<td class="vinCell">'+escapeHtml(vinLines[0])+'<br>'+escapeHtml(vinLines[1])+'</td>'+
       '<td class="supplyCell">'+escapeHtml(r.supplyDate)+(r.supplyVenue?'<br><span class="venue">'+escapeHtml(r.supplyVenue)+'</span>':'')+'</td>'+
-      '<td class="textCell">'+escapeHtml(r.carName)+(r.maker?'<span class="sub">'+escapeHtml(r.maker)+'</span>':'')+'</td>'+
+      '<td class="textCell">'+escapeHtml(r.carName)+(r.color?' '+escapeHtml(r.color):'')+(r.maker?'<span class="sub">'+escapeHtml(r.maker)+'</span>':'')+'</td>'+
       '<td class="textCell">'+escapeHtml(r.grade)+(r.gradeNote?'<span class="sub">'+escapeHtml(r.gradeNote)+'</span>':'')+'</td>'+
       '<td class="textCell">'+escapeHtml(r.price)+'</td>'+
       '<td class="textCell">'+escapeHtml(r.year)+'</td>'+
       '<td class="textCell">'+escapeHtml(r.mileage)+'</td>'+
       '<td class="textCell">'+escapeHtml(displayShaken(r.shakenDisp))+'</td>'+
       '<td><label class="rowSwitch" title="修復歴あり"><input type="checkbox" class="repairCk" data-vin="'+r.vin+'" '+(r.repair==='has'?'checked':'')+'><span class="rowSlider"></span></label></td>'+
-      '<td><div class="tplRadioGroup">'+(tplRadios||'<span class="countHint">テンプレート未作成</span>')+'</div></td>'+
+      '<td>'+(templates.length?('<div class="tplRadioGroup"><div class="tplNames">'+tplNames+'</div><div class="tplRadios">'+tplRadios+'</div></div>'):'<span class="countHint">テンプレート未作成</span>')+'</td>'+
       '<td><button type="button" class="btn editRowBtn" data-vin="'+r.vin+'">✎ 編集</button></td>'+
     '</tr>';
   }).join('');
@@ -1477,67 +1536,30 @@ document.getElementById('listSearchClearBtn').addEventListener('click', function
   renderList();
 });
 
-// ---- テンプレート管理(新規・複製・名前変更・削除) ----
-document.getElementById('tplSelect').addEventListener('change', function(e){
-  loadTemplateIntoEditor(e.target.value);
+// ---- テンプレート管理(A/B/C/Dタブの切替・コピー) ----
+document.getElementById('tplTabs').addEventListener('click', function(e){
+  var btn=e.target.closest('.viewTab');
+  if(!btn) return;
+  loadTemplateIntoEditor(btn.dataset.tplid);
   renderList();
 });
-document.getElementById('tplNewBtn').addEventListener('click', async function(){
-  var name=window.prompt('新しいテンプレート名を入力してください', '新しいテンプレート');
-  if(name==null) return;
-  var id=newTemplateId();
-  priceTagTemplates[id]={name:name.trim()||'(無題)', settings:JSON.parse(JSON.stringify(DEFAULT_SETTINGS)), updatedAt:Date.now()};
+document.getElementById('tplCopyBtn').addEventListener('click', async function(){
+  var srcId=document.getElementById('tplCopySrc').value;
+  var dstId=document.getElementById('tplCopyDst').value;
+  if(!srcId || !dstId) return;
+  if(srcId===dstId){ alert('コピー元とコピー先が同じです。'); return; }
+  var src=priceTagTemplates[srcId];
+  var dst=priceTagTemplates[dstId];
+  if(!src || !dst) return;
+  if(!window.confirm('テンプレート「'+(src.name||'')+'」の内容を「'+(dst.name||'')+'」に上書きコピーします。よろしいですか？')) return;
+  var newSettings=JSON.parse(JSON.stringify(src.settings||{}));
+  priceTagTemplates[dstId].settings=newSettings;
+  priceTagTemplates[dstId].updatedAt=Date.now();
   try{
-    await set(ref(db,'priceTagTemplates/'+id), priceTagTemplates[id]);
-    buildTemplatesList();
-    loadTemplateIntoEditor(id);
+    await update(ref(db,'priceTagTemplates/'+dstId), {settings:newSettings, updatedAt:Date.now()});
+    if(currentTemplateId===dstId) loadTemplateIntoEditor(dstId);
     renderList();
-  }catch(err){ alert('テンプレートの作成に失敗しました: '+err.message); }
-});
-document.getElementById('tplDupBtn').addEventListener('click', async function(){
-  if(!currentTemplateId) return;
-  var base=priceTagTemplates[currentTemplateId];
-  var name=window.prompt('複製後のテンプレート名を入力してください', (base.name||'')+'のコピー');
-  if(name==null) return;
-  var id=newTemplateId();
-  priceTagTemplates[id]={name:name.trim()||'(無題)', settings:JSON.parse(JSON.stringify(st)), updatedAt:Date.now()};
-  try{
-    await set(ref(db,'priceTagTemplates/'+id), priceTagTemplates[id]);
-    buildTemplatesList();
-    loadTemplateIntoEditor(id);
-    renderList();
-  }catch(err){ alert('テンプレートの複製に失敗しました: '+err.message); }
-});
-document.getElementById('tplRenameBtn').addEventListener('click', async function(){
-  if(!currentTemplateId) return;
-  var cur=priceTagTemplates[currentTemplateId];
-  var name=window.prompt('新しいテンプレート名を入力してください', cur.name||'');
-  if(name==null || !name.trim()) return;
-  priceTagTemplates[currentTemplateId].name=name.trim();
-  try{
-    await update(ref(db,'priceTagTemplates/'+currentTemplateId), {name:name.trim()});
-    buildTemplatesList();
-    document.getElementById('tplSelect').value=currentTemplateId;
-    renderList();
-  }catch(err){ alert('名前の変更に失敗しました: '+err.message); }
-});
-document.getElementById('tplDeleteBtn').addEventListener('click', async function(){
-  if(!currentTemplateId) return;
-  if(templates.length<=1){ alert('テンプレートは最低1つ必要なため削除できません。'); return; }
-  var cur=priceTagTemplates[currentTemplateId];
-  if(!window.confirm('テンプレート「'+cur.name+'」を削除します。このテンプレートを使用している車両は、一覧の先頭のテンプレートに切り替わります。よろしいですか？')) return;
-  var deletedId=currentTemplateId;
-  try{
-    await set(ref(db,'priceTagTemplates/'+deletedId), null);
-    delete priceTagTemplates[deletedId];
-    buildTemplatesList();
-    var fallbackId=templates[0].id;
-    var updates={};
-    rows.forEach(function(r){ if(r.templateId===deletedId){ r.templateId=fallbackId; updates['priceTagData/'+r.vin+'/templateId']=fallbackId; } });
-    if(Object.keys(updates).length) await update(ref(db), updates);
-    loadTemplateIntoEditor(fallbackId);
-    renderList();
-  }catch(err){ alert('削除に失敗しました: '+err.message); }
+  }catch(err){ alert('コピーに失敗しました: '+err.message); }
 });
 
 // ---- 一括印刷(車両ごとに異なるテンプレートを使える) ----
@@ -1564,6 +1586,14 @@ function fitPriceWidthFor(paperEl, settings){
   var scaleY=parseFloat(settings[yKey])||1;
   paperEl.style.setProperty('--priceScaleX', scaleX);
   paperEl.style.setProperty('--priceScaleY', scaleY);
+  // 位置(--pricePosX/Y)も2桁/3桁で別の値を使う。旧仕様(単一のpricePosX/Y)のまま
+  // 未更新のテンプレートは、そちらの値にフォールバックする。
+  var posXKey = d===2?'pricePosX2':(d===3?'pricePosX3':'pricePosXOther');
+  var posYKey = d===2?'pricePosY2':(d===3?'pricePosY3':'pricePosYOther');
+  var posX = settings[posXKey]!=null ? settings[posXKey] : (settings.pricePosX!=null?settings.pricePosX:0);
+  var posY = settings[posYKey]!=null ? settings[posYKey] : (settings.pricePosY!=null?settings.pricePosY:0);
+  paperEl.style.setProperty('--pricePosX', posX);
+  paperEl.style.setProperty('--pricePosY', posY);
   var size=PRICE_MIN; el.style.fontSize=size+'em';
   while(size<PRICE_MAX){
     var next=size+PRICE_STEP; el.style.fontSize=next+'em';
