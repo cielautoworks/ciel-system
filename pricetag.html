@@ -122,18 +122,20 @@
   .tplRadioGroup .tplNames,.tplRadioGroup .tplRadios{display:flex;gap:6px;}
   .tplRadioGroup .tplNames span{width:16px;text-align:center;font-size:11px;font-weight:700;color:var(--text-sub);}
   .tplRadioGroup .tplRadios label{width:16px;display:flex;justify-content:center;cursor:pointer;margin:0;}
-  .vinCell{font-family:monospace;font-size:11px;width:58px;white-space:nowrap;}
-  .textCell{white-space:normal;overflow-wrap:anywhere;}
-  .textCell .sub{display:block;font-size:11px;color:var(--text-sub);margin-top:1px;}
-  .supplyCell{white-space:normal;overflow-wrap:anywhere;font-size:11.5px;line-height:1.5;}
-  .supplyCell .venue{display:block;color:var(--text-sub);}
-  table.listTable th:nth-child(3),table.listTable td:nth-child(3){max-width:68px;}
-  table.listTable th:nth-child(4),table.listTable td:nth-child(4){max-width:88px;}
-  table.listTable th:nth-child(5),table.listTable td:nth-child(5){max-width:130px;}
-  table.listTable th:nth-child(6),table.listTable td:nth-child(6){max-width:48px;}
-  table.listTable th:nth-child(7),table.listTable td:nth-child(7){max-width:58px;}
-  table.listTable th:nth-child(8),table.listTable td:nth-child(8){max-width:58px;}
-  table.listTable th:nth-child(9),table.listTable td:nth-child(9){max-width:58px;}
+  .vinCell{font-family:monospace;font-size:11px;width:58px;white-space:nowrap;line-height:1.5;}
+  .yearCell{font-size:11.5px;width:46px;white-space:nowrap;line-height:1.5;}
+  /* table.listTable th,td の white-space:nowrap(特異度(0,1,2))より強い指定にしないと
+     折り返しが効かず、文字が隣の列にはみ出して重なって見えてしまうため、td.textCell等で特異度を上げる。 */
+  table.listTable td.textCell{white-space:normal;overflow-wrap:anywhere;line-height:1.4;}
+  .textCell .sub{display:block;font-size:11px;color:var(--text-sub);margin-top:2px;}
+  table.listTable td.supplyCell{white-space:normal;overflow-wrap:anywhere;font-size:11.5px;line-height:1.5;}
+  .supplyCell .venue{display:block;color:var(--text-sub);margin-top:2px;}
+  table.listTable th:nth-child(3),table.listTable td:nth-child(3){max-width:80px;}
+  table.listTable th:nth-child(4),table.listTable td:nth-child(4){max-width:150px;}
+  table.listTable th:nth-child(5),table.listTable td:nth-child(5){max-width:190px;}
+  table.listTable th:nth-child(6),table.listTable td:nth-child(6){max-width:50px;}
+  table.listTable th:nth-child(8),table.listTable td:nth-child(8){max-width:62px;}
+  table.listTable th:nth-child(9),table.listTable td:nth-child(9){max-width:54px;}
 
   /* ===== 印刷用ステージ(非表示領域。常に@media printと同じmm基準で配置し、
      表示サイズに依存する価格自動フィット計算を印刷直前に実行できるようにする) ===== */
@@ -251,7 +253,7 @@
 
 <div class="panel">
   <div class="topBar">
-    <h1>プライスシート作成（A3横） <span style="font-size:12px;font-weight:400;opacity:.75;">v1.03</span></h1>
+    <h1>プライスシート作成（A3横） <span style="font-size:12px;font-weight:400;opacity:.75;">v1.04</span></h1>
     <a class="btn" href="./index.html">🏠 一覧へ</a>
     <a class="btn" id="backToAdsLink" href="./ads.html" data-base-href="./ads.html">📊 広告掲載へ</a>
     <a class="btn" id="backToPricingLink" href="./pricing.html" data-base-href="./pricing.html">💰 プライシングへ</a>
@@ -545,6 +547,14 @@ function splitVinTwoLine(vin){
   var dashIdx=vin.indexOf('-');
   if(dashIdx>=0) return [vin.slice(0,dashIdx), vin.slice(dashIdx)];
   return [vin.slice(0,8), vin.slice(8)];
+}
+// 年式を2行表示用に分割する(1行目=「年」まで、2行目=それ以降の月表記)。
+// 例:"H27年12月"→["H27年","12月"]、"2025年"(月情報なし)→["2025年",""]
+function splitYearTwoLine(yearDisp){
+  if(!yearDisp) return ['',''];
+  var idx=yearDisp.indexOf('年');
+  if(idx<0) return [yearDisp,''];
+  return [yearDisp.slice(0,idx+1), yearDisp.slice(idx+1)];
 }
 const TOTAL_ADD = 100000; // pricing.htmlと同じ:支払総額(万円) = 車体価格 + この額
 
@@ -1355,6 +1365,7 @@ function renderList(){
       return '<label title="'+escapeHtml(t.name)+'"><input type="radio" name="tpl_'+r.vin+'" value="'+t.id+'" '+checked+'></label>';
     }).join('');
     var vinLines = splitVinTwoLine(r.vin);
+    var yearLines = splitYearTwoLine(r.year);
     return '<tr data-vin="'+r.vin+'">'+
       '<td><input type="checkbox" class="printChk" data-vin="'+r.vin+'" '+(r.printTarget?'checked':'')+'></td>'+
       '<td class="vinCell">'+escapeHtml(vinLines[0])+'<br>'+escapeHtml(vinLines[1])+'</td>'+
@@ -1362,7 +1373,7 @@ function renderList(){
       '<td class="textCell">'+escapeHtml(r.carName)+(r.color?' '+escapeHtml(r.color):'')+(r.maker?'<span class="sub">'+escapeHtml(r.maker)+'</span>':'')+'</td>'+
       '<td class="textCell">'+escapeHtml(r.grade)+(r.gradeNote?'<span class="sub">'+escapeHtml(r.gradeNote)+'</span>':'')+'</td>'+
       '<td class="textCell">'+escapeHtml(r.price)+'</td>'+
-      '<td class="textCell">'+escapeHtml(r.year)+'</td>'+
+      '<td class="yearCell">'+escapeHtml(yearLines[0])+(yearLines[1]?'<br>'+escapeHtml(yearLines[1]):'')+'</td>'+
       '<td class="textCell">'+escapeHtml(r.mileage)+'</td>'+
       '<td class="textCell">'+escapeHtml(displayShaken(r.shakenDisp))+'</td>'+
       '<td><label class="rowSwitch" title="修復歴あり"><input type="checkbox" class="repairCk" data-vin="'+r.vin+'" '+(r.repair==='has'?'checked':'')+'><span class="rowSlider"></span></label></td>'+
