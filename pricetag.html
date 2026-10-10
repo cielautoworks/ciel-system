@@ -227,7 +227,7 @@
     --pricePosX:0;--pricePosY:0;--priceScaleX:1;--priceScaleY:1;
     --labelPosX:0;--labelPosY:0;--labelScaleX:1;--labelScaleY:1;
     --priceLabelEm:1.9;--priceDecTailEm:7;--suffixEm:9;
-    --hlValEm:5.6;--hlKEm:2.4;--hlBoxEm:1;--hlBorderEm:1;--headEm:2.2;--gradeNoteEm:1.6;--headBorderEm:1;--repairEm:1.8;
+    --hlValEm:5.6;--hlKEm:2.4;--hlBoxEm:1;--hlBorderEm:1;--headEm:2.2;--gradeNoteEm:1.6;--headBorderEm:1;--repairEm:1.8;--repairDetailEm:1;
     --manyenWeight:900;--priceLabelWeight:900;
   }
   .wrap{margin:0 auto;}
@@ -248,7 +248,7 @@
   .repairRow{display:flex;flex-wrap:wrap;align-items:center;gap:.6em;margin-top:.3em;min-height:1.3em;}
   .repairBadge{flex:none;display:inline-block;border:.14em solid var(--repairColor);color:var(--repairColor);font-weight:900;font-size:calc(var(--repairEm)*1em);padding:.12em .6em;border-radius:.3em;white-space:nowrap;font-family:var(--headFont);}
   .repairBadge.hasRepair{border-color:var(--repairColorHas);color:var(--repairColorHas);}
-  .repairDetail{flex:1;min-width:0;font-size:1em;color:#374151;}
+  .repairDetail{flex:1;min-width:0;font-size:calc(var(--repairDetailEm)*1em);color:#374151;}
   .repairDetail:empty:before{content:attr(data-ph);opacity:.35;}
   [contenteditable]{outline:none;}
   [contenteditable]:hover,[contenteditable]:focus{box-shadow:0 0 0 .05em var(--accentColor);border-radius:.1em;}
@@ -336,7 +336,7 @@
 
 <div class="panel">
   <div class="topBar">
-    <h1>プライスシート作成（A3横） <span style="font-size:12px;font-weight:400;opacity:.75;">v1.15</span></h1>
+    <h1>プライスシート作成（A3横） <span style="font-size:12px;font-weight:400;opacity:.75;">v1.16</span></h1>
     <a class="btn" href="./index.html">🏠 一覧へ</a>
     <a class="btn" id="backToAdsLink" href="./ads.html" data-base-href="./ads.html">📊 広告掲載へ</a>
     <a class="btn" id="backToPricingLink" href="./pricing.html" data-base-href="./pricing.html">💰 プライシングへ</a>
@@ -780,6 +780,7 @@ const MS_PER_DAY = 86400000;
     {k:'gradeNoteEm',n:'グレード補記の大きさ',min:1,max:3.5,step:.1,def:1.6,css:'--gradeNoteEm'},
     {k:'headBorderEm',n:'グレード補記下の線の太さ',min:0,max:5,step:.05,def:1,css:'--headBorderEm'},
     {k:'repairEm',n:'修復歴バッジの大きさ',min:1,max:5,step:.1,def:1.8,css:'--repairEm'},
+    {k:'repairDetailEm',n:'修復歴の内容の文字サイズ',min:.5,max:3,step:.1,def:1,css:'--repairDetailEm'},
     {k:'manyenWeight',n:'「万円」の太さ',min:300,max:900,step:100,def:900,css:'--manyenWeight'},
     {k:'priceLabelWeight',n:'「支払総額」ラベルの太さ',min:300,max:900,step:100,def:900,css:'--priceLabelWeight'}
   ];
