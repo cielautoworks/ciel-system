@@ -228,7 +228,7 @@
     --labelPosX:0;--labelPosY:0;--labelScaleX:1;--labelScaleY:1;
     --priceLabelEm:1.9;--priceDecTailEm:7;--suffixEm:9;
     --hlValEm:5.6;--hlKEm:2.4;--hlBoxEm:1;--hlBorderEm:1;--headEm:2.2;--gradeNoteEm:1.6;--headBorderEm:1;--repairEm:1.8;--repairDetailEm:1;
-    --manyenWeight:900;--priceLabelWeight:900;
+    --manyenWeight:900;--priceLabelWeight:900;--priceLabelBadgeBorderEm:1;--priceLabelBadgePadEm:1;
   }
   .wrap{margin:0 auto;}
   .paper{
@@ -282,7 +282,7 @@
   .priceLabelWrap{display:none;position:relative;margin-bottom:.06em;}
   .labelBadge .priceLabelRow{display:none;}
   .labelBadge .priceLabelWrap{display:inline-block;}
-  .priceLabelBadge{display:inline-block;border:.14em solid var(--priceLabelBadgeBorderColor,#2563eb);color:var(--priceLabelBadgeColor,#2563eb);background:var(--priceLabelBadgeBgColor,#fff);font-weight:var(--priceLabelWeight,900);font-size:calc(var(--priceLabelEm)*.62em);line-height:1.15;text-align:center;padding:.18em .5em;border-radius:.35em;cursor:pointer;font-family:var(--priceLabelFont);
+  .priceLabelBadge{display:inline-block;border-style:solid;border-width:calc(var(--priceLabelBadgeBorderEm,1)*.14em);border-color:var(--priceLabelBadgeBorderColor,#2563eb);color:var(--priceLabelBadgeColor,#2563eb);background:var(--priceLabelBadgeBgColor,#fff);font-weight:var(--priceLabelWeight,900);font-size:calc(var(--priceLabelEm)*.62em);line-height:1.15;text-align:center;padding:calc(var(--priceLabelBadgePadEm,1)*.18em) calc(var(--priceLabelBadgePadEm,1)*.5em);border-radius:.35em;cursor:pointer;font-family:var(--priceLabelFont);
     transform:translate(calc(var(--labelPosX)*1em),calc(var(--labelPosY)*1em)) scale(var(--labelScaleX),var(--labelScaleY));
     transform-origin:left center;}
   .priceDecTail{font-family:var(--priceFont);font-size:calc(var(--priceDecTailEm)*1em);font-weight:900;color:var(--priceColor);line-height:1;position:relative;z-index:1;}
@@ -336,7 +336,7 @@
 
 <div class="panel">
   <div class="topBar">
-    <h1>プライスシート作成（A3横） <span style="font-size:12px;font-weight:400;opacity:.75;">v1.16</span></h1>
+    <h1>プライスシート作成（A3横） <span style="font-size:12px;font-weight:400;opacity:.75;">v1.17</span></h1>
     <a class="btn" href="./index.html">🏠 一覧へ</a>
     <a class="btn" id="backToAdsLink" href="./ads.html" data-base-href="./ads.html">📊 広告掲載へ</a>
     <a class="btn" id="backToPricingLink" href="./pricing.html" data-base-href="./pricing.html">💰 プライシングへ</a>
@@ -761,28 +761,40 @@ const MS_PER_DAY = 86400000;
     {k:'pricePosY3',n:'総額数字の位置（上下）：3桁の時',min:-25,max:25,step:.2,def:0,css:null},
     {k:'priceDigits2Mult',n:'価格が2桁の時の倍率',min:.5,max:1.5,step:.02,def:1,css:null},
     {k:'priceDigits3Mult',n:'価格が3桁の時の倍率',min:.5,max:1.5,step:.02,def:1,css:null},
-    {k:'priceScaleX2',n:'価格が2桁の時の横幅（アスペクト比）',min:.15,max:5,step:.02,def:1,css:null},
-    {k:'priceScaleX3',n:'価格が3桁の時の横幅（アスペクト比）',min:.15,max:5,step:.02,def:1,css:null},
-    {k:'priceScaleY2',n:'価格が2桁の時の高さ拡大率（枠をはみ出せます）',min:.15,max:5,step:.02,def:1,css:null},
-    {k:'priceScaleY3',n:'価格が3桁の時の高さ拡大率（枠をはみ出せます）',min:.15,max:5,step:.02,def:1,css:null},
+    // v1.17バグ修正：min(.15)とstep(.02)の組み合わせだと、既定値1.0がステップの刻み目
+    // (min+n*step)上に乗らず(0.85/0.02=42.5)、スライダーを一度でも動かすとブラウザ側の
+    // 吸着で0.99か1.01にしかならず、1.0ちょうどへ戻せなくなっていた。min を .16 にして
+    // 0.85→0.84=42ステップぴったりに揃え、見た目はほぼ変えずに1.0へ正確に戻せるようにした。
+    {k:'priceScaleX2',n:'価格が2桁の時の横幅（アスペクト比）',min:.16,max:5,step:.02,def:1,css:null},
+    {k:'priceScaleX3',n:'価格が3桁の時の横幅（アスペクト比）',min:.16,max:5,step:.02,def:1,css:null},
+    {k:'priceScaleY2',n:'価格が2桁の時の高さ拡大率（枠をはみ出せます）',min:.16,max:5,step:.02,def:1,css:null},
+    {k:'priceScaleY3',n:'価格が3桁の時の高さ拡大率（枠をはみ出せます）',min:.16,max:5,step:.02,def:1,css:null},
     {k:'labelPosX',n:'総額バッジの位置（左右）',min:-25,max:25,step:.2,def:0,css:'--labelPosX'},
     {k:'labelPosY',n:'総額バッジの位置（上下）',min:-25,max:25,step:.2,def:0,css:'--labelPosY'},
-    {k:'labelScaleX',n:'総額バッジの横幅（アスペクト比）',min:.15,max:5,step:.02,def:1,css:'--labelScaleX'},
-    {k:'labelScaleY',n:'総額バッジの拡大率',min:.15,max:5,step:.02,def:1,css:'--labelScaleY'},
+    {k:'labelScaleX',n:'総額バッジの横幅（アスペクト比）',min:.16,max:5,step:.02,def:1,css:'--labelScaleX'},
+    {k:'labelScaleY',n:'総額バッジの拡大率',min:.16,max:5,step:.02,def:1,css:'--labelScaleY'},
     {k:'priceLabelEm',n:'「支払総額」バッジの大きさ',min:1,max:18,step:.2,def:1.9,css:'--priceLabelEm'},
     {k:'priceDecTailEm',n:'小数部（.8等）の大きさ',min:2,max:20,step:.2,def:7,css:'--priceDecTailEm'},
     {k:'suffixEm',n:'「万円」の大きさ',min:4,max:20,step:.2,def:9,css:'--suffixEm'},
     {k:'hlValEm',n:'年式・距離・車検：入力内容の文字サイズ',min:2.5,max:9,step:.1,def:5.6,css:'--hlValEm'},
     {k:'hlKEm',n:'年式・距離・車検：見出し文字（年式等）の大きさ',min:1,max:6,step:.1,def:2.4,css:'--hlKEm'},
     {k:'hlBoxEm',n:'年式・距離・車検の枠サイズ（余白）',min:0,max:3,step:.02,def:1,css:'--hlBoxEm'},
-    {k:'hlBorderEm',n:'年式・距離・車検の枠線の太さ',min:0,max:5,step:.05,def:1,css:'--hlBorderEm'},
+    {k:'hlBorderEm',n:'年式・距離・車検の枠線の太さ',min:0,max:10,step:.05,def:1,css:'--hlBorderEm'},
     {k:'headEm',n:'メーカー・車名・グレード行の大きさ',min:1.2,max:5,step:.1,def:2.2,css:'--headEm'},
     {k:'gradeNoteEm',n:'グレード補記の大きさ',min:1,max:3.5,step:.1,def:1.6,css:'--gradeNoteEm'},
     {k:'headBorderEm',n:'グレード補記下の線の太さ',min:0,max:5,step:.05,def:1,css:'--headBorderEm'},
     {k:'repairEm',n:'修復歴バッジの大きさ',min:1,max:5,step:.1,def:1.8,css:'--repairEm'},
     {k:'repairDetailEm',n:'修復歴の内容の文字サイズ',min:.5,max:3,step:.1,def:1,css:'--repairDetailEm'},
-    {k:'manyenWeight',n:'「万円」の太さ',min:300,max:900,step:100,def:900,css:'--manyenWeight'},
-    {k:'priceLabelWeight',n:'「支払総額」ラベルの太さ',min:300,max:900,step:100,def:900,css:'--priceLabelWeight'}
+    // v1.17:font-weightはCSS仕様上1〜1000が有効範囲で、1000を超える値は「無効な値」として扱われ、
+    // 太くなるどころか既定(通常の太さ)に戻ってしまう恐れがあるため、上限は仕様上の最大値である
+    // 1000までとした(ご依頼の1500は仕様上指定できないため)。なお、現在使用しているフォント
+    // (Yu Gothic/Meiryo/Arial Black等)には900を超える専用の太い書体データが無いため、
+    // 900→1000に上げても見た目はほとんど変わらない可能性が高い。より太く見せたい場合は、
+    // 以前ご提案した「アウトライン（縁取り）を足して太く見せる」方法の方が効果的です。
+    {k:'manyenWeight',n:'「万円」の太さ',min:300,max:1000,step:50,def:900,css:'--manyenWeight'},
+    {k:'priceLabelWeight',n:'「支払総額」ラベルの太さ',min:300,max:1000,step:50,def:900,css:'--priceLabelWeight'},
+    {k:'priceLabelBadgeBorderEm',n:'支払総額バッジの枠の太さ',min:0,max:5,step:.1,def:1,css:'--priceLabelBadgeBorderEm'},
+    {k:'priceLabelBadgePadEm',n:'支払総額バッジの内側の余白（大きさ）',min:0,max:3,step:.1,def:1,css:'--priceLabelBadgePadEm'}
   ];
   var paper=document.getElementById('paper');
   var box=document.getElementById('ctls');
@@ -1047,7 +1059,7 @@ const MS_PER_DAY = 86400000;
 
   // ---- 色設定（履歴スウォッチ付き） ----
   var HKEY='priceSheetColorHistory.v1';
-  var hist={price:[],head:[],accent:[],manyen:[],repair:[],repairHas:[],labelBadge:[],labelBadgeBorder:[],labelBadgeBg:[]};
+  var hist={price:[],head:[],accent:[],accentBg:[],manyen:[],repair:[],repairHas:[],labelBadge:[],labelBadgeBorder:[],labelBadgeBg:[]};
   try{var hs=JSON.parse(localStorage.getItem(HKEY)||'null');if(hs){hist=Object.assign(hist,hs);}}catch(e){}
   function saveHist(){try{localStorage.setItem(HKEY,JSON.stringify(hist));}catch(e){}}
   function addHist(field,color){
@@ -1067,6 +1079,7 @@ const MS_PER_DAY = 86400000;
         else if(field==='manyen'){st.manyenColor=c;manyenI.value=c;}
         else if(field==='repair'){st.repairColor=c;repairI.value=c;}
         else if(field==='repairHas'){st.repairColorHas=c;repairHasI.value=c;}
+        else if(field==='accentBg'){st.accentBg=c;accentBgI.value=c;}
         else if(field==='labelBadge'){st.priceLabelBadgeColor=c;labelBadgeI.value=c;}
         else if(field==='labelBadgeBorder'){st.priceLabelBadgeBorderColor=c;labelBadgeBorderI.value=c;}
         else if(field==='labelBadgeBg'){st.priceLabelBadgeBgColor=c;labelBadgeBgI.value=c;}
@@ -1090,12 +1103,13 @@ const MS_PER_DAY = 86400000;
   var manyenI=colorRow('「万円」の色','manyen',st.manyenColor,function(v){st.manyenColor=v;});
   var headI=colorRow('車名・見出しの色','head',st.headColor,function(v){st.headColor=v;});
   var accentI=colorRow('アクセント色（枠・年式距離バンド）','accent',st.accentColor,function(v){st.accentColor=v;});
+  var accentBgI=colorRow('年式・距離・車検の帯の背景色','accentBg',st.accentBg,function(v){st.accentBg=v;});
   var repairI=colorRow('修復歴表示の色（修復歴なし）','repair',st.repairColor,function(v){st.repairColor=v;});
   var repairHasI=colorRow('修復歴表示の色（修復歴あり）','repairHas',st.repairColorHas,function(v){st.repairColorHas=v;});
   var labelBadgeI=colorRow('「支払総額」バッジの文字色','labelBadge',st.priceLabelBadgeColor,function(v){st.priceLabelBadgeColor=v;});
   var labelBadgeBorderI=colorRow('「支払総額」バッジの枠色','labelBadgeBorder',st.priceLabelBadgeBorderColor,function(v){st.priceLabelBadgeBorderColor=v;});
   var labelBadgeBgI=colorRow('「支払総額」バッジの背景色','labelBadgeBg',st.priceLabelBadgeBgColor,function(v){st.priceLabelBadgeBgColor=v;});
-  renderSwatches('price');renderSwatches('head');renderSwatches('accent');renderSwatches('manyen');renderSwatches('repair');renderSwatches('repairHas');renderSwatches('labelBadge');renderSwatches('labelBadgeBorder');renderSwatches('labelBadgeBg');
+  renderSwatches('price');renderSwatches('head');renderSwatches('accent');renderSwatches('accentBg');renderSwatches('manyen');renderSwatches('repair');renderSwatches('repairHas');renderSwatches('labelBadge');renderSwatches('labelBadgeBorder');renderSwatches('labelBadgeBg');
 
   // ---- サイズスライダー ----
   var inputs={};
@@ -1234,7 +1248,7 @@ const MS_PER_DAY = 86400000;
     CFG.forEach(function(c){ if(inputs[c.k]){ inputs[c.k].r.value=st[c.k]; inputs[c.k].v.textContent=st[c.k]; } });
     sel.value=st.priceFont;hsel.value=st.hlFont;headSel.value=st.headFont;manyenSel.value=st.manyenFont;priceLabelSel.value=st.priceLabelFont;
     gradeSel.value=st.gradeFont;gradeNoteSel.value=st.gradeNoteFont;
-    priceI.value=st.priceColor;headI.value=st.headColor;accentI.value=st.accentColor;manyenI.value=st.manyenColor;repairI.value=st.repairColor;repairHasI.value=st.repairColorHas;labelBadgeI.value=st.priceLabelBadgeColor;labelBadgeBorderI.value=st.priceLabelBadgeBorderColor;labelBadgeBgI.value=st.priceLabelBadgeBgColor;
+    priceI.value=st.priceColor;headI.value=st.headColor;accentI.value=st.accentColor;accentBgI.value=st.accentBg;manyenI.value=st.manyenColor;repairI.value=st.repairColor;repairHasI.value=st.repairColorHas;labelBadgeI.value=st.priceLabelBadgeColor;labelBadgeBorderI.value=st.priceLabelBadgeBorderColor;labelBadgeBgI.value=st.priceLabelBadgeBgColor;
     labelStyleSel.value=st.labelStyle;hlStyleSel.value=st.hlStyle;
     syncPeControlsUI();
   }
