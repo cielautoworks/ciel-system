@@ -19,6 +19,8 @@
     --bg:#f5f6f4; --card:#ffffff; --border:#e2e2de;
     --text:#232320; --text-sub:#6b6b65; --text-muted:#9a9a92;
     --warn-bg:#fbf1de; --warn-text:#8a5a0a; --warn-border:#eecf9d;
+    --danger-bg:#fbeaea; --danger-text:#a32d2d; --danger-border:#e9b9b9;
+    --ok-bg:#e9f4ea; --ok-text:#2c6b34; --ok-border:#bfe0c4;
     --neutral-bg:#f1efe8; --neutral-text:#6b6b65; --neutral-border:#dcdad2;
     --thead-bg:#fafaf8; --hover-bg:#fafbfc;
     --filterbtn-bg:#fff; --filterbtn-active-bg:var(--sky);
@@ -27,6 +29,8 @@
     --bg:#0e0f13; --card:#181a20; --border:#2e313a;
     --text:#f0f0f0; --text-sub:#a9adb8; --text-muted:#6e7280;
     --warn-bg:#1c1f10; --warn-text:#e8ff4d; --warn-border:#e8ff4d;
+    --danger-bg:#20142a; --danger-text:#ff45d0; --danger-border:#ff45d0;
+    --ok-bg:#0f1f14; --ok-text:#33ff6e; --ok-border:#33ff6e;
     --neutral-bg:#181a20; --neutral-text:#8a8f9c; --neutral-border:#3a3e4a;
     --thead-bg:#181a20; --hover-bg:#20232b;
     --filterbtn-bg:#181a20; --filterbtn-active-bg:transparent;
@@ -109,6 +113,7 @@
   .tplBar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:8px 10px;background:var(--thead-bg);border:1px solid var(--border);border-radius:8px;margin-bottom:10px;}
   .tplBar select{font-size:13px;padding:5px 8px;border:1px solid var(--border);border-radius:5px;background:var(--card);color:var(--text);}
   .listToolbar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:10px;}
+  .filterRow{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:10px;}
   .searchWrap{position:relative;}
   .searchWrap input{font-size:13px;padding:7px 30px 7px 10px;border:1px solid var(--border);border-radius:6px;width:240px;background:var(--card);color:var(--text);}
   .searchClearBtn{position:absolute;right:6px;top:50%;transform:translateY(-50%);border:none;background:none;cursor:pointer;color:var(--text-muted);font-size:14px;display:none;}
@@ -131,11 +136,46 @@
   table.listTable td.supplyCell{white-space:normal;overflow-wrap:anywhere;font-size:11.5px;line-height:1.5;}
   .supplyCell .venue{display:block;color:var(--text-sub);margin-top:2px;}
   table.listTable th:nth-child(3),table.listTable td:nth-child(3){max-width:80px;}
-  table.listTable th:nth-child(4),table.listTable td:nth-child(4){max-width:150px;}
-  table.listTable th:nth-child(5),table.listTable td:nth-child(5){max-width:190px;}
-  table.listTable th:nth-child(6),table.listTable td:nth-child(6){max-width:50px;}
-  table.listTable th:nth-child(8),table.listTable td:nth-child(8){max-width:62px;}
-  table.listTable th:nth-child(9),table.listTable td:nth-child(9){max-width:54px;}
+  table.listTable th:nth-child(4),table.listTable td:nth-child(4){max-width:40px;text-align:center;}
+  table.listTable th:nth-child(5),table.listTable td:nth-child(5){max-width:150px;}
+  table.listTable th:nth-child(6),table.listTable td:nth-child(6){max-width:190px;}
+  table.listTable th:nth-child(7),table.listTable td:nth-child(7){max-width:50px;}
+  table.listTable th:nth-child(9),table.listTable td:nth-child(9){max-width:62px;}
+  table.listTable th:nth-child(10),table.listTable td:nth-child(10){max-width:54px;}
+
+  /* ===== AAボタン・AA出品票モーダル(pricing.html/ciel-systemハブと同じ見た目・aaPhotos/{vin}を直接編集) ===== */
+  .aaBtn{font-size:11.5px;font-weight:600;padding:4px 8px;border:2px solid var(--sky);border-radius:6px;background:transparent;color:var(--sky);cursor:pointer;white-space:nowrap;}
+  .aaBtn.has1{border-color:#ff9d33;color:#ff9d33;}
+  .aaBtn.has2{border-color:var(--warn-text);color:var(--warn-text);}
+  .aaBtn.has0{opacity:.35;}
+  .aaBtn:hover{background:rgba(74,171,207,0.12);}
+  .aaModalPanelPhotos{background:var(--card);border:2px solid var(--border);border-radius:14px;padding:22px 24px;width:98vw;max-width:1800px;max-height:97vh;overflow-y:auto;position:relative;}
+  .aaEmptyNote{color:var(--text-muted);font-size:12px;padding:20px;}
+  .aaImagesRow{display:flex;gap:20px;justify-content:center;flex-wrap:nowrap;min-height:300px;align-items:flex-start;}
+  .aaSlot{display:flex;flex-direction:column;align-items:center;gap:8px;flex:1 1 0;min-width:0;max-width:860px;}
+  .aaSlot img{width:100%;border-radius:8px;border:1px solid var(--border);display:block;cursor:zoom-in;}
+  .aaSlotBtns{display:flex;gap:8px;width:100%;}
+  .aaSlotBtns button{flex:1;font-size:12.5px;padding:8px 8px;border-radius:6px;border:2px solid var(--border);background:var(--card);color:var(--text-sub);cursor:pointer;}
+  .aaSlotBtns button:hover{background:var(--hover-bg);}
+  .aaSlotBtns button.aaDeleteBtn{border-color:var(--danger-border);color:var(--danger-text);}
+  .aaDropZone{flex:1 1 0;min-width:0;max-width:860px;min-height:340px;border:2px dashed var(--sky);border-radius:10px;display:flex;align-items:center;justify-content:center;text-align:center;color:var(--text-sub);font-size:13px;padding:12px;cursor:pointer;}
+  .aaDropZone.dragover{background:rgba(74,171,207,0.12);}
+  .aaDropZone .subtle{color:var(--text-muted);font-size:11px;}
+  .aaUploadStatus{margin-top:12px;font-size:12px;color:var(--text-sub);min-height:16px;text-align:center;}
+  .aaUploadStatus.ok{color:var(--ok-text);}
+  .aaUploadStatus.err{color:var(--danger-text);}
+  .aaZoomOverlay{position:fixed;inset:0;background:rgba(0,0,0,0.85);display:none;align-items:center;justify-content:center;z-index:300;cursor:zoom-out;}
+  .aaZoomOverlay.open{display:flex;}
+  .aaZoomOverlay img{max-width:96vw;max-height:96vh;object-fit:contain;cursor:zoom-in;transition:transform .05s linear;}
+
+  /* ===== 操作列(編集・単票印刷の2ボタン) ===== */
+  .rowActionBtns{display:flex;gap:4px;}
+  .rowActionBtns .btn{font-size:11.5px;padding:4px 8px;white-space:nowrap;}
+
+  /* ===== 最終印刷日列(v1.06で追加) ===== */
+  .printDateCell{font-size:11.5px;line-height:1.5;white-space:nowrap;}
+  .printDateCell.noPrint{color:var(--text-muted);}
+  .printDateCell.priceChanged{color:var(--danger-text);font-weight:700;}
 
   /* ===== 印刷用ステージ(非表示領域。常に@media printと同じmm基準で配置し、
      表示サイズに依存する価格自動フィット計算を印刷直前に実行できるようにする) ===== */
@@ -253,7 +293,7 @@
 
 <div class="panel">
   <div class="topBar">
-    <h1>プライスシート作成（A3横） <span style="font-size:12px;font-weight:400;opacity:.75;">v1.04</span></h1>
+    <h1>プライスシート作成（A3横） <span style="font-size:12px;font-weight:400;opacity:.75;">v1.06</span></h1>
     <a class="btn" href="./index.html">🏠 一覧へ</a>
     <a class="btn" id="backToAdsLink" href="./ads.html" data-base-href="./ads.html">📊 広告掲載へ</a>
     <a class="btn" id="backToPricingLink" href="./pricing.html" data-base-href="./pricing.html">💰 プライシングへ</a>
@@ -290,6 +330,13 @@
       <span class="countHint" id="selectedCountHint">0台選択中</span>
       <button class="btn main" id="printSelectedBtn" disabled>🖨 選択車両を一括印刷</button>
     </div>
+    <div class="filterRow">
+      <span class="countHint">絞込:</span>
+      <button type="button" class="filterbtn" id="filterNoPrintBtn" data-filter="noPrint">印刷歴がない</button>
+      <button type="button" class="filterbtn" id="filterOver1mBtn" data-filter="over1m">印刷後1カ月経過</button>
+      <button type="button" class="filterbtn" id="filterOver2mBtn" data-filter="over2m">印刷後2カ月経過</button>
+      <button type="button" class="filterbtn" id="filterPriceChangedBtn" data-filter="priceChanged">価格変更車</button>
+    </div>
     <div class="tablewrap">
       <table class="listTable">
         <thead>
@@ -297,6 +344,7 @@
             <th><input type="checkbox" id="selectAllBox" title="表示中の車両をすべて選択/解除"></th>
             <th>車台番号</th>
             <th>仕入情報</th>
+            <th>AA</th>
             <th>車名</th>
             <th>グレード</th>
             <th>支払総額<br>(万円)</th>
@@ -306,6 +354,7 @@
             <th>修復歴</th>
             <th>使用テンプレート</th>
             <th>操作</th>
+            <th>最終印刷日</th>
           </tr>
         </thead>
         <tbody id="listTbody"></tbody>
@@ -499,6 +548,22 @@
   </div>
 </div>
 
+<!-- AA出品票モーダル(pricing.html/ciel-systemハブと同じロジックでaaPhotos/{vin}を直接編集) -->
+<div class="modalOverlay" id="aaOverlay" style="display:none;">
+  <div class="aaModalPanelPhotos">
+    <div class="modalHeader">
+      <h3>出品票(AA画像)</h3>
+      <button type="button" class="modalCloseX" id="aaCloseBtn">✕</button>
+    </div>
+    <p class="modalVin" id="aaVinLabel"></p>
+    <div class="aaImagesRow" id="aaImagesRow"></div>
+    <div class="aaUploadStatus" id="aaUploadStatus"></div>
+  </div>
+</div>
+<div class="aaZoomOverlay" id="aaZoomOverlay">
+  <img id="aaZoomImg" src="">
+</div>
+
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 import { getDatabase, ref, get, set, update }
@@ -556,7 +621,15 @@ function splitYearTwoLine(yearDisp){
   if(idx<0) return [yearDisp,''];
   return [yearDisp.slice(0,idx+1), yearDisp.slice(idx+1)];
 }
+// 最終印刷日時(ms)を「YYYY」「MM/DD」の2行表示用に分割する(v1.06で追加)
+function splitPrintDateTwoLine(ts){
+  if(!ts) return null;
+  var d=new Date(ts);
+  function pad(n){return (n<10?'0':'')+n;}
+  return [String(d.getFullYear()), pad(d.getMonth()+1)+'/'+pad(d.getDate())];
+}
 const TOTAL_ADD = 100000; // pricing.htmlと同じ:支払総額(万円) = 車体価格 + この額
+const MS_PER_DAY = 86400000;
 
 // ========== テンプレート編集(色・フォント・サイズ・レイアウトのプレビュー) ==========
   var KEY='priceSheetSettings.v1';
@@ -1158,7 +1231,7 @@ document.getElementById('tabTemplateBtn').addEventListener('click', function(){
 });
 
 // ---- データ本体(車両一覧用) ----
-var stock={}, adsCarsensor={}, adsGoonet={}, manualShufukuList={}, pricingData={}, priceTagTemplates={}, priceTagData={};
+var stock={}, adsCarsensor={}, adsGoonet={}, manualShufukuList={}, aaPhotoCounts={}, pricingData={}, priceTagTemplates={}, priceTagData={};
 var templates=[]; // [{id,name,settings,updatedAt}]
 var rows=[];
 
@@ -1257,6 +1330,7 @@ async function loadAllData(){
     adsCarsensor = ads.carsensor || {};
     adsGoonet = ads.goonet || {};
     manualShufukuList = ads.manualShufuku || {};
+    aaPhotoCounts = ads.aaPhotoCounts || {};
     pricingData = results[2].val() || {};
     priceTagTemplates = results[3].val() || {};
     priceTagData = results[4].val() || {};
@@ -1308,12 +1382,20 @@ function buildRows(){
     // 「広告掲載車両」=カーセンサーorグーネットで掲載状況が「掲載」中(ads.htmlのisActive()と同じ判定)
     var isAdListed = !!((cs && cs.status==='掲載') || (goo && goo.status==='掲載'));
 
+    var price = manual.price!=null?manual.price:autoPrice;
+    var lastPrintedAt = ptd.lastPrintedAt || null;
+    var lastPrintedPrice = ptd.lastPrintedPrice!=null ? ptd.lastPrintedPrice : null;
+    // 価格変更車:印刷実績があり、かつ現在の価格(文字列比較。"44.8"等の表示文字列で突合)が
+    // 印刷した時点の価格と異なる車両
+    var priceChanged = !!(lastPrintedAt && lastPrintedPrice!=null && String(lastPrintedPrice)!==String(price));
+
     list.push({
       vin:vin,
       supplyDate: sv.date||'',
       supplyVenue: displaySupplier(sv.sup||''),
       color: sv.color||'',
       isAdListed: isAdListed,
+      aaCount: aaPhotoCounts[vin] || 0,
       maker: manual.maker!=null?manual.maker:autoMaker,
       carName: manual.carName!=null?manual.carName:autoCarName,
       grade: manual.grade!=null?manual.grade:autoGrade,
@@ -1323,9 +1405,12 @@ function buildRows(){
       shakenDisp: manual.shakenDisp!=null?manual.shakenDisp:autoShakenDisp,
       repair: manual.repair!=null?manual.repair:(autoRepairHas?'has':'none'),
       repairDetail: manual.repairDetail!=null?manual.repairDetail:'',
-      price: manual.price!=null?manual.price:autoPrice,
+      price: price,
       printTarget: !!ptd.printTarget,
       templateId: ptd.templateId||null,
+      lastPrintedAt: lastPrintedAt,
+      lastPrintedPrice: lastPrintedPrice,
+      priceChanged: priceChanged,
     });
   });
   list.sort(function(a,b){ return a.vin.localeCompare(b.vin); });
@@ -1344,6 +1429,21 @@ function matchesSearch(r, q){
   return hay.indexOf(q.toLowerCase())>=0;
 }
 
+// 絞込ボタン(印刷歴がない／印刷後1カ月経過／印刷後2カ月経過／価格変更車):
+// 複数選択可能・AND絞り込み。1カ月/2カ月は閾値方式(その日数以上経過していれば該当。重複あり)。
+var activeFilters={ noPrint:false, over1m:false, over2m:false, priceChanged:false };
+function matchesFilters(r){
+  if(activeFilters.noPrint && r.lastPrintedAt) return false;
+  if(activeFilters.over1m || activeFilters.over2m){
+    if(!r.lastPrintedAt) return false;
+    var elapsedDays=(Date.now()-r.lastPrintedAt)/MS_PER_DAY;
+    if(activeFilters.over1m && elapsedDays<30) return false;
+    if(activeFilters.over2m && elapsedDays<60) return false;
+  }
+  if(activeFilters.priceChanged && !r.priceChanged) return false;
+  return true;
+}
+
 // 初期値は広告掲載車両のみ表示。ボタンで全車両表示に切り替えられる(pricing.htmlのfilterbtnと同じ方式)。
 var showAllVehicles=false;
 function updateShowAllBtnUI(){
@@ -1353,10 +1453,17 @@ function updateShowAllBtnUI(){
   else { btn.classList.add('active'); btn.textContent='📢 広告掲載車両のみ表示中(クリックで全車両表示)'; }
 }
 
+function renderPrintDateCell(r){
+  var lines=splitPrintDateTwoLine(r.lastPrintedAt);
+  if(!lines) return '<td class="printDateCell noPrint">未印刷</td>';
+  var cls='printDateCell'+(r.priceChanged?' priceChanged':'');
+  return '<td class="'+cls+'">'+escapeHtml(lines[0])+'<br>'+escapeHtml(lines[1])+'</td>';
+}
+
 function renderList(){
   var q=document.getElementById('listSearchBox').value.trim();
   var tbody=document.getElementById('listTbody');
-  var visible=rows.filter(function(r){ return matchesSearch(r,q) && (showAllVehicles || r.isAdListed); });
+  var visible=rows.filter(function(r){ return matchesSearch(r,q) && (showAllVehicles || r.isAdListed) && matchesFilters(r); });
   tbody.innerHTML = visible.map(function(r){
     var defaultTplId = templates[0] && templates[0].id;
     var tplNames = templates.map(function(t){ return '<span>'+escapeHtml(t.name)+'</span>'; }).join('');
@@ -1366,10 +1473,12 @@ function renderList(){
     }).join('');
     var vinLines = splitVinTwoLine(r.vin);
     var yearLines = splitYearTwoLine(r.year);
+    var aaCls = r.aaCount===1?'has1':(r.aaCount===2?'has2':'has0');
     return '<tr data-vin="'+r.vin+'">'+
       '<td><input type="checkbox" class="printChk" data-vin="'+r.vin+'" '+(r.printTarget?'checked':'')+'></td>'+
       '<td class="vinCell">'+escapeHtml(vinLines[0])+'<br>'+escapeHtml(vinLines[1])+'</td>'+
       '<td class="supplyCell">'+escapeHtml(r.supplyDate)+(r.supplyVenue?'<br><span class="venue">'+escapeHtml(r.supplyVenue)+'</span>':'')+'</td>'+
+      '<td><button type="button" class="aaBtn '+aaCls+'" data-vin="'+r.vin+'" data-action="aa">🖼</button></td>'+
       '<td class="textCell">'+escapeHtml(r.carName)+(r.color?' '+escapeHtml(r.color):'')+(r.maker?'<span class="sub">'+escapeHtml(r.maker)+'</span>':'')+'</td>'+
       '<td class="textCell">'+escapeHtml(r.grade)+(r.gradeNote?'<span class="sub">'+escapeHtml(r.gradeNote)+'</span>':'')+'</td>'+
       '<td class="textCell">'+escapeHtml(r.price)+'</td>'+
@@ -1378,7 +1487,11 @@ function renderList(){
       '<td class="textCell">'+escapeHtml(displayShaken(r.shakenDisp))+'</td>'+
       '<td><label class="rowSwitch" title="修復歴あり"><input type="checkbox" class="repairCk" data-vin="'+r.vin+'" '+(r.repair==='has'?'checked':'')+'><span class="rowSlider"></span></label></td>'+
       '<td>'+(templates.length?('<div class="tplRadioGroup"><div class="tplNames">'+tplNames+'</div><div class="tplRadios">'+tplRadios+'</div></div>'):'<span class="countHint">テンプレート未作成</span>')+'</td>'+
-      '<td><button type="button" class="btn editRowBtn" data-vin="'+r.vin+'">✎ 編集</button></td>'+
+      '<td><div class="rowActionBtns">'+
+        '<button type="button" class="btn editRowBtn" data-vin="'+r.vin+'">✎ 編集</button>'+
+        '<button type="button" class="btn printRowBtn" data-vin="'+r.vin+'">🖨 印刷</button>'+
+      '</div></td>'+
+      renderPrintDateCell(r)+
     '</tr>';
   }).join('');
   document.getElementById('listCountHint').textContent = visible.length+'件表示 / 全'+rows.length+'件';
@@ -1443,7 +1556,203 @@ document.getElementById('listTbody').addEventListener('change', function(e){
 });
 document.getElementById('listTbody').addEventListener('click', function(e){
   var editBtn=e.target.closest('.editRowBtn');
-  if(editBtn){ openEditModal(editBtn.dataset.vin); }
+  if(editBtn){ openEditModal(editBtn.dataset.vin); return; }
+  var printBtn=e.target.closest('.printRowBtn');
+  if(printBtn){ printSingleVehicle(printBtn.dataset.vin); return; }
+  var aaBtn=e.target.closest('.aaBtn');
+  if(aaBtn){ openAa(aaBtn.dataset.vin); return; }
+});
+
+// ---- 絞込ボタン(印刷歴がない／印刷後1カ月経過／印刷後2カ月経過／価格変更車) ----
+document.querySelectorAll('.filterRow .filterbtn').forEach(function(btn){
+  btn.addEventListener('click', function(){
+    var key=btn.dataset.filter;
+    activeFilters[key]=!activeFilters[key];
+    btn.classList.toggle('active', activeFilters[key]);
+    renderList();
+  });
+});
+
+// ---- AA出品票モーダル(アップロード・D&D対応。pricing.html/ciel-systemハブと同じロジックでaaPhotos/{vin}を直接編集) ----
+var currentAaVin=null;
+
+function compressImageFile(file){
+  return new Promise(function(resolve, reject){
+    var reader=new FileReader();
+    reader.onerror=function(){ reject(new Error('ファイルの読み込みに失敗しました')); };
+    reader.onload=function(){
+      var img=new Image();
+      img.onerror=function(){ reject(new Error('画像として読み込めませんでした')); };
+      img.onload=function(){
+        var maxSide=1200, w=img.width, h=img.height;
+        if(w>h && w>maxSide){ h=Math.round(h*maxSide/w); w=maxSide; }
+        else if(h>maxSide){ w=Math.round(w*maxSide/h); h=maxSide; }
+        var canvas=document.createElement('canvas');
+        canvas.width=w; canvas.height=h;
+        canvas.getContext('2d').drawImage(img,0,0,w,h);
+        resolve(canvas.toDataURL('image/jpeg',0.72));
+      };
+      img.src=reader.result;
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+function setAaUploadStatus(msg, cls){
+  var el=document.getElementById('aaUploadStatus');
+  el.textContent=msg;
+  el.className='aaUploadStatus'+(cls?' '+cls:'');
+}
+
+function renderAaSlots(data){
+  var row=document.getElementById('aaImagesRow');
+  var slots=['img1','img2'];
+  var html='';
+  slots.forEach(function(slot,i){
+    var src=data&&data[slot];
+    if(src){
+      html+='<div class="aaSlot">'+
+        '<img src="'+src+'" class="aaZoomable" data-slot="'+slot+'" title="ダブルクリックで拡大">'+
+        '<div class="aaSlotBtns">'+
+          '<button type="button" class="aaChangeBtn" data-slot="'+slot+'">変更</button>'+
+          '<button type="button" class="aaDeleteBtn" data-slot="'+slot+'">削除</button>'+
+        '</div>'+
+      '</div>';
+    } else {
+      html+='<div class="aaDropZone" data-slot="'+slot+'">'+
+        '📥 画像をドラッグ&ドロップ<br>またはクリックして選択<br><span class="subtle">('+(i===0?'1枚目':'2枚目')+')</span>'+
+      '</div>';
+    }
+  });
+  row.innerHTML=html;
+
+  row.querySelectorAll('.aaZoomable').forEach(function(img){
+    img.addEventListener('dblclick', function(){ openAaZoom(img.src); });
+  });
+  row.querySelectorAll('.aaDropZone').forEach(function(dz){
+    dz.addEventListener('click', function(){ pickAaFile(dz.dataset.slot); });
+    ['dragenter','dragover'].forEach(function(evt){ dz.addEventListener(evt, function(e){
+      e.preventDefault(); dz.classList.add('dragover');
+    }); });
+    ['dragleave','drop'].forEach(function(evt){ dz.addEventListener(evt, function(e){
+      e.preventDefault(); dz.classList.remove('dragover');
+    }); });
+    dz.addEventListener('drop', function(e){
+      e.preventDefault();
+      var file=e.dataTransfer.files && e.dataTransfer.files[0];
+      if(file) handleAaUpload(dz.dataset.slot, file);
+    });
+  });
+  row.querySelectorAll('.aaChangeBtn').forEach(function(btn){
+    btn.addEventListener('click', function(){ pickAaFile(btn.dataset.slot); });
+  });
+  row.querySelectorAll('.aaDeleteBtn').forEach(function(btn){
+    btn.addEventListener('click', function(){ handleAaDelete(btn.dataset.slot); });
+  });
+}
+
+function pickAaFile(slot){
+  var input=document.createElement('input');
+  input.type='file';
+  input.accept='image/*';
+  input.addEventListener('change', function(){
+    if(input.files[0]) handleAaUpload(slot, input.files[0]);
+  });
+  input.click();
+}
+
+// ズーム表示。オーバーレイ内でマウスを動かすと、カーソルのある部分をさらに拡大する(虫眼鏡的な動作)。pricing.htmlと同じ挙動。
+function openAaZoom(src){
+  var zoomImg=document.getElementById('aaZoomImg');
+  zoomImg.src=src;
+  zoomImg.style.transform='scale(1)';
+  document.getElementById('aaZoomOverlay').classList.add('open');
+}
+
+async function updateAaPhotoCount(vin, data){
+  var count=[data&&data.img1, data&&data.img2].filter(Boolean).length;
+  try{
+    var snap=await get(ref(db,'adsData/aaPhotoCounts'));
+    var counts=snap.val()||{};
+    if(count>0) counts[vin]=count; else delete counts[vin];
+    await set(ref(db,'adsData/aaPhotoCounts'), counts);
+    aaPhotoCounts[vin]=count;
+    var row=rows.find(function(r){ return r.vin===vin; });
+    if(row){ row.aaCount=count; renderList(); }
+  } catch(err){
+    console.error('updateAaPhotoCount error:', err);
+  }
+}
+
+async function handleAaUpload(slot, file){
+  if(!currentAaVin) return;
+  if(!file.type.startsWith('image/')){ setAaUploadStatus('画像ファイルを選択してください','err'); return; }
+  setAaUploadStatus('圧縮・保存中…');
+  try{
+    var dataUrl=await compressImageFile(file);
+    await set(ref(db,'aaPhotos/'+currentAaVin+'/'+slot), dataUrl);
+    var snap=await get(ref(db,'aaPhotos/'+currentAaVin));
+    var val=snap.val()||{};
+    renderAaSlots(val);
+    await updateAaPhotoCount(currentAaVin, val);
+    setAaUploadStatus('● 保存しました(ciel-systemハブ・ads.html・pricing.htmlにも反映されます)','ok');
+  } catch(err){
+    console.error('handleAaUpload error:', err);
+    setAaUploadStatus('● 保存エラー: '+err.message,'err');
+  }
+}
+
+async function handleAaDelete(slot){
+  if(!currentAaVin) return;
+  setAaUploadStatus('削除中…');
+  try{
+    await set(ref(db,'aaPhotos/'+currentAaVin+'/'+slot), null);
+    var snap=await get(ref(db,'aaPhotos/'+currentAaVin));
+    var val=snap.val()||{};
+    renderAaSlots(val);
+    await updateAaPhotoCount(currentAaVin, val);
+    setAaUploadStatus('● 削除しました','ok');
+  } catch(err){
+    console.error('handleAaDelete error:', err);
+    setAaUploadStatus('● 削除エラー: '+err.message,'err');
+  }
+}
+
+async function openAa(vin){
+  currentAaVin=vin;
+  document.getElementById('aaVinLabel').textContent='車台番号: '+vin;
+  var row=document.getElementById('aaImagesRow');
+  row.innerHTML='<p class="aaEmptyNote">読み込み中…</p>';
+  setAaUploadStatus('');
+  document.getElementById('aaOverlay').style.display='flex';
+  try{
+    var snap=await get(ref(db,'aaPhotos/'+vin));
+    renderAaSlots(snap.val()||{});
+  }catch(err){
+    console.error('openAa error:', err);
+    row.innerHTML='<p class="aaEmptyNote">読み込みエラー: '+err.message+'</p>';
+  }
+}
+function closeAa(){
+  document.getElementById('aaOverlay').style.display='none';
+}
+document.getElementById('aaCloseBtn').addEventListener('click', closeAa);
+document.getElementById('aaOverlay').addEventListener('click', function(e){
+  if(e.target.id==='aaOverlay') closeAa();
+});
+document.getElementById('aaZoomOverlay').addEventListener('click', function(e){
+  if(e.target.id==='aaZoomOverlay') document.getElementById('aaZoomOverlay').classList.remove('open');
+});
+document.getElementById('aaZoomImg').addEventListener('mousemove', function(e){
+  var img=e.target;
+  var rect=img.getBoundingClientRect();
+  var x=((e.clientX-rect.left)/rect.width)*100;
+  var y=((e.clientY-rect.top)/rect.height)*100;
+  img.style.transformOrigin=x+'% '+y+'%';
+  img.style.transform='scale(2.5)';
+});
+document.getElementById('aaZoomImg').addEventListener('mouseleave', function(e){
+  e.target.style.transform='scale(1)';
 });
 
 // ---- 文字修正モーダル(車両1台の文字項目をまとめて編集し、保存すると即Firebaseに反映) ----
@@ -1684,6 +1993,39 @@ function printCurrentPreview(){
   });
 }
 
+// ---- 印刷完了時(afterprint)の記録処理(v1.06で追加) ----
+// 印刷ダイアログが閉じたタイミング(実際に印刷した場合・キャンセルした場合の両方で発火)で、
+// ・最終印刷日時(lastPrintedAt)と、その時点の価格(lastPrintedPrice)をFirebaseに記録する
+// ・一括印刷の場合は、対象車両のprintTargetチェックを一律で解除する
+// ブラウザの仕様上、実際に印刷したかキャンセルしたかは区別できないため、
+// どちらの場合も記録・解除する(ユーザー確認済みの仕様)。
+var pendingPrintRecord=null; // {vins:[...], mode:'single'|'bulk'}
+
+async function finalizePrintRecord(){
+  var rec=pendingPrintRecord;
+  pendingPrintRecord=null;
+  if(!rec || !rec.vins || !rec.vins.length) return;
+  var now=Date.now();
+  var updates={};
+  rec.vins.forEach(function(vin){
+    var row=rows.find(function(r){ return r.vin===vin; });
+    var price = row ? row.price : '';
+    updates['priceTagData/'+vin+'/lastPrintedAt']=now;
+    updates['priceTagData/'+vin+'/lastPrintedPrice']=price;
+    if(rec.mode==='bulk'){
+      updates['priceTagData/'+vin+'/printTarget']=false;
+      if(row) row.printTarget=false;
+    }
+    if(row){ row.lastPrintedAt=now; row.lastPrintedPrice=price; row.priceChanged=false; }
+  });
+  try{
+    await update(ref(db), updates);
+  }catch(err){
+    console.error('print record save error:', err);
+  }
+  renderList();
+}
+
 async function printSelectedVehicles(){
   var targets=rows.filter(function(r){ return r.printTarget; });
   if(!targets.length) return;
@@ -1702,11 +2044,31 @@ async function printSelectedVehicles(){
     fitPriceWidthFor(p.paperEl, p.settings);
     fitHlItemsFor(p.paperEl);
   });
+  pendingPrintRecord={ vins: targets.map(function(r){ return r.vin; }), mode:'bulk' };
   window.print();
 }
+// 一覧の「🖨 印刷」ボタン:チェック(printTarget)の状態に関係なく、その1台だけを印刷する。
+async function printSingleVehicle(vin){
+  var row=rows.find(function(r){ return r.vin===vin; });
+  if(!row) return;
+  var stage=document.getElementById('printStage');
+  stage.innerHTML='';
+  var tplId = (row.templateId && priceTagTemplates[row.templateId]) ? row.templateId : (templates[0] && templates[0].id);
+  var tpl = priceTagTemplates[tplId];
+  var settings = tpl ? tpl.settings : DEFAULT_SETTINGS;
+  var paperEl=buildPaperFromFields(row, settings);
+  stage.appendChild(paperEl);
+  await new Promise(function(r){ requestAnimationFrame(r); });
+  fitPriceWidthFor(paperEl, settings);
+  fitHlItemsFor(paperEl);
+  pendingPrintRecord={ vins:[vin], mode:'single' };
+  window.print();
+}
+
 document.getElementById('printSelectedBtn').addEventListener('click', printSelectedVehicles);
 window.addEventListener('afterprint', function(){
   document.getElementById('printStage').innerHTML='';
+  if(pendingPrintRecord) finalizePrintRecord();
 });
 
 // ---- 認証(car-app/ads.html/pricing.htmlと同じ匿名認証) ----
