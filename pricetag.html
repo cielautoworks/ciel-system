@@ -84,21 +84,24 @@
   .modalBtnRow .btn{flex:1;justify-content:center;}
   /* ---- 車両情報の修正モーダル(v1.10〜)：左にAA画像ビューア、右に既存フォーム ---- */
   /* v1.12〜：AA画像をできるだけ大きく、入力欄コラムは幅を半分程度まで狭める */
-  .editModalPanel{width:1500px;max-width:96vw;}
-  .editModalBody{display:flex;gap:20px;align-items:flex-start;}
-  .editModalAaCol{flex:1 1 0;min-width:0;display:flex;flex-direction:column;gap:8px;}
-  .editModalFormCol{flex:0 0 320px;min-width:0;}
-  .editAaSwitchRow{display:flex;gap:6px;}
+  /* v1.13〜：モーダル自体の縦スクロールが発生しないよう、AA画像側の高さを画面内に収まる範囲で
+     自動調整(object-fit:contain)。タイトル文言は非表示、1枚目/2枚目切替ボタンは右の入力欄の下へ移動。 */
+  .editModalPanel{width:1500px;max-width:96vw;display:flex;flex-direction:column;}
+  .editModalBody{display:flex;gap:20px;align-items:stretch;flex:1;min-height:0;}
+  .editModalAaCol{flex:1 1 0;min-width:0;min-height:0;display:flex;flex-direction:column;gap:8px;}
+  .editModalFormCol{flex:0 0 320px;min-width:0;display:flex;flex-direction:column;}
+  .editAaSwitchRow{display:flex;gap:6px;margin-top:14px;padding-top:14px;border-top:1px solid var(--border);}
   .editAaSwitchBtn{flex:1;font-size:12px;font-weight:600;padding:6px 8px;border-radius:6px;border:2px solid var(--border);background:var(--card);color:var(--text-sub);cursor:pointer;}
   .editAaSwitchBtn:hover{background:var(--hover-bg);}
   .editAaSwitchBtn.active{border-color:var(--sky);color:var(--sky);}
-  .editAaImgWrap{min-height:420px;border-radius:8px;border:1px solid var(--border);display:flex;align-items:center;justify-content:center;overflow:hidden;background:var(--hover-bg);}
-  .editAaImgWrap img{width:100%;display:block;cursor:zoom-in;}
+  .editAaImgWrap{flex:1;min-height:200px;border-radius:8px;border:1px solid var(--border);display:flex;align-items:center;justify-content:center;overflow:hidden;background:var(--hover-bg);}
+  .editAaImgWrap img{width:100%;height:100%;object-fit:contain;display:block;cursor:zoom-in;}
   .editAaEmptyNote{color:var(--text-muted);font-size:12px;text-align:center;padding:20px;}
   @media (max-width:860px){
     .editModalPanel{width:94vw;}
     .editModalBody{flex-direction:column;}
     .editModalAaCol{flex:none;width:100%;}
+    .editAaImgWrap{max-height:50vh;}
   }
   .filterbtn{font-size:12.5px;padding:7px 14px;border:1px solid var(--border);border-radius:20px;background:var(--filterbtn-bg);color:var(--text-sub);cursor:pointer;font-weight:600;white-space:nowrap;}
   .filterbtn.active{background:var(--filterbtn-active-bg);color:#fff;border-color:var(--sky);}
@@ -217,7 +220,7 @@
     --priceLabelFont:"Yu Gothic","Meiryo",sans-serif;
     --gradeFont:"Yu Gothic","Meiryo",sans-serif;
     --gradeNoteFont:"Yu Gothic","Meiryo",sans-serif;
-    --priceColor:#dc2626;--headColor:#111827;--accentColor:#dc2626;--accentBg:#fff1f0;--manyenColor:#dc2626;--repairColor:#dc2626;--repairColorHas:#dc2626;
+    --priceColor:#dc2626;--headColor:#111827;--accentColor:#dc2626;--accentBg:#fff1f0;--manyenColor:#dc2626;--repairColor:#dc2626;--repairColorHas:#dc2626;--priceLabelBadgeColor:#2563eb;
     --pricePosX:0;--pricePosY:0;--priceScaleX:1;--priceScaleY:1;
     --labelPosX:0;--labelPosY:0;--labelScaleX:1;--labelScaleY:1;
     --priceLabelEm:1.9;--priceDecTailEm:7;--suffixEm:9;
@@ -276,7 +279,7 @@
   .priceLabelWrap{display:none;position:relative;margin-bottom:.06em;}
   .labelBadge .priceLabelRow{display:none;}
   .labelBadge .priceLabelWrap{display:inline-block;}
-  .priceLabelBadge{display:inline-block;border:.14em solid #2563eb;color:#2563eb;font-weight:var(--priceLabelWeight,900);font-size:calc(var(--priceLabelEm)*.62em);line-height:1.15;text-align:center;padding:.18em .5em;border-radius:.35em;cursor:pointer;font-family:var(--priceLabelFont);
+  .priceLabelBadge{display:inline-block;border:.14em solid var(--priceLabelBadgeColor,#2563eb);color:var(--priceLabelBadgeColor,#2563eb);font-weight:var(--priceLabelWeight,900);font-size:calc(var(--priceLabelEm)*.62em);line-height:1.15;text-align:center;padding:.18em .5em;border-radius:.35em;cursor:pointer;font-family:var(--priceLabelFont);
     transform:translate(calc(var(--labelPosX)*1em),calc(var(--labelPosY)*1em)) scale(var(--labelScaleX),var(--labelScaleY));
     transform-origin:left center;}
   .priceDecTail{font-family:var(--priceFont);font-size:calc(var(--priceDecTailEm)*1em);font-weight:900;color:var(--priceColor);line-height:1;position:relative;z-index:1;}
@@ -330,7 +333,7 @@
 
 <div class="panel">
   <div class="topBar">
-    <h1>プライスシート作成（A3横） <span style="font-size:12px;font-weight:400;opacity:.75;">v1.12</span></h1>
+    <h1>プライスシート作成（A3横） <span style="font-size:12px;font-weight:400;opacity:.75;">v1.14</span></h1>
     <a class="btn" href="./index.html">🏠 一覧へ</a>
     <a class="btn" id="backToAdsLink" href="./ads.html" data-base-href="./ads.html">📊 広告掲載へ</a>
     <a class="btn" id="backToPricingLink" href="./pricing.html" data-base-href="./pricing.html">💰 プライシングへ</a>
@@ -597,12 +600,11 @@
 <div class="modalOverlay" id="editModalOverlay" style="display:none;">
   <div class="modalPanel editModalPanel">
     <div class="modalHeader">
-      <h3>車両情報の修正</h3>
+      <h3></h3>
       <button type="button" class="modalCloseX" id="editModalCloseX">✕</button>
     </div>
     <div class="editModalBody">
       <div class="editModalAaCol">
-        <div class="editAaSwitchRow" id="editAaSwitchRow"></div>
         <div class="editAaImgWrap" id="editAaImgWrap"></div>
       </div>
       <div class="editModalFormCol">
@@ -622,6 +624,7 @@
           <button class="btn main" id="editModalSaveBtn">保存</button>
           <button class="btn" id="editModalCancelBtn">キャンセル</button>
         </div>
+        <div class="editAaSwitchRow" id="editAaSwitchRow"></div>
       </div>
     </div>
   </div>
@@ -785,7 +788,7 @@ const MS_PER_DAY = 86400000;
   var st={priceFont:FONTS[0][1],hlFont:'"Yu Gothic","Meiryo",sans-serif',
     headFont:'"Yu Gothic","Meiryo",sans-serif',manyenFont:'"Yu Gothic","Meiryo",sans-serif',priceLabelFont:'"Yu Gothic","Meiryo",sans-serif',
     gradeFont:'"Yu Gothic","Meiryo",sans-serif',gradeNoteFont:'"Yu Gothic","Meiryo",sans-serif',
-    priceColor:'#dc2626',headColor:'#111827',accentColor:'#dc2626',accentBg:'#fff1f0',manyenColor:'#dc2626',repairColor:'#dc2626',repairColorHas:'#dc2626',
+    priceColor:'#dc2626',headColor:'#111827',accentColor:'#dc2626',accentBg:'#fff1f0',manyenColor:'#dc2626',repairColor:'#dc2626',repairColorHas:'#dc2626',priceLabelBadgeColor:'#2563eb',
     labelStyle:'badge',hlStyle:'pill',priceScaleXOther:1,priceScaleYOther:1,pricePosXOther:0,pricePosYOther:0};
   CFG.forEach(function(c){st[c.k]=c.def;});
   // ---- 価格の数字エフェクト（v1.08〜）：支払総額の数字(priceNum/priceDecTail/万円)にのみ適用 ----
@@ -965,6 +968,7 @@ const MS_PER_DAY = 86400000;
     root.style.setProperty('--manyenColor',st.manyenColor);
     root.style.setProperty('--repairColor',st.repairColor);
     root.style.setProperty('--repairColorHas',st.repairColorHas);
+    root.style.setProperty('--priceLabelBadgeColor',st.priceLabelBadgeColor);
     CFG.forEach(function(c){if(c.css)root.style.setProperty(c.css,st[c.k]);});
     priceMainEl.classList.toggle('labelBadge',st.labelStyle==='badge');
     hlBandEl.classList.toggle('pillStyle',st.hlStyle==='pill');
@@ -1033,7 +1037,7 @@ const MS_PER_DAY = 86400000;
 
   // ---- 色設定（履歴スウォッチ付き） ----
   var HKEY='priceSheetColorHistory.v1';
-  var hist={price:[],head:[],accent:[],manyen:[],repair:[],repairHas:[]};
+  var hist={price:[],head:[],accent:[],manyen:[],repair:[],repairHas:[],labelBadge:[]};
   try{var hs=JSON.parse(localStorage.getItem(HKEY)||'null');if(hs){hist=Object.assign(hist,hs);}}catch(e){}
   function saveHist(){try{localStorage.setItem(HKEY,JSON.stringify(hist));}catch(e){}}
   function addHist(field,color){
@@ -1053,6 +1057,7 @@ const MS_PER_DAY = 86400000;
         else if(field==='manyen'){st.manyenColor=c;manyenI.value=c;}
         else if(field==='repair'){st.repairColor=c;repairI.value=c;}
         else if(field==='repairHas'){st.repairColorHas=c;repairHasI.value=c;}
+        else if(field==='labelBadge'){st.priceLabelBadgeColor=c;labelBadgeI.value=c;}
         else{st.accentColor=c;accentI.value=c;}
         apply();save();
       };
@@ -1075,7 +1080,8 @@ const MS_PER_DAY = 86400000;
   var accentI=colorRow('アクセント色（枠・年式距離バンド）','accent',st.accentColor,function(v){st.accentColor=v;});
   var repairI=colorRow('修復歴表示の色（修復歴なし）','repair',st.repairColor,function(v){st.repairColor=v;});
   var repairHasI=colorRow('修復歴表示の色（修復歴あり）','repairHas',st.repairColorHas,function(v){st.repairColorHas=v;});
-  renderSwatches('price');renderSwatches('head');renderSwatches('accent');renderSwatches('manyen');renderSwatches('repair');
+  var labelBadgeI=colorRow('「支払総額」バッジの色','labelBadge',st.priceLabelBadgeColor,function(v){st.priceLabelBadgeColor=v;});
+  renderSwatches('price');renderSwatches('head');renderSwatches('accent');renderSwatches('manyen');renderSwatches('repair');renderSwatches('repairHas');renderSwatches('labelBadge');
 
   // ---- サイズスライダー ----
   var inputs={};
@@ -1212,7 +1218,7 @@ const MS_PER_DAY = 86400000;
     CFG.forEach(function(c){ if(inputs[c.k]){ inputs[c.k].r.value=st[c.k]; inputs[c.k].v.textContent=st[c.k]; } });
     sel.value=st.priceFont;hsel.value=st.hlFont;headSel.value=st.headFont;manyenSel.value=st.manyenFont;priceLabelSel.value=st.priceLabelFont;
     gradeSel.value=st.gradeFont;gradeNoteSel.value=st.gradeNoteFont;
-    priceI.value=st.priceColor;headI.value=st.headColor;accentI.value=st.accentColor;manyenI.value=st.manyenColor;repairI.value=st.repairColor;repairHasI.value=st.repairColorHas;
+    priceI.value=st.priceColor;headI.value=st.headColor;accentI.value=st.accentColor;manyenI.value=st.manyenColor;repairI.value=st.repairColor;repairHasI.value=st.repairColorHas;labelBadgeI.value=st.priceLabelBadgeColor;
     labelStyleSel.value=st.labelStyle;hlStyleSel.value=st.hlStyle;
     syncPeControlsUI();
   }
@@ -1664,7 +1670,7 @@ function loadTemplateIntoEditor(id){
   // 古いテンプレートに、後から追加された調整項目(CFGの新しいキー)が無い場合は初期値で補う
   CFG.forEach(function(c){ if(!(c.k in st)) st[c.k]=c.def; });
   ['priceFont','hlFont','headFont','manyenFont','priceLabelFont','gradeFont','gradeNoteFont',
-   'priceColor','headColor','accentColor','accentBg','manyenColor','repairColor','repairColorHas',
+   'priceColor','headColor','accentColor','accentBg','manyenColor','repairColor','repairColorHas','priceLabelBadgeColor',
    'labelStyle','hlStyle','priceScaleXOther','priceScaleYOther','pricePosXOther','pricePosYOther'].forEach(function(k){
     if(!(k in st)) st[k]=DEFAULT_SETTINGS[k];
   });
@@ -2136,11 +2142,13 @@ function renderEditAaCol(data){
   var switchRow=document.getElementById('editAaSwitchRow');
   var imgWrap=document.getElementById('editAaImgWrap');
   if(slots.length>=2){
+    switchRow.style.display='flex';
     switchRow.innerHTML=['img1','img2'].map(function(s,i){
       var active=(s===currentEditAaSlot)?' active':'';
       return '<button type="button" class="editAaSwitchBtn'+active+'" data-slot="'+s+'">'+(i===0?'1枚目':'2枚目')+'</button>';
     }).join('');
   }else{
+    switchRow.style.display='none';
     switchRow.innerHTML='';
   }
   if(currentEditAaSlot && currentEditAaPhotos[currentEditAaSlot]){
@@ -2171,6 +2179,7 @@ async function openEditModal(vin){
   document.getElementById('em-price').value=row.price||'';
   document.getElementById('em-repairdetail').value=row.repairDetail||'';
   currentEditAaSlot=null;
+  document.getElementById('editAaSwitchRow').style.display='none';
   document.getElementById('editAaSwitchRow').innerHTML='';
   document.getElementById('editAaImgWrap').innerHTML='<p class="editAaEmptyNote">読み込み中…</p>';
   document.getElementById('editModalOverlay').style.display='flex';
@@ -2297,7 +2306,7 @@ document.getElementById('tplCopyBtn').addEventListener('click', async function()
 
 // ---- 一括印刷(車両ごとに異なるテンプレートを使える) ----
 var FONT_CSS_MAP={priceFont:'--priceFont',hlFont:'--hlFont',headFont:'--headFont',manyenFont:'--manyenFont',priceLabelFont:'--priceLabelFont',gradeFont:'--gradeFont',gradeNoteFont:'--gradeNoteFont'};
-var COLOR_CSS_MAP={priceColor:'--priceColor',headColor:'--headColor',accentColor:'--accentColor',accentBg:'--accentBg',manyenColor:'--manyenColor',repairColor:'--repairColor',repairColorHas:'--repairColorHas'};
+var COLOR_CSS_MAP={priceColor:'--priceColor',headColor:'--headColor',accentColor:'--accentColor',accentBg:'--accentBg',manyenColor:'--manyenColor',repairColor:'--repairColor',repairColorHas:'--repairColorHas',priceLabelBadgeColor:'--priceLabelBadgeColor'};
 
 function applySettingsToPaperEl(paperEl, settings){
   Object.keys(FONT_CSS_MAP).forEach(function(k){ paperEl.style.setProperty(FONT_CSS_MAP[k], settings[k]); });
