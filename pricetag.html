@@ -82,6 +82,23 @@
   .modalFieldsGrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px 14px;}
   .modalBtnRow{display:flex;gap:10px;margin-top:18px;}
   .modalBtnRow .btn{flex:1;justify-content:center;}
+  /* ---- 車両情報の修正モーダル(v1.10〜)：左にAA画像ビューア、右に既存フォーム ---- */
+  .editModalPanel{width:1040px;}
+  .editModalBody{display:flex;gap:20px;align-items:flex-start;}
+  .editModalAaCol{flex:0 0 330px;display:flex;flex-direction:column;gap:8px;}
+  .editModalFormCol{flex:1 1 0;min-width:0;}
+  .editAaSwitchRow{display:flex;gap:6px;}
+  .editAaSwitchBtn{flex:1;font-size:12px;font-weight:600;padding:6px 8px;border-radius:6px;border:2px solid var(--border);background:var(--card);color:var(--text-sub);cursor:pointer;}
+  .editAaSwitchBtn:hover{background:var(--hover-bg);}
+  .editAaSwitchBtn.active{border-color:var(--sky);color:var(--sky);}
+  .editAaImgWrap{min-height:220px;border-radius:8px;border:1px solid var(--border);display:flex;align-items:center;justify-content:center;overflow:hidden;background:var(--hover-bg);}
+  .editAaImgWrap img{width:100%;display:block;cursor:zoom-in;}
+  .editAaEmptyNote{color:var(--text-muted);font-size:12px;text-align:center;padding:20px;}
+  @media (max-width:860px){
+    .editModalPanel{width:94vw;}
+    .editModalBody{flex-direction:column;}
+    .editModalAaCol{flex:none;width:100%;}
+  }
   .filterbtn{font-size:12.5px;padding:7px 14px;border:1px solid var(--border);border-radius:20px;background:var(--filterbtn-bg);color:var(--text-sub);cursor:pointer;font-weight:600;white-space:nowrap;}
   .filterbtn.active{background:var(--filterbtn-active-bg);color:#fff;border-color:var(--sky);}
   details{margin-top:6px;border-top:1px solid var(--border);padding-top:6px;}
@@ -312,7 +329,7 @@
 
 <div class="panel">
   <div class="topBar">
-    <h1>プライスシート作成（A3横） <span style="font-size:12px;font-weight:400;opacity:.75;">v1.09</span></h1>
+    <h1>プライスシート作成（A3横） <span style="font-size:12px;font-weight:400;opacity:.75;">v1.10</span></h1>
     <a class="btn" href="./index.html">🏠 一覧へ</a>
     <a class="btn" id="backToAdsLink" href="./ads.html" data-base-href="./ads.html">📊 広告掲載へ</a>
     <a class="btn" id="backToPricingLink" href="./pricing.html" data-base-href="./pricing.html">💰 プライシングへ</a>
@@ -577,26 +594,34 @@
 <div id="printStage"></div>
 
 <div class="modalOverlay" id="editModalOverlay" style="display:none;">
-  <div class="modalPanel">
+  <div class="modalPanel editModalPanel">
     <div class="modalHeader">
       <h3>車両情報の修正</h3>
       <button type="button" class="modalCloseX" id="editModalCloseX">✕</button>
     </div>
-    <p class="modalVin" id="editModalVin"></p>
-    <div class="modalFieldsGrid">
-      <label class="field"><span>メーカー</span><input type="text" id="em-maker"></label>
-      <label class="field"><span>車名</span><input type="text" id="em-carname"></label>
-      <label class="field wide"><span>グレード・型式</span><input type="text" id="em-grade"></label>
-      <label class="field wide"><span>グレード補記</span><input type="text" id="em-gradenote"></label>
-      <label class="field"><span>年式</span><input type="text" id="em-year"></label>
-      <label class="field"><span>走行距離</span><input type="text" id="em-mileage"></label>
-      <label class="field"><span>車検表示</span><input type="text" id="em-shaken"></label>
-      <label class="field"><span>支払総額(万円)</span><input type="text" id="em-price" inputmode="decimal"></label>
-      <label class="field wide"><span>修復箇所(任意)</span><input type="text" id="em-repairdetail"></label>
-    </div>
-    <div class="modalBtnRow">
-      <button class="btn main" id="editModalSaveBtn">保存</button>
-      <button class="btn" id="editModalCancelBtn">キャンセル</button>
+    <div class="editModalBody">
+      <div class="editModalAaCol">
+        <div class="editAaSwitchRow" id="editAaSwitchRow"></div>
+        <div class="editAaImgWrap" id="editAaImgWrap"></div>
+      </div>
+      <div class="editModalFormCol">
+        <p class="modalVin" id="editModalVin"></p>
+        <div class="modalFieldsGrid">
+          <label class="field"><span>メーカー</span><input type="text" id="em-maker"></label>
+          <label class="field"><span>車名</span><input type="text" id="em-carname"></label>
+          <label class="field wide"><span>グレード・型式</span><input type="text" id="em-grade"></label>
+          <label class="field wide"><span>グレード補記</span><input type="text" id="em-gradenote"></label>
+          <label class="field"><span>年式</span><input type="text" id="em-year"></label>
+          <label class="field"><span>走行距離</span><input type="text" id="em-mileage"></label>
+          <label class="field"><span>車検表示</span><input type="text" id="em-shaken"></label>
+          <label class="field"><span>支払総額(万円)</span><input type="text" id="em-price" inputmode="decimal"></label>
+          <label class="field wide"><span>修復箇所(任意)</span><input type="text" id="em-repairdetail"></label>
+        </div>
+        <div class="modalBtnRow">
+          <button class="btn main" id="editModalSaveBtn">保存</button>
+          <button class="btn" id="editModalCancelBtn">キャンセル</button>
+        </div>
+      </div>
     </div>
   </div>
 </div>
@@ -2095,8 +2120,38 @@ document.getElementById('aaZoomImg').addEventListener('mouseleave', function(e){
 });
 
 // ---- 文字修正モーダル(車両1台の文字項目をまとめて編集し、保存すると即Firebaseに反映) ----
+// v1.10〜：左カラムにAA画像ビューア(閲覧・切替・拡大のみ。差し替え/削除は従来通り一覧の「AA」ボタン専用モーダルで行う)を追加。
 var currentEditVin=null;
-function openEditModal(vin){
+var currentEditAaPhotos=null;
+var currentEditAaSlot=null;
+function renderEditAaCol(data){
+  currentEditAaPhotos=data||{};
+  var slots=['img1','img2'].filter(function(s){ return !!currentEditAaPhotos[s]; });
+  if(!currentEditAaSlot || !currentEditAaPhotos[currentEditAaSlot]){ currentEditAaSlot=slots[0]||null; }
+  var switchRow=document.getElementById('editAaSwitchRow');
+  var imgWrap=document.getElementById('editAaImgWrap');
+  if(slots.length>=2){
+    switchRow.innerHTML=['img1','img2'].map(function(s,i){
+      var active=(s===currentEditAaSlot)?' active':'';
+      return '<button type="button" class="editAaSwitchBtn'+active+'" data-slot="'+s+'">'+(i===0?'1枚目':'2枚目')+'</button>';
+    }).join('');
+  }else{
+    switchRow.innerHTML='';
+  }
+  if(currentEditAaSlot && currentEditAaPhotos[currentEditAaSlot]){
+    imgWrap.innerHTML='<img src="'+currentEditAaPhotos[currentEditAaSlot]+'" id="editAaImg" title="ダブルクリックで拡大">';
+    document.getElementById('editAaImg').addEventListener('dblclick', function(){ openAaZoom(this.src); });
+  }else{
+    imgWrap.innerHTML='<p class="editAaEmptyNote">AA画像未登録</p>';
+  }
+}
+document.getElementById('editAaSwitchRow').addEventListener('click', function(e){
+  var btn=e.target.closest('.editAaSwitchBtn');
+  if(!btn) return;
+  currentEditAaSlot=btn.dataset.slot;
+  renderEditAaCol(currentEditAaPhotos);
+});
+async function openEditModal(vin){
   var row=rows.find(function(r){ return r.vin===vin; });
   if(!row) return;
   currentEditVin=vin;
@@ -2110,11 +2165,23 @@ function openEditModal(vin){
   document.getElementById('em-shaken').value=displayShaken(row.shakenDisp||'');
   document.getElementById('em-price').value=row.price||'';
   document.getElementById('em-repairdetail').value=row.repairDetail||'';
+  currentEditAaSlot=null;
+  document.getElementById('editAaSwitchRow').innerHTML='';
+  document.getElementById('editAaImgWrap').innerHTML='<p class="editAaEmptyNote">読み込み中…</p>';
   document.getElementById('editModalOverlay').style.display='flex';
+  try{
+    var snap=await get(ref(db,'aaPhotos/'+vin));
+    renderEditAaCol(snap.val()||{});
+  }catch(err){
+    console.error('openEditModal aaPhotos error:', err);
+    document.getElementById('editAaImgWrap').innerHTML='<p class="editAaEmptyNote">画像の読み込みに失敗しました</p>';
+  }
 }
 function closeEditModal(){
   document.getElementById('editModalOverlay').style.display='none';
   currentEditVin=null;
+  currentEditAaPhotos=null;
+  currentEditAaSlot=null;
 }
 async function saveEditModal(){
   if(!currentEditVin) return;
