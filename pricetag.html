@@ -199,11 +199,12 @@
     --priceLabelFont:"Yu Gothic","Meiryo",sans-serif;
     --gradeFont:"Yu Gothic","Meiryo",sans-serif;
     --gradeNoteFont:"Yu Gothic","Meiryo",sans-serif;
-    --priceColor:#dc2626;--headColor:#111827;--accentColor:#dc2626;--accentBg:#fff1f0;--manyenColor:#dc2626;--repairColor:#dc2626;
+    --priceColor:#dc2626;--headColor:#111827;--accentColor:#dc2626;--accentBg:#fff1f0;--manyenColor:#dc2626;--repairColor:#dc2626;--repairColorHas:#dc2626;
     --pricePosX:0;--pricePosY:0;--priceScaleX:1;--priceScaleY:1;
     --labelPosX:0;--labelPosY:0;--labelScaleX:1;--labelScaleY:1;
     --priceLabelEm:1.9;--priceDecTailEm:7;--suffixEm:9;
     --hlValEm:5.6;--hlKEm:2.4;--hlBoxEm:1;--hlBorderEm:1;--headEm:2.2;--gradeNoteEm:1.6;--headBorderEm:1;--repairEm:1.8;
+    --manyenWeight:900;--priceLabelWeight:900;
   }
   .wrap{margin:0 auto;}
   .paper{
@@ -222,6 +223,7 @@
   .gradeNote:empty:before{content:attr(data-ph);opacity:.35;}
   .repairRow{display:flex;flex-wrap:wrap;align-items:center;gap:.6em;margin-top:.3em;min-height:1.3em;}
   .repairBadge{flex:none;display:inline-block;border:.14em solid var(--repairColor);color:var(--repairColor);font-weight:900;font-size:calc(var(--repairEm)*1em);padding:.12em .6em;border-radius:.3em;white-space:nowrap;font-family:var(--headFont);}
+  .repairBadge.hasRepair{border-color:var(--repairColorHas);color:var(--repairColorHas);}
   .repairDetail{flex:1;min-width:0;font-size:1em;color:#374151;}
   .repairDetail:empty:before{content:attr(data-ph);opacity:.35;}
   [contenteditable]{outline:none;}
@@ -232,7 +234,7 @@
   .priceRow{display:flex;align-items:stretch;gap:1.4em;flex:1 1 0;min-height:0;}
   .priceMain{flex:1;display:flex;flex-direction:column;min-height:0;}
   .priceLabelRow{display:flex;align-items:center;gap:.8em;}
-  .priceLabel{border:.18em solid var(--accentColor);color:var(--accentColor);font-weight:900;font-size:calc(var(--priceLabelEm)*1em);padding:.15em .5em;border-radius:.25em;font-family:var(--priceLabelFont);}
+  .priceLabel{border:.18em solid var(--accentColor);color:var(--accentColor);font-weight:var(--priceLabelWeight,900);font-size:calc(var(--priceLabelEm)*1em);padding:.15em .5em;border-radius:.25em;font-family:var(--priceLabelFont);}
   .priceSub{font-size:1.1em;color:#374151;font-weight:700;}
   .priceBoxWrap{flex:1;display:flex;align-items:center;gap:.3em;min-height:0;position:relative;}
   .priceBox{flex:1;height:100%;display:flex;align-items:center;justify-content:flex-start;overflow:visible;min-width:0;position:relative;z-index:1;}
@@ -256,12 +258,12 @@
   .priceLabelWrap{display:none;position:relative;margin-bottom:.06em;}
   .labelBadge .priceLabelRow{display:none;}
   .labelBadge .priceLabelWrap{display:inline-block;}
-  .priceLabelBadge{display:inline-block;border:.14em solid #2563eb;color:#2563eb;font-weight:900;font-size:calc(var(--priceLabelEm)*.62em);line-height:1.15;text-align:center;padding:.18em .5em;border-radius:.35em;cursor:pointer;font-family:var(--priceLabelFont);
+  .priceLabelBadge{display:inline-block;border:.14em solid #2563eb;color:#2563eb;font-weight:var(--priceLabelWeight,900);font-size:calc(var(--priceLabelEm)*.62em);line-height:1.15;text-align:center;padding:.18em .5em;border-radius:.35em;cursor:pointer;font-family:var(--priceLabelFont);
     transform:translate(calc(var(--labelPosX)*1em),calc(var(--labelPosY)*1em)) scale(var(--labelScaleX),var(--labelScaleY));
     transform-origin:left center;}
   .priceDecTail{font-family:var(--priceFont);font-size:calc(var(--priceDecTailEm)*1em);font-weight:900;color:var(--priceColor);line-height:1;position:relative;z-index:1;}
   .priceDecTail:empty{display:none;}
-  .manyen{font-size:calc(var(--suffixEm)*1em);font-weight:900;color:var(--manyenColor);line-height:1;font-family:var(--manyenFont);position:relative;z-index:1;}
+  .manyen{font-size:calc(var(--suffixEm)*1em);font-weight:var(--manyenWeight,900);color:var(--manyenColor);line-height:1;font-family:var(--manyenFont);position:relative;z-index:1;}
   .taxnote{font-size:1.1em;font-weight:700;color:#374151;}
 
   /* ---- 価格の数字エフェクト(v1.08〜)：アウトライン二重／影／グラデーション・ハイライト／背景アクセント ----
@@ -275,7 +277,7 @@
     transform:translate(calc(var(--pricePosX)*1em),calc(var(--pricePosY)*1em)) scale(var(--priceScaleX),var(--priceScaleY));
     transform-origin:left center;}
   .peG-priceDecTail{font-family:var(--priceFont);font-size:calc(var(--priceDecTailEm)*1em);font-weight:900;line-height:1;}
-  .peG-manyen{font-size:calc(var(--suffixEm)*1em);font-weight:900;line-height:1;font-family:var(--manyenFont);}
+  .peG-manyen{font-size:calc(var(--suffixEm)*1em);font-weight:var(--manyenWeight,900);line-height:1;font-family:var(--manyenFont);}
   .peBgAccent{position:absolute;top:50%;left:50%;width:62%;height:62%;transform:translate(-50%,-50%);z-index:0;pointer-events:none;display:none;}
   .peBgAccent.on{display:block;}
   .peBgOutline,.peBgFill{position:absolute;inset:0;}
@@ -310,7 +312,7 @@
 
 <div class="panel">
   <div class="topBar">
-    <h1>プライスシート作成（A3横） <span style="font-size:12px;font-weight:400;opacity:.75;">v1.08</span></h1>
+    <h1>プライスシート作成（A3横） <span style="font-size:12px;font-weight:400;opacity:.75;">v1.09</span></h1>
     <a class="btn" href="./index.html">🏠 一覧へ</a>
     <a class="btn" id="backToAdsLink" href="./ads.html" data-base-href="./ads.html">📊 広告掲載へ</a>
     <a class="btn" id="backToPricingLink" href="./pricing.html" data-base-href="./pricing.html">💰 プライシングへ</a>
@@ -745,7 +747,9 @@ const MS_PER_DAY = 86400000;
     {k:'headEm',n:'メーカー・車名・グレード行の大きさ',min:1.2,max:5,step:.1,def:2.2,css:'--headEm'},
     {k:'gradeNoteEm',n:'グレード補記の大きさ',min:1,max:3.5,step:.1,def:1.6,css:'--gradeNoteEm'},
     {k:'headBorderEm',n:'グレード補記下の線の太さ',min:0,max:5,step:.05,def:1,css:'--headBorderEm'},
-    {k:'repairEm',n:'修復歴バッジの大きさ',min:1,max:5,step:.1,def:1.8,css:'--repairEm'}
+    {k:'repairEm',n:'修復歴バッジの大きさ',min:1,max:5,step:.1,def:1.8,css:'--repairEm'},
+    {k:'manyenWeight',n:'「万円」の太さ',min:300,max:900,step:100,def:900,css:'--manyenWeight'},
+    {k:'priceLabelWeight',n:'「支払総額」ラベルの太さ',min:300,max:900,step:100,def:900,css:'--priceLabelWeight'}
   ];
   var paper=document.getElementById('paper');
   var box=document.getElementById('ctls');
@@ -755,7 +759,7 @@ const MS_PER_DAY = 86400000;
   var st={priceFont:FONTS[0][1],hlFont:'"Yu Gothic","Meiryo",sans-serif',
     headFont:'"Yu Gothic","Meiryo",sans-serif',manyenFont:'"Yu Gothic","Meiryo",sans-serif',priceLabelFont:'"Yu Gothic","Meiryo",sans-serif',
     gradeFont:'"Yu Gothic","Meiryo",sans-serif',gradeNoteFont:'"Yu Gothic","Meiryo",sans-serif',
-    priceColor:'#dc2626',headColor:'#111827',accentColor:'#dc2626',accentBg:'#fff1f0',manyenColor:'#dc2626',repairColor:'#dc2626',
+    priceColor:'#dc2626',headColor:'#111827',accentColor:'#dc2626',accentBg:'#fff1f0',manyenColor:'#dc2626',repairColor:'#dc2626',repairColorHas:'#dc2626',
     labelStyle:'badge',hlStyle:'pill',priceScaleXOther:1,priceScaleYOther:1,pricePosXOther:0,pricePosYOther:0};
   CFG.forEach(function(c){st[c.k]=c.def;});
   // ---- 価格の数字エフェクト（v1.08〜）：支払総額の数字(priceNum/priceDecTail/万円)にのみ適用 ----
@@ -764,20 +768,23 @@ const MS_PER_DAY = 86400000;
   Object.assign(st, {
     peOutline1Pt:0, peOutline1Color:'#ffffff',
     peOutline2Pt:0, peOutline2Color:'#7a0d0d',
+    peOutlineUniform:false, // v1.09〜:ONで太さの基準を大きい数字(priceNum)のサイズに統一する
     peShadowOn:false, peShadowX:6, peShadowY:6, peShadowBlur:4, peShadowColor:'#000000', peShadowAlpha:35,
     peFillStyle:'solid', // 'solid' | 'gradient' | 'highlight'
     peGradColor1:'#ff8a6e', peGradColor2:'#9c0f0f', peGradAngle:180,
     peHlColor:'#ffffff', peHlAngle:180, peHlPos:42, peHlWidth:12,
-    peBgOn:false, peBgColor:'#ffc400', peBgOutlineColor:'#7a4a00', peBgRotate:0, peBgWidth:62, peBgHeight:62, peBgSharp:48
+    peBgOn:false, peBgColor:'#ffc400', peBgOutlineColor:'#7a4a00', peBgRotate:0, peBgWidth:62, peBgHeight:62, peBgSharp:48,
+    peManyenExclude:false // v1.09〜:ONで「万円」にはアウトライン・影・グラデーション/ハイライトを適用しない
   });
   // この時点のst(初期値のみ)を「標準」テンプレートの雛形として控えておく。
   // テンプレートの実体はFirebase(priceTagTemplates)に保存され、下のloadAllData()で読み込まれる。
   var DEFAULT_SETTINGS = JSON.parse(JSON.stringify(st));
-  var PE_DEFAULTS = {peOutline1Pt:0, peOutline1Color:'#ffffff', peOutline2Pt:0, peOutline2Color:'#7a0d0d',
+  var PE_DEFAULTS = {peOutline1Pt:0, peOutline1Color:'#ffffff', peOutline2Pt:0, peOutline2Color:'#7a0d0d', peOutlineUniform:false,
     peShadowOn:false, peShadowX:6, peShadowY:6, peShadowBlur:4, peShadowColor:'#000000', peShadowAlpha:35,
     peFillStyle:'solid', peGradColor1:'#ff8a6e', peGradColor2:'#9c0f0f', peGradAngle:180,
     peHlColor:'#ffffff', peHlAngle:180, peHlPos:42, peHlWidth:12,
-    peBgOn:false, peBgColor:'#ffc400', peBgOutlineColor:'#7a4a00', peBgRotate:0, peBgWidth:62, peBgHeight:62, peBgSharp:48};
+    peBgOn:false, peBgColor:'#ffc400', peBgOutlineColor:'#7a4a00', peBgRotate:0, peBgWidth:62, peBgHeight:62, peBgSharp:48,
+    peManyenExclude:false};
   var LAST_TPL_KEY='priceSheetLastTemplateId.v1';
   var currentTemplateId=null;
   var tplSaveTimer=null;
@@ -820,24 +827,27 @@ const MS_PER_DAY = 86400000;
     cssHost.style.setProperty('--peO2Pt', val('peOutline2Pt'));
     cssHost.style.setProperty('--peO2Color', val('peOutline2Color'));
     var fillSelByGroup={priceNum:'.priceNum',priceDecTail:'.priceDecTail',manyen:'.manyen'};
+    var manyenExcluded = !!val('peManyenExclude');
     ['priceNum','priceDecTail','manyen'].forEach(function(g){
       var wrap=scopeRoot.querySelector('.peWrap[data-peg="'+g+'"]');
       if(!wrap) return;
       var ring1=wrap.querySelector('.peRingO1'), ring2=wrap.querySelector('.peRingO2');
       var fill=wrap.querySelector(fillSelByGroup[g]);
-      if(ring1) ring1.style.display = (parseFloat(val('peOutline1Pt'))>0) ? '' : 'none';
-      if(ring2) ring2.style.display = (parseFloat(val('peOutline2Pt'))>0) ? '' : 'none';
+      var excludeThis = (g==='manyen' && manyenExcluded);
+      if(ring1) ring1.style.display = (!excludeThis && parseFloat(val('peOutline1Pt'))>0) ? '' : 'none';
+      if(ring2) ring2.style.display = (!excludeThis && parseFloat(val('peOutline2Pt'))>0) ? '' : 'none';
       // 影効果：文字(アウトライン込みの輪郭)を図形として扱うdrop-shadow
-      if(val('peShadowOn')){
+      if(!excludeThis && val('peShadowOn')){
         var sc=hexToRgba(val('peShadowColor'), (parseFloat(val('peShadowAlpha'))||0)/100);
         wrap.style.filter='drop-shadow('+val('peShadowX')+'px '+val('peShadowY')+'px '+val('peShadowBlur')+'px '+sc+')';
       }else{
         wrap.style.filter='none';
       }
       // 塗り：無地(既存の色のまま)／グラデーション／ハイライト。アウトラインのリングには適用しない。
+      // 万円を除外設定にしている場合は常に無地(通常色)のまま。
       if(fill){
         fill.style.background='';fill.style.webkitBackgroundClip='';fill.style.backgroundClip='';fill.style.color='';
-        var fillStyle=val('peFillStyle');
+        var fillStyle = excludeThis ? 'solid' : val('peFillStyle');
         var baseColor = g==='manyen' ? (s.manyenColor||'#dc2626') : (s.priceColor||'#dc2626');
         if(fillStyle==='gradient'){
           var c1=val('peGradColor1'), c2=val('peGradColor2'), ang=val('peGradAngle');
@@ -887,6 +897,32 @@ const MS_PER_DAY = 86400000;
       wrap.querySelectorAll('.peRing').forEach(function(r){ r.textContent=txt; });
     });
   }
+  // アウトライン太さ統一(v1.09〜)：OFF(従来)は各要素(priceNum/priceDecTail/万円)自身の
+  // フォントサイズに比例した太さ(CSSのcalc(...*1em)任せ)。ONの場合は"大きい数字"(priceNum)の
+  // 実際のフォントサイズ(px)を基準にして、3要素とも同じピクセル幅のアウトラインになるよう
+  // -webkit-text-stroke-widthだけをインラインで上書きする(色は既存のCSS変数のまま)。
+  // 必ず各要素のfont-sizeが確定した後（fitPriceWidth系の呼び出し後）に実行すること。
+  function applyPeOutlineUniformWidth(scopeRoot, settings){
+    var s = settings || {};
+    function val(k){ return (s[k]!=null) ? s[k] : PE_DEFAULTS[k]; }
+    var rings = scopeRoot.querySelectorAll('.peRing');
+    if(!val('peOutlineUniform')){
+      rings.forEach(function(r){ r.style.webkitTextStrokeWidth=''; });
+      return;
+    }
+    var refEl = scopeRoot.querySelector('.peWrap[data-peg="priceNum"] .priceNum');
+    var refPx = refEl ? parseFloat(getComputedStyle(refEl).fontSize) : 0;
+    if(!refPx){ rings.forEach(function(r){ r.style.webkitTextStrokeWidth=''; }); return; }
+    var pt1=parseFloat(val('peOutline1Pt'))||0, pt2=parseFloat(val('peOutline2Pt'))||0;
+    var w1=(refPx*pt1*.022)+'px', w2=(refPx*(pt1+pt2)*.022)+'px';
+    ['priceNum','priceDecTail','manyen'].forEach(function(g){
+      var wrap=scopeRoot.querySelector('.peWrap[data-peg="'+g+'"]');
+      if(!wrap) return;
+      var ring1=wrap.querySelector('.peRingO1'), ring2=wrap.querySelector('.peRingO2');
+      if(ring1) ring1.style.webkitTextStrokeWidth=w1;
+      if(ring2) ring2.style.webkitTextStrokeWidth=w2;
+    });
+  }
 
   function apply(){
     root.style.setProperty('--priceFont',st.priceFont);
@@ -902,6 +938,7 @@ const MS_PER_DAY = 86400000;
     root.style.setProperty('--accentBg',st.accentBg);
     root.style.setProperty('--manyenColor',st.manyenColor);
     root.style.setProperty('--repairColor',st.repairColor);
+    root.style.setProperty('--repairColorHas',st.repairColorHas);
     CFG.forEach(function(c){if(c.css)root.style.setProperty(c.css,st[c.k]);});
     priceMainEl.classList.toggle('labelBadge',st.labelStyle==='badge');
     hlBandEl.classList.toggle('pillStyle',st.hlStyle==='pill');
@@ -913,6 +950,9 @@ const MS_PER_DAY = 86400000;
     fitPreviewSize();
     fitPriceWidth();
     fitHlItems();
+    // アウトライン太さ統一は各要素のfont-sizeが確定した後でないと正しい基準px幅を計算できないため、
+    // 必ずfitPriceWidth()より後に呼ぶ。
+    applyPeOutlineUniformWidth(document, st);
     priceDrag.positionHandles();
     labelDrag.positionHandles();
   }
@@ -967,7 +1007,7 @@ const MS_PER_DAY = 86400000;
 
   // ---- 色設定（履歴スウォッチ付き） ----
   var HKEY='priceSheetColorHistory.v1';
-  var hist={price:[],head:[],accent:[],manyen:[],repair:[]};
+  var hist={price:[],head:[],accent:[],manyen:[],repair:[],repairHas:[]};
   try{var hs=JSON.parse(localStorage.getItem(HKEY)||'null');if(hs){hist=Object.assign(hist,hs);}}catch(e){}
   function saveHist(){try{localStorage.setItem(HKEY,JSON.stringify(hist));}catch(e){}}
   function addHist(field,color){
@@ -986,6 +1026,7 @@ const MS_PER_DAY = 86400000;
         else if(field==='head'){st.headColor=c;headI.value=c;}
         else if(field==='manyen'){st.manyenColor=c;manyenI.value=c;}
         else if(field==='repair'){st.repairColor=c;repairI.value=c;}
+        else if(field==='repairHas'){st.repairColorHas=c;repairHasI.value=c;}
         else{st.accentColor=c;accentI.value=c;}
         apply();save();
       };
@@ -1006,7 +1047,8 @@ const MS_PER_DAY = 86400000;
   var manyenI=colorRow('「万円」の色','manyen',st.manyenColor,function(v){st.manyenColor=v;});
   var headI=colorRow('車名・見出しの色','head',st.headColor,function(v){st.headColor=v;});
   var accentI=colorRow('アクセント色（枠・年式距離バンド）','accent',st.accentColor,function(v){st.accentColor=v;});
-  var repairI=colorRow('修復歴表示の色','repair',st.repairColor,function(v){st.repairColor=v;});
+  var repairI=colorRow('修復歴表示の色（修復歴なし）','repair',st.repairColor,function(v){st.repairColor=v;});
+  var repairHasI=colorRow('修復歴表示の色（修復歴あり）','repairHas',st.repairColorHas,function(v){st.repairColorHas=v;});
   renderSwatches('price');renderSwatches('head');renderSwatches('accent');renderSwatches('manyen');renderSwatches('repair');
 
   // ---- サイズスライダー ----
@@ -1063,13 +1105,18 @@ const MS_PER_DAY = 86400000;
     (parentEl||peBox).appendChild(d);
   }
 
+  var peManyenExcludeC=peCheckRow('「万円」には効果をかけない','peManyenExclude');
+  peNote('ONの場合、「万円」の文字にはアウトライン・影・グラデーション/ハイライトを適用せず、通常の色のまま表示します（太さ調整は下の「万円の太さ」で別途行えます）。');
+
   peGroupTitle('アウトライン1（内側）');
   var peO1ColorI=peColorRow('色','peOutline1Color');
-  peRangeRow('太さ(pt)','peOutline1Pt',0,20,.5);
+  peRangeRow('太さ(pt)','peOutline1Pt',0,20,.1);
   peGroupTitle('アウトライン2（外側）');
   var peO2ColorI=peColorRow('色','peOutline2Color');
-  peRangeRow('太さ(pt)','peOutline2Pt',0,20,.5);
+  peRangeRow('太さ(pt)','peOutline2Pt',0,20,.1);
   peNote('アウトライン1のさらに外側に重ねます。どちらも太さ0でOFFにできます。');
+  var peOutlineUniformC=peCheckRow('アウトラインの太さを統一する（大きい数字基準）','peOutlineUniform');
+  peNote('OFF（既定）は文字サイズの比率どおりにアウトラインの太さが変わります。ONにすると、万円・小数部も「大きい数字」と同じ太さになります。');
 
   peGroupTitle('影効果（文字を図形として影をつける）');
   var peShadowBody=document.createElement('div');
@@ -1114,8 +1161,8 @@ const MS_PER_DAY = 86400000;
   var peBgColorI=peColorRow('色','peBgColor',peBgBody);
   var peBgOutlineColorI=peColorRow('縁取り色','peBgOutlineColor',peBgBody);
   peRangeRow('回転','peBgRotate',0,360,1,peBgBody);
-  peRangeRow('横幅(%)','peBgWidth',30,95,1,peBgBody);
-  peRangeRow('縦幅(%)','peBgHeight',30,95,1,peBgBody);
+  peRangeRow('横幅(%)','peBgWidth',30,150,1,peBgBody);
+  peRangeRow('縦幅(%)','peBgHeight',30,150,1,peBgBody);
   peRangeRow('尖り具合(%)','peBgSharp',10,85,1,peBgBody);
   peNote('尖り具合は数値が小さいほど鋭く尖り、大きいほど丸みを帯びます。',peBgBody);
   peBgBody.style.display=st.peBgOn?'':'none';
@@ -1139,7 +1186,7 @@ const MS_PER_DAY = 86400000;
     CFG.forEach(function(c){ if(inputs[c.k]){ inputs[c.k].r.value=st[c.k]; inputs[c.k].v.textContent=st[c.k]; } });
     sel.value=st.priceFont;hsel.value=st.hlFont;headSel.value=st.headFont;manyenSel.value=st.manyenFont;priceLabelSel.value=st.priceLabelFont;
     gradeSel.value=st.gradeFont;gradeNoteSel.value=st.gradeNoteFont;
-    priceI.value=st.priceColor;headI.value=st.headColor;accentI.value=st.accentColor;manyenI.value=st.manyenColor;repairI.value=st.repairColor;
+    priceI.value=st.priceColor;headI.value=st.headColor;accentI.value=st.accentColor;manyenI.value=st.manyenColor;repairI.value=st.repairColor;repairHasI.value=st.repairColorHas;
     labelStyleSel.value=st.labelStyle;hlStyleSel.value=st.hlStyle;
     syncPeControlsUI();
   }
@@ -1438,7 +1485,9 @@ const MS_PER_DAY = 86400000;
   // 修復歴（なし／あり）：選択に応じて用紙側のバッジ文言を切替
   var repairSel=document.getElementById('in-repair'),repairBadgeEl=document.getElementById('p-repair-badge');
   function syncRepairBadge(){
-    repairBadgeEl.textContent = repairSel.value==='has' ? '修復歴あり' : '修復歴なし';
+    var has = repairSel.value==='has';
+    repairBadgeEl.textContent = has ? '修復歴あり' : '修復歴なし';
+    repairBadgeEl.classList.toggle('hasRepair', has);
   }
   repairSel.addEventListener('change',syncRepairBadge);
 
@@ -1585,7 +1634,7 @@ function loadTemplateIntoEditor(id){
   // 古いテンプレートに、後から追加された調整項目(CFGの新しいキー)が無い場合は初期値で補う
   CFG.forEach(function(c){ if(!(c.k in st)) st[c.k]=c.def; });
   ['priceFont','hlFont','headFont','manyenFont','priceLabelFont','gradeFont','gradeNoteFont',
-   'priceColor','headColor','accentColor','accentBg','manyenColor','repairColor',
+   'priceColor','headColor','accentColor','accentBg','manyenColor','repairColor','repairColorHas',
    'labelStyle','hlStyle','priceScaleXOther','priceScaleYOther','pricePosXOther','pricePosYOther'].forEach(function(k){
     if(!(k in st)) st[k]=DEFAULT_SETTINGS[k];
   });
@@ -2176,7 +2225,7 @@ document.getElementById('tplCopyBtn').addEventListener('click', async function()
 
 // ---- 一括印刷(車両ごとに異なるテンプレートを使える) ----
 var FONT_CSS_MAP={priceFont:'--priceFont',hlFont:'--hlFont',headFont:'--headFont',manyenFont:'--manyenFont',priceLabelFont:'--priceLabelFont',gradeFont:'--gradeFont',gradeNoteFont:'--gradeNoteFont'};
-var COLOR_CSS_MAP={priceColor:'--priceColor',headColor:'--headColor',accentColor:'--accentColor',accentBg:'--accentBg',manyenColor:'--manyenColor',repairColor:'--repairColor'};
+var COLOR_CSS_MAP={priceColor:'--priceColor',headColor:'--headColor',accentColor:'--accentColor',accentBg:'--accentBg',manyenColor:'--manyenColor',repairColor:'--repairColor',repairColorHas:'--repairColorHas'};
 
 function applySettingsToPaperEl(paperEl, settings){
   Object.keys(FONT_CSS_MAP).forEach(function(k){ paperEl.style.setProperty(FONT_CSS_MAP[k], settings[k]); });
@@ -2255,6 +2304,7 @@ function buildPaperFromFields(fields, settings){
   paperEl.querySelector('.gradeInline').textContent=fields.grade||'';
   paperEl.querySelector('.gradeNote').textContent=fields.gradeNote||'';
   paperEl.querySelector('.repairBadge').textContent = fields.repair==='has' ? '修復歴あり' : '修復歴なし';
+  paperEl.querySelector('.repairBadge').classList.toggle('hasRepair', fields.repair==='has');
   paperEl.querySelector('.repairDetail').textContent=fields.repairDetail||'';
   var priceStr=(fields.price==null?'':String(fields.price));
   var m=/^([^.]*)(\..*)?$/.exec(priceStr);
@@ -2289,6 +2339,7 @@ function printCurrentPreview(){
   requestAnimationFrame(function(){
     fitPriceWidthFor(paperEl, st);
     fitHlItemsFor(paperEl);
+    applyPeOutlineUniformWidth(paperEl, st);
     window.print();
   });
 }
@@ -2343,6 +2394,7 @@ async function printSelectedVehicles(){
   papers.forEach(function(p){
     fitPriceWidthFor(p.paperEl, p.settings);
     fitHlItemsFor(p.paperEl);
+    applyPeOutlineUniformWidth(p.paperEl, p.settings);
   });
   pendingPrintRecord={ vins: targets.map(function(r){ return r.vin; }), mode:'bulk' };
   window.print();
@@ -2361,6 +2413,7 @@ async function printSingleVehicle(vin){
   await new Promise(function(r){ requestAnimationFrame(r); });
   fitPriceWidthFor(paperEl, settings);
   fitHlItemsFor(paperEl);
+  applyPeOutlineUniformWidth(paperEl, settings);
   pendingPrintRecord={ vins:[vin], mode:'single' };
   window.print();
 }
