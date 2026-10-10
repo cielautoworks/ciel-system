@@ -234,11 +234,11 @@
   .priceLabelRow{display:flex;align-items:center;gap:.8em;}
   .priceLabel{border:.18em solid var(--accentColor);color:var(--accentColor);font-weight:900;font-size:calc(var(--priceLabelEm)*1em);padding:.15em .5em;border-radius:.25em;font-family:var(--priceLabelFont);}
   .priceSub{font-size:1.1em;color:#374151;font-weight:700;}
-  .priceBoxWrap{flex:1;display:flex;align-items:center;gap:.3em;min-height:0;}
-  .priceBox{flex:1;height:100%;display:flex;align-items:center;justify-content:flex-start;overflow:visible;min-width:0;position:relative;}
+  .priceBoxWrap{flex:1;display:flex;align-items:center;gap:.3em;min-height:0;position:relative;}
+  .priceBox{flex:1;height:100%;display:flex;align-items:center;justify-content:flex-start;overflow:visible;min-width:0;position:relative;z-index:1;}
   .priceNum{display:inline-block;font-family:var(--priceFont);font-weight:900;color:var(--priceColor);white-space:nowrap;letter-spacing:-.02em;line-height:1;cursor:pointer;
     transform:translate(calc(var(--pricePosX)*1em),calc(var(--pricePosY)*1em)) scale(var(--priceScaleX),var(--priceScaleY));
-    transform-origin:left center;}
+    transform-origin:left center;position:relative;z-index:1;}
   .priceNum:empty:before{content:attr(data-ph);opacity:.3;}
   .priceSelBox{position:absolute;border:1px dashed #2563eb;box-sizing:border-box;cursor:move;z-index:20;opacity:0;pointer-events:none;}
   .priceSelBox.active{opacity:1;pointer-events:auto;}
@@ -252,17 +252,34 @@
   .priceHandle[data-h="sw"]{left:0;top:100%;cursor:nesw-resize;}
   .priceHandle[data-h="w"]{left:0;top:50%;cursor:ew-resize;}
   @media print{.priceSelBox{display:none!important;}}
-  .priceTail{flex:none;display:flex;flex-direction:column;align-items:flex-start;justify-content:center;gap:.05em;}
+  .priceTail{flex:none;display:flex;flex-direction:column;align-items:flex-start;justify-content:center;gap:.05em;position:relative;z-index:1;}
   .priceLabelWrap{display:none;position:relative;margin-bottom:.06em;}
   .labelBadge .priceLabelRow{display:none;}
   .labelBadge .priceLabelWrap{display:inline-block;}
   .priceLabelBadge{display:inline-block;border:.14em solid #2563eb;color:#2563eb;font-weight:900;font-size:calc(var(--priceLabelEm)*.62em);line-height:1.15;text-align:center;padding:.18em .5em;border-radius:.35em;cursor:pointer;font-family:var(--priceLabelFont);
     transform:translate(calc(var(--labelPosX)*1em),calc(var(--labelPosY)*1em)) scale(var(--labelScaleX),var(--labelScaleY));
     transform-origin:left center;}
-  .priceDecTail{font-family:var(--priceFont);font-size:calc(var(--priceDecTailEm)*1em);font-weight:900;color:var(--priceColor);line-height:1;}
+  .priceDecTail{font-family:var(--priceFont);font-size:calc(var(--priceDecTailEm)*1em);font-weight:900;color:var(--priceColor);line-height:1;position:relative;z-index:1;}
   .priceDecTail:empty{display:none;}
-  .manyen{font-size:calc(var(--suffixEm)*1em);font-weight:900;color:var(--manyenColor);line-height:1;font-family:var(--manyenFont);}
+  .manyen{font-size:calc(var(--suffixEm)*1em);font-weight:900;color:var(--manyenColor);line-height:1;font-family:var(--manyenFont);position:relative;z-index:1;}
   .taxnote{font-size:1.1em;font-weight:700;color:#374151;}
+
+  /* ---- 価格の数字エフェクト(v1.08〜)：アウトライン二重／影／グラデーション・ハイライト／背景アクセント ----
+     支払総額の数字(priceNum/priceDecTail/万円)にのみ適用。各テンプレートの値は
+     --peO1Pt等のCSS変数として要素(ライブ編集時はroot、印刷時は用紙ごとのpaperEl)に設定する。 */
+  .peWrap{position:relative;display:inline-block;}
+  .peRing{position:absolute;top:0;left:0;z-index:0;pointer-events:none;}
+  .peRingO1{-webkit-text-stroke:calc(var(--peO1Pt,0)*.022*1em) var(--peO1Color,#fff);color:var(--peO1Color,#fff);}
+  .peRingO2{-webkit-text-stroke:calc((var(--peO1Pt,0) + var(--peO2Pt,0))*.022*1em) var(--peO2Color,#7a0d0d);color:var(--peO2Color,#7a0d0d);}
+  .peG-priceNum{display:inline-block;font-family:var(--priceFont);font-weight:900;white-space:nowrap;letter-spacing:-.02em;line-height:1;
+    transform:translate(calc(var(--pricePosX)*1em),calc(var(--pricePosY)*1em)) scale(var(--priceScaleX),var(--priceScaleY));
+    transform-origin:left center;}
+  .peG-priceDecTail{font-family:var(--priceFont);font-size:calc(var(--priceDecTailEm)*1em);font-weight:900;line-height:1;}
+  .peG-manyen{font-size:calc(var(--suffixEm)*1em);font-weight:900;line-height:1;font-family:var(--manyenFont);}
+  .peBgAccent{position:absolute;top:50%;left:50%;width:62%;height:62%;transform:translate(-50%,-50%);z-index:0;pointer-events:none;display:none;}
+  .peBgAccent.on{display:block;}
+  .peBgOutline,.peBgFill{position:absolute;inset:0;}
+  @media print{.peRing,.peBgAccent{-webkit-print-color-adjust:exact;print-color-adjust:exact;}}
 
   /* 年式・走行距離・車検：強調表示（帯 or 個別バッジの2スタイルを切替可・文字と枠のサイズは別調整） */
   .hlBand{display:flex;gap:.5em;background:var(--accentBg);border:calc(var(--hlBorderEm)*.12em) solid var(--accentColor);border-radius:.5em;overflow:hidden;flex:none;}
@@ -293,7 +310,7 @@
 
 <div class="panel">
   <div class="topBar">
-    <h1>プライスシート作成（A3横） <span style="font-size:12px;font-weight:400;opacity:.75;">v1.07</span></h1>
+    <h1>プライスシート作成（A3横） <span style="font-size:12px;font-weight:400;opacity:.75;">v1.08</span></h1>
     <a class="btn" href="./index.html">🏠 一覧へ</a>
     <a class="btn" id="backToAdsLink" href="./ads.html" data-base-href="./ads.html">📊 広告掲載へ</a>
     <a class="btn" id="backToPricingLink" href="./pricing.html" data-base-href="./pricing.html">💰 プライシングへ</a>
@@ -385,9 +402,14 @@
                   <span class="priceLabel">支払総額</span>
                   <span class="priceSub">(現金販売価格)</span>
                 </div>
-                <div class="priceBoxWrap">
+                <div class="priceBoxWrap" id="priceBoxWrap">
+                  <div class="peBgAccent" id="peBgAccent" aria-hidden="true"><span class="peBgOutline"></span><span class="peBgFill"></span></div>
                   <div class="priceBox" id="priceBox">
-                    <span class="priceNum" id="priceNum" data-ph="0.0" title="クリックすると上の入力欄にフォーカスします"></span>
+                    <span class="peWrap" id="peWrapPriceNum" data-peg="priceNum">
+                      <span class="peRing peRingO2 peG-priceNum" id="priceNumRing2" aria-hidden="true"></span>
+                      <span class="peRing peRingO1 peG-priceNum" id="priceNumRing1" aria-hidden="true"></span>
+                      <span class="priceNum" id="priceNum" data-ph="0.0" title="クリックすると上の入力欄にフォーカスします"></span>
+                    </span>
                     <div class="priceSelBox" id="priceSelBox" title="ドラッグで移動（枠線上のハンドルでサイズ・縦横比を調整）">
                       <div class="priceHandle" data-h="nw"></div>
                       <div class="priceHandle" data-h="n"></div>
@@ -413,8 +435,16 @@
                         <div class="priceHandle" data-h="w"></div>
                       </div>
                     </span>
-                    <span class="priceDecTail" id="priceDecTail"></span>
-                    <span class="manyen">万円</span>
+                    <span class="peWrap" id="peWrapPriceDecTail" data-peg="priceDecTail">
+                      <span class="peRing peRingO2 peG-priceDecTail" aria-hidden="true"></span>
+                      <span class="peRing peRingO1 peG-priceDecTail" aria-hidden="true"></span>
+                      <span class="priceDecTail" id="priceDecTail"></span>
+                    </span>
+                    <span class="peWrap" id="peWrapManyen" data-peg="manyen">
+                      <span class="peRing peRingO2 peG-manyen" aria-hidden="true">万円</span>
+                      <span class="peRing peRingO1 peG-manyen" aria-hidden="true">万円</span>
+                      <span class="manyen" id="manyenText">万円</span>
+                    </span>
                     <span class="taxnote">(消費税込)</span>
                   </div>
                 </div>
@@ -483,6 +513,12 @@
         <div style="margin-top:10px"><button class="btn" id="resetBtn">調整をリセット</button></div>
         <div class="hint">変更内容はこのテンプレートに自動保存されます(Firebaseで共有)。</div>
       </details>
+
+      <details open>
+        <summary>価格の数字エフェクト（支払総額の数字のみに適用）</summary>
+        <div class="grid" id="peCtls"></div>
+        <div class="hint">アウトライン・影・グラデーション/ハイライト・背景アクセントを組み合わせられます。変更内容はこのテンプレートに自動保存されます(Firebaseで共有)。</div>
+      </details>
     </div>
   </div>
 </div>
@@ -505,13 +541,26 @@
         <span class="priceSub">(現金販売価格)</span>
       </div>
       <div class="priceBoxWrap">
+        <div class="peBgAccent" aria-hidden="true"><span class="peBgOutline"></span><span class="peBgFill"></span></div>
         <div class="priceBox">
-          <span class="priceNum"></span>
+          <span class="peWrap" data-peg="priceNum">
+            <span class="peRing peRingO2 peG-priceNum" aria-hidden="true"></span>
+            <span class="peRing peRingO1 peG-priceNum" aria-hidden="true"></span>
+            <span class="priceNum"></span>
+          </span>
         </div>
         <div class="priceTail">
           <span class="priceLabelWrap"><span class="priceLabelBadge">支払<br>総額</span></span>
-          <span class="priceDecTail"></span>
-          <span class="manyen">万円</span>
+          <span class="peWrap" data-peg="priceDecTail">
+            <span class="peRing peRingO2 peG-priceDecTail" aria-hidden="true"></span>
+            <span class="peRing peRingO1 peG-priceDecTail" aria-hidden="true"></span>
+            <span class="priceDecTail"></span>
+          </span>
+          <span class="peWrap" data-peg="manyen">
+            <span class="peRing peRingO2 peG-manyen" aria-hidden="true">万円</span>
+            <span class="peRing peRingO1 peG-manyen" aria-hidden="true">万円</span>
+            <span class="manyen">万円</span>
+          </span>
           <span class="taxnote">(消費税込)</span>
         </div>
       </div>
@@ -709,9 +758,26 @@ const MS_PER_DAY = 86400000;
     priceColor:'#dc2626',headColor:'#111827',accentColor:'#dc2626',accentBg:'#fff1f0',manyenColor:'#dc2626',repairColor:'#dc2626',
     labelStyle:'badge',hlStyle:'pill',priceScaleXOther:1,priceScaleYOther:1,pricePosXOther:0,pricePosYOther:0};
   CFG.forEach(function(c){st[c.k]=c.def;});
+  // ---- 価格の数字エフェクト（v1.08〜）：支払総額の数字(priceNum/priceDecTail/万円)にのみ適用 ----
+  // 既存テンプレート(このキーを持たない)でも印刷時に未定義エラーにならないよう、
+  // applyPriceEffects() 側でも同じ値をフォールバックとして参照する(PE_DEFAULTS)。
+  Object.assign(st, {
+    peOutline1Pt:0, peOutline1Color:'#ffffff',
+    peOutline2Pt:0, peOutline2Color:'#7a0d0d',
+    peShadowOn:false, peShadowX:6, peShadowY:6, peShadowBlur:4, peShadowColor:'#000000', peShadowAlpha:35,
+    peFillStyle:'solid', // 'solid' | 'gradient' | 'highlight'
+    peGradColor1:'#ff8a6e', peGradColor2:'#9c0f0f', peGradAngle:180,
+    peHlColor:'#ffffff', peHlAngle:180, peHlPos:42, peHlWidth:12,
+    peBgOn:false, peBgColor:'#ffc400', peBgOutlineColor:'#7a4a00', peBgRotate:0, peBgWidth:62, peBgHeight:62, peBgSharp:48
+  });
   // この時点のst(初期値のみ)を「標準」テンプレートの雛形として控えておく。
   // テンプレートの実体はFirebase(priceTagTemplates)に保存され、下のloadAllData()で読み込まれる。
   var DEFAULT_SETTINGS = JSON.parse(JSON.stringify(st));
+  var PE_DEFAULTS = {peOutline1Pt:0, peOutline1Color:'#ffffff', peOutline2Pt:0, peOutline2Color:'#7a0d0d',
+    peShadowOn:false, peShadowX:6, peShadowY:6, peShadowBlur:4, peShadowColor:'#000000', peShadowAlpha:35,
+    peFillStyle:'solid', peGradColor1:'#ff8a6e', peGradColor2:'#9c0f0f', peGradAngle:180,
+    peHlColor:'#ffffff', peHlAngle:180, peHlPos:42, peHlWidth:12,
+    peBgOn:false, peBgColor:'#ffc400', peBgOutlineColor:'#7a4a00', peBgRotate:0, peBgWidth:62, peBgHeight:62, peBgSharp:48};
   var LAST_TPL_KEY='priceSheetLastTemplateId.v1';
   var currentTemplateId=null;
   var tplSaveTimer=null;
@@ -735,6 +801,93 @@ const MS_PER_DAY = 86400000;
     }, 700);
   }
   var root=document.documentElement;
+
+  // ---- 価格の数字エフェクト(v1.08〜)共通ロジック ----
+  // root引数には、ライブ編集プレビューではdocument、印刷用紙の複製では各paperEl要素を渡す。
+  // どちらも同じ関数で扱えるよう、CSS変数の設定先・要素検索をroot基準に統一している。
+  function hexToRgba(hex, alpha){
+    hex = (hex||'#000000').replace('#','');
+    if(hex.length===3) hex = hex.split('').map(function(c){return c+c;}).join('');
+    var r=parseInt(hex.substring(0,2),16)||0, g=parseInt(hex.substring(2,4),16)||0, b=parseInt(hex.substring(4,6),16)||0;
+    return 'rgba('+r+','+g+','+b+','+(alpha==null?1:alpha)+')';
+  }
+  function applyPriceEffects(scopeRoot, settings){
+    var s = settings || {};
+    function val(k){ return (s[k]!=null) ? s[k] : PE_DEFAULTS[k]; }
+    var cssHost = (scopeRoot===document) ? document.documentElement : scopeRoot;
+    cssHost.style.setProperty('--peO1Pt', val('peOutline1Pt'));
+    cssHost.style.setProperty('--peO1Color', val('peOutline1Color'));
+    cssHost.style.setProperty('--peO2Pt', val('peOutline2Pt'));
+    cssHost.style.setProperty('--peO2Color', val('peOutline2Color'));
+    var fillSelByGroup={priceNum:'.priceNum',priceDecTail:'.priceDecTail',manyen:'.manyen'};
+    ['priceNum','priceDecTail','manyen'].forEach(function(g){
+      var wrap=scopeRoot.querySelector('.peWrap[data-peg="'+g+'"]');
+      if(!wrap) return;
+      var ring1=wrap.querySelector('.peRingO1'), ring2=wrap.querySelector('.peRingO2');
+      var fill=wrap.querySelector(fillSelByGroup[g]);
+      if(ring1) ring1.style.display = (parseFloat(val('peOutline1Pt'))>0) ? '' : 'none';
+      if(ring2) ring2.style.display = (parseFloat(val('peOutline2Pt'))>0) ? '' : 'none';
+      // 影効果：文字(アウトライン込みの輪郭)を図形として扱うdrop-shadow
+      if(val('peShadowOn')){
+        var sc=hexToRgba(val('peShadowColor'), (parseFloat(val('peShadowAlpha'))||0)/100);
+        wrap.style.filter='drop-shadow('+val('peShadowX')+'px '+val('peShadowY')+'px '+val('peShadowBlur')+'px '+sc+')';
+      }else{
+        wrap.style.filter='none';
+      }
+      // 塗り：無地(既存の色のまま)／グラデーション／ハイライト。アウトラインのリングには適用しない。
+      if(fill){
+        fill.style.background='';fill.style.webkitBackgroundClip='';fill.style.backgroundClip='';fill.style.color='';
+        var fillStyle=val('peFillStyle');
+        var baseColor = g==='manyen' ? (s.manyenColor||'#dc2626') : (s.priceColor||'#dc2626');
+        if(fillStyle==='gradient'){
+          var c1=val('peGradColor1'), c2=val('peGradColor2'), ang=val('peGradAngle');
+          fill.style.background='linear-gradient('+ang+'deg,'+c1+','+c2+')';
+          fill.style.webkitBackgroundClip='text';fill.style.backgroundClip='text';fill.style.color='transparent';
+        }else if(fillStyle==='highlight'){
+          var hc=val('peHlColor'), pos=parseFloat(val('peHlPos')), w=parseFloat(val('peHlWidth')), hAng=val('peHlAngle');
+          var half=w/2, p0=Math.max(0,pos-half), p1=pos, p2=Math.min(100,pos+half);
+          fill.style.background='linear-gradient('+hAng+'deg,'+baseColor+' 0%,'+baseColor+' '+p0+'%,'+hc+' '+p1+'%,'+baseColor+' '+p2+'%,'+baseColor+' 100%)';
+          fill.style.webkitBackgroundClip='text';fill.style.backgroundClip='text';fill.style.color='transparent';
+        }
+      }
+    });
+    // 背景のアクセント(爆発型)
+    var bg=scopeRoot.querySelector('.peBgAccent');
+    if(bg){
+      var on=!!val('peBgOn');
+      bg.classList.toggle('on', on);
+      if(on){
+        var outlineEl=bg.querySelector('.peBgOutline'), fillEl=bg.querySelector('.peBgFill');
+        var spikes=14, outerR=50, innerRatio=(parseFloat(val('peBgSharp'))||48)/100, innerR=outerR*innerRatio;
+        var pts=[];
+        for(var i=0;i<spikes*2;i++){
+          var jitter=Math.sin(i*2.71)*5;
+          var r=(i%2===0? outerR+jitter : innerR+jitter*0.4);
+          var ang=(Math.PI*2*i)/(spikes*2)-Math.PI/2;
+          pts.push((50+r*Math.cos(ang)).toFixed(1)+'% '+(50+r*Math.sin(ang)).toFixed(1)+'%');
+        }
+        var poly='polygon('+pts.join(',')+')';
+        outlineEl.style.clipPath=poly; outlineEl.style.background=val('peBgOutlineColor');
+        outlineEl.style.transform='scale(1.07) rotate('+val('peBgRotate')+'deg)';
+        fillEl.style.clipPath=poly; fillEl.style.background=val('peBgColor');
+        fillEl.style.transform='rotate('+val('peBgRotate')+'deg)';
+        bg.style.width=val('peBgWidth')+'%';
+        bg.style.height=val('peBgHeight')+'%';
+      }
+    }
+  }
+  // アウトラインのリング(peRing)には実テキストの複製を表示するだけなので、
+  // priceNum/priceDecTailの文字が変わるたびにこちらも同期する(万円は固定文字なので同期不要)。
+  function syncPriceEffectRingsText(scopeRoot){
+    [['priceNum','.priceNum'],['priceDecTail','.priceDecTail']].forEach(function(pair){
+      var wrap=scopeRoot.querySelector('.peWrap[data-peg="'+pair[0]+'"]');
+      if(!wrap) return;
+      var fill=wrap.querySelector(pair[1]);
+      var txt=fill?fill.textContent:'';
+      wrap.querySelectorAll('.peRing').forEach(function(r){ r.textContent=txt; });
+    });
+  }
+
   function apply(){
     root.style.setProperty('--priceFont',st.priceFont);
     root.style.setProperty('--hlFont',st.hlFont);
@@ -752,6 +905,8 @@ const MS_PER_DAY = 86400000;
     CFG.forEach(function(c){if(c.css)root.style.setProperty(c.css,st[c.k]);});
     priceMainEl.classList.toggle('labelBadge',st.labelStyle==='badge');
     hlBandEl.classList.toggle('pillStyle',st.hlStyle==='pill');
+    applyPriceEffects(document, st);
+    syncPriceEffectRingsText(document);
     // 用紙の表示サイズ（em の基準となるwrapのfont-size）を先に確定させてから、
     // それに依存する価格の自動フィット・年式距離車検のフィット・ハンドル位置を計算する。
     // 順番を間違えると、古い基準サイズのまま価格の文字サイズ（2桁/3桁別アスペクト比含む）がずれる。
@@ -866,6 +1021,118 @@ const MS_PER_DAY = 86400000;
     l.appendChild(n);l.appendChild(r);l.appendChild(v);box.appendChild(l);
   });
 
+  // ---- 価格の数字エフェクト(v1.08〜)：アウトライン二重／影／グラデーション・ハイライト／背景アクセント ----
+  var peBox=document.getElementById('peCtls');
+  var peInputs={};
+  function peRangeRow(label,key,min,max,step,parentEl){
+    (parentEl||peBox).appendChild((function(){
+      var l=document.createElement('label');l.className='ctl';
+      var n=document.createElement('span');n.className='n';n.textContent=label;
+      var r=document.createElement('input');r.type='range';r.min=min;r.max=max;r.step=step;r.value=st[key];
+      var v=document.createElement('span');v.className='v';v.textContent=st[key];
+      r.oninput=function(){st[key]=+r.value;v.textContent=r.value;apply();save();};
+      peInputs[key]={r:r,v:v};
+      l.appendChild(n);l.appendChild(r);l.appendChild(v);
+      return l;
+    })());
+  }
+  function peColorRow(label,key,parentEl){
+    var l=document.createElement('label');l.className='ctl wide';
+    var n=document.createElement('span');n.className='n';n.textContent=label;
+    var i=document.createElement('input');i.type='color';i.value=st[key];
+    i.oninput=function(){st[key]=i.value;apply();save();};
+    peInputs[key]={i:i};
+    l.appendChild(n);l.appendChild(i);(parentEl||peBox).appendChild(l);
+    return i;
+  }
+  function peCheckRow(label,key,parentEl,onChange){
+    var l=document.createElement('label');l.className='ctl wide';l.style.display='flex';l.style.alignItems='center';l.style.gap='8px';
+    var c=document.createElement('input');c.type='checkbox';c.checked=!!st[key];
+    var n=document.createElement('span');n.className='n';n.textContent=label;
+    c.onchange=function(){st[key]=c.checked;apply();save();if(onChange)onChange();};
+    peInputs[key]={c:c};
+    l.appendChild(c);l.appendChild(n);(parentEl||peBox).appendChild(l);
+    return c;
+  }
+  function peGroupTitle(text){
+    var h=document.createElement('div');h.className='ctl wide';h.style.fontWeight='700';h.style.marginTop='6px';h.style.color='var(--text)';
+    h.textContent=text;peBox.appendChild(h);
+  }
+  function peNote(text,parentEl){
+    var d=document.createElement('div');d.className='hint';d.style.margin='0 0 4px';d.textContent=text;
+    (parentEl||peBox).appendChild(d);
+  }
+
+  peGroupTitle('アウトライン1（内側）');
+  var peO1ColorI=peColorRow('色','peOutline1Color');
+  peRangeRow('太さ(pt)','peOutline1Pt',0,20,.5);
+  peGroupTitle('アウトライン2（外側）');
+  var peO2ColorI=peColorRow('色','peOutline2Color');
+  peRangeRow('太さ(pt)','peOutline2Pt',0,20,.5);
+  peNote('アウトライン1のさらに外側に重ねます。どちらも太さ0でOFFにできます。');
+
+  peGroupTitle('影効果（文字を図形として影をつける）');
+  var peShadowBody=document.createElement('div');
+  var peShadowOnC=peCheckRow('影を付ける','peShadowOn',peBox,function(){peShadowBody.style.display=st.peShadowOn?'':'none';});
+  peBox.appendChild(peShadowBody);
+  peRangeRow('横方向オフセット','peShadowX',-20,20,.5,peShadowBody);
+  peRangeRow('縦方向オフセット','peShadowY',-20,20,.5,peShadowBody);
+  peRangeRow('ぼかし','peShadowBlur',0,20,.5,peShadowBody);
+  var peShadowColorI=peColorRow('色','peShadowColor',peShadowBody);
+  peRangeRow('濃さ(%)','peShadowAlpha',0,100,1,peShadowBody);
+  peShadowBody.style.display=st.peShadowOn?'':'none';
+
+  peGroupTitle('文字の塗り');
+  var peFillSelL=document.createElement('label');peFillSelL.className='ctl wide';
+  peFillSelL.innerHTML='<span class="n">スタイル</span>';
+  var peFillSel=document.createElement('select');
+  [['solid','無地（通常の色のまま）'],['gradient','グラデーション'],['highlight','ハイライト（光沢）']].forEach(function(o){
+    var op=document.createElement('option');op.value=o[0];op.textContent=o[1];peFillSel.appendChild(op);
+  });
+  peFillSel.value=st.peFillStyle;
+  peFillSelL.appendChild(peFillSel);peBox.appendChild(peFillSelL);
+  var peGradBody=document.createElement('div'); peBox.appendChild(peGradBody);
+  var peGradColor1I=peColorRow('グラデーション色1','peGradColor1',peGradBody);
+  var peGradColor2I=peColorRow('グラデーション色2','peGradColor2',peGradBody);
+  peRangeRow('角度','peGradAngle',0,360,1,peGradBody);
+  var peHlBody=document.createElement('div'); peBox.appendChild(peHlBody);
+  var peHlColorI=peColorRow('ハイライト色','peHlColor',peHlBody);
+  peRangeRow('角度','peHlAngle',0,360,1,peHlBody);
+  peRangeRow('位置(%)','peHlPos',0,100,1,peHlBody);
+  peRangeRow('幅(%)','peHlWidth',1,60,1,peHlBody);
+  function peSyncFillVisibility(){
+    peGradBody.style.display = st.peFillStyle==='gradient' ? '' : 'none';
+    peHlBody.style.display = st.peFillStyle==='highlight' ? '' : 'none';
+  }
+  peFillSel.onchange=function(){st.peFillStyle=peFillSel.value;peSyncFillVisibility();apply();save();};
+  peSyncFillVisibility();
+
+  peGroupTitle('背景のアクセント（爆発型）');
+  var peBgBody=document.createElement('div');
+  var peBgOnC=peCheckRow('背景アクセントを表示','peBgOn',peBox,function(){peBgBody.style.display=st.peBgOn?'':'none';});
+  peBox.appendChild(peBgBody);
+  var peBgColorI=peColorRow('色','peBgColor',peBgBody);
+  var peBgOutlineColorI=peColorRow('縁取り色','peBgOutlineColor',peBgBody);
+  peRangeRow('回転','peBgRotate',0,360,1,peBgBody);
+  peRangeRow('横幅(%)','peBgWidth',30,95,1,peBgBody);
+  peRangeRow('縦幅(%)','peBgHeight',30,95,1,peBgBody);
+  peRangeRow('尖り具合(%)','peBgSharp',10,85,1,peBgBody);
+  peNote('尖り具合は数値が小さいほど鋭く尖り、大きいほど丸みを帯びます。',peBgBody);
+  peBgBody.style.display=st.peBgOn?'':'none';
+
+  function syncPeControlsUI(){
+    Object.keys(peInputs).forEach(function(k){
+      var it=peInputs[k];
+      if(it.r){ it.r.value=st[k]; it.v.textContent=st[k]; }
+      else if(it.i){ it.i.value=st[k]; }
+      else if(it.c){ it.c.checked=!!st[k]; }
+    });
+    peFillSel.value=st.peFillStyle;
+    peShadowBody.style.display=st.peShadowOn?'':'none';
+    peBgBody.style.display=st.peBgOn?'':'none';
+    peSyncFillVisibility();
+  }
+
   // テンプレート切替時(loadTemplateIntoEditor)にも、リセット時にも、
   // st の内容を各UIコントロール(スライダー・セレクト・カラー)に反映するために共通化。
   function syncControlsUI(){
@@ -874,6 +1141,7 @@ const MS_PER_DAY = 86400000;
     gradeSel.value=st.gradeFont;gradeNoteSel.value=st.gradeNoteFont;
     priceI.value=st.priceColor;headI.value=st.headColor;accentI.value=st.accentColor;manyenI.value=st.manyenColor;repairI.value=st.repairColor;
     labelStyleSel.value=st.labelStyle;hlStyleSel.value=st.hlStyle;
+    syncPeControlsUI();
   }
   document.getElementById('resetBtn').onclick=function(){
     Object.keys(st).forEach(function(k){delete st[k];});
@@ -928,10 +1196,18 @@ const MS_PER_DAY = 86400000;
     root.style.setProperty('--pricePosY',st[pricePosYKey()]);
   }
   var PRICE_MIN=4,PRICE_MAX=60,PRICE_STEP=.5;
+  // priceNumのfont-sizeは自動フィット(二分探索)でJSが直接設定するため、
+  // 価格エフェクトのアウトラインリング(peG-priceNum)にも同じfont-sizeをコピーしないと
+  // リングだけ別サイズになってズレてしまう。
+  function syncPriceNumRingFontSize(el){
+    var wrap=el.closest('.peWrap');
+    if(!wrap) return;
+    wrap.querySelectorAll('.peG-priceNum').forEach(function(r){ r.style.fontSize=el.style.fontSize; });
+  }
   function fitPriceWidth(){
     var el=document.getElementById('priceNum');
     var b=document.getElementById('priceBox');
-    if(!el.textContent){el.style.fontSize='';return;}
+    if(!el.textContent){el.style.fontSize='';syncPriceNumRingFontSize(el);return;}
     pushEffectivePriceScaleX();
     pushEffectivePriceScaleY();
     pushEffectivePricePosX();
@@ -953,6 +1229,7 @@ const MS_PER_DAY = 86400000;
     if(digits===2) mult=parseFloat(st.priceDigits2Mult)||1;
     else if(digits===3) mult=parseFloat(st.priceDigits3Mult)||1;
     if(mult!==1) el.style.fontSize=(size*mult)+'em';
+    syncPriceNumRingFontSize(el);
   }
 
   // ---- ペイントの選択枠のような8ハンドル（四隅＝縦横同時、辺＝片方向のみ）＋ 枠内ドラッグで移動 ----
@@ -1172,6 +1449,7 @@ const MS_PER_DAY = 86400000;
     var m=/^([^.]*)(\..*)?$/.exec(v);
     priceNum.textContent=m[1]||'';
     priceDecTail.textContent=m[2]||'';
+    syncPriceEffectRingsText(document);
   }
   priceIn.addEventListener('input',function(){renderPriceNum(priceIn.value);fitPriceWidth();});
   priceNum.addEventListener('click',function(){priceIn.focus();priceIn.select();});
@@ -1311,6 +1589,8 @@ function loadTemplateIntoEditor(id){
    'labelStyle','hlStyle','priceScaleXOther','priceScaleYOther','pricePosXOther','pricePosYOther'].forEach(function(k){
     if(!(k in st)) st[k]=DEFAULT_SETTINGS[k];
   });
+  // 古いテンプレート(価格エフェクト追加前)にはpe*キーが無いので、無ければ初期値で補う
+  Object.keys(PE_DEFAULTS).forEach(function(k){ if(!(k in st)) st[k]=PE_DEFAULTS[k]; });
   document.querySelectorAll('#tplTabs .viewTab').forEach(function(b){ b.classList.toggle('active', b.dataset.tplid===id); });
   var statusEl=document.getElementById('tplSaveStatus');
   if(statusEl) statusEl.textContent='';
@@ -1904,13 +2184,19 @@ function applySettingsToPaperEl(paperEl, settings){
   CFG.forEach(function(c){ if(c.css) paperEl.style.setProperty(c.css, settings[c.k]); });
   paperEl.querySelector('.priceMain').classList.toggle('labelBadge', settings.labelStyle==='badge');
   paperEl.querySelector('.hlBand').classList.toggle('pillStyle', settings.hlStyle==='pill');
+  applyPriceEffects(paperEl, settings);
 }
 // fitPriceWidth()・fitHlItems()(テンプレート編集プレビュー用)と同じロジックを、
 // 任意の用紙要素(印刷ステージ内の複製)に対して行えるよう汎用化したもの。
+function syncPriceNumRingFontSizeFor(el){
+  var wrap=el.closest('.peWrap');
+  if(!wrap) return;
+  wrap.querySelectorAll('.peG-priceNum').forEach(function(r){ r.style.fontSize=el.style.fontSize; });
+}
 function fitPriceWidthFor(paperEl, settings){
   var el=paperEl.querySelector('.priceNum');
   var b=paperEl.querySelector('.priceBox');
-  if(!el.textContent){ el.style.fontSize=''; return; }
+  if(!el.textContent){ el.style.fontSize=''; syncPriceNumRingFontSizeFor(el); return; }
   var d=el.textContent.replace(/\D/g,'').length;
   var xKey = d===2?'priceScaleX2':(d===3?'priceScaleX3':'priceScaleXOther');
   var yKey = d===2?'priceScaleY2':(d===3?'priceScaleY3':'priceScaleYOther');
@@ -1937,6 +2223,7 @@ function fitPriceWidthFor(paperEl, settings){
   if(d===2) mult=parseFloat(settings.priceDigits2Mult)||1;
   else if(d===3) mult=parseFloat(settings.priceDigits3Mult)||1;
   if(mult!==1) el.style.fontSize=(size*mult)+'em';
+  syncPriceNumRingFontSizeFor(el);
 }
 function fitHlItemsFor(paperEl){
   var items=paperEl.querySelectorAll('.hlItem');
@@ -1973,6 +2260,7 @@ function buildPaperFromFields(fields, settings){
   var m=/^([^.]*)(\..*)?$/.exec(priceStr);
   paperEl.querySelector('.priceNum').textContent = m?(m[1]||''):priceStr;
   paperEl.querySelector('.priceDecTail').textContent = m?(m[2]||''):'';
+  syncPriceEffectRingsText(paperEl);
   var vals=paperEl.querySelectorAll('.hlItem .val');
   vals[0].textContent=fields.year||'';
   vals[1].textContent=fields.mileage||'';
