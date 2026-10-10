@@ -83,15 +83,16 @@
   .modalBtnRow{display:flex;gap:10px;margin-top:18px;}
   .modalBtnRow .btn{flex:1;justify-content:center;}
   /* ---- 車両情報の修正モーダル(v1.10〜)：左にAA画像ビューア、右に既存フォーム ---- */
-  .editModalPanel{width:1040px;}
+  /* v1.12〜：AA画像をできるだけ大きく、入力欄コラムは幅を半分程度まで狭める */
+  .editModalPanel{width:1500px;max-width:96vw;}
   .editModalBody{display:flex;gap:20px;align-items:flex-start;}
-  .editModalAaCol{flex:0 0 330px;display:flex;flex-direction:column;gap:8px;}
-  .editModalFormCol{flex:1 1 0;min-width:0;}
+  .editModalAaCol{flex:1 1 0;min-width:0;display:flex;flex-direction:column;gap:8px;}
+  .editModalFormCol{flex:0 0 320px;min-width:0;}
   .editAaSwitchRow{display:flex;gap:6px;}
   .editAaSwitchBtn{flex:1;font-size:12px;font-weight:600;padding:6px 8px;border-radius:6px;border:2px solid var(--border);background:var(--card);color:var(--text-sub);cursor:pointer;}
   .editAaSwitchBtn:hover{background:var(--hover-bg);}
   .editAaSwitchBtn.active{border-color:var(--sky);color:var(--sky);}
-  .editAaImgWrap{min-height:220px;border-radius:8px;border:1px solid var(--border);display:flex;align-items:center;justify-content:center;overflow:hidden;background:var(--hover-bg);}
+  .editAaImgWrap{min-height:420px;border-radius:8px;border:1px solid var(--border);display:flex;align-items:center;justify-content:center;overflow:hidden;background:var(--hover-bg);}
   .editAaImgWrap img{width:100%;display:block;cursor:zoom-in;}
   .editAaEmptyNote{color:var(--text-muted);font-size:12px;text-align:center;padding:20px;}
   @media (max-width:860px){
@@ -329,7 +330,7 @@
 
 <div class="panel">
   <div class="topBar">
-    <h1>プライスシート作成（A3横） <span style="font-size:12px;font-weight:400;opacity:.75;">v1.11</span></h1>
+    <h1>プライスシート作成（A3横） <span style="font-size:12px;font-weight:400;opacity:.75;">v1.12</span></h1>
     <a class="btn" href="./index.html">🏠 一覧へ</a>
     <a class="btn" id="backToAdsLink" href="./ads.html" data-base-href="./ads.html">📊 広告掲載へ</a>
     <a class="btn" id="backToPricingLink" href="./pricing.html" data-base-href="./pricing.html">💰 プライシングへ</a>
