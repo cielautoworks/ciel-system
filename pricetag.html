@@ -293,7 +293,7 @@
 
 <div class="panel">
   <div class="topBar">
-    <h1>プライスシート作成（A3横） <span style="font-size:12px;font-weight:400;opacity:.75;">v1.06</span></h1>
+    <h1>プライスシート作成（A3横） <span style="font-size:12px;font-weight:400;opacity:.75;">v1.07</span></h1>
     <a class="btn" href="./index.html">🏠 一覧へ</a>
     <a class="btn" id="backToAdsLink" href="./ads.html" data-base-href="./ads.html">📊 広告掲載へ</a>
     <a class="btn" id="backToPricingLink" href="./pricing.html" data-base-href="./pricing.html">💰 プライシングへ</a>
@@ -336,6 +336,8 @@
       <button type="button" class="filterbtn" id="filterOver1mBtn" data-filter="over1m">印刷後1カ月経過</button>
       <button type="button" class="filterbtn" id="filterOver2mBtn" data-filter="over2m">印刷後2カ月経過</button>
       <button type="button" class="filterbtn" id="filterPriceChangedBtn" data-filter="priceChanged">価格変更車</button>
+      <button type="button" class="filterbtn" id="filterRepairBtn" data-filter="repairOnly">修復歴あり</button>
+      <button type="button" class="filterbtn" id="filterResetBtn">絞込解除</button>
     </div>
     <div class="tablewrap">
       <table class="listTable">
@@ -1431,7 +1433,7 @@ function matchesSearch(r, q){
 
 // 絞込ボタン(印刷歴がない／印刷後1カ月経過／印刷後2カ月経過／価格変更車):
 // 複数選択可能・AND絞り込み。1カ月/2カ月は閾値方式(その日数以上経過していれば該当。重複あり)。
-var activeFilters={ noPrint:false, over1m:false, over2m:false, priceChanged:false };
+var activeFilters={ noPrint:false, over1m:false, over2m:false, priceChanged:false, repairOnly:false };
 function matchesFilters(r){
   if(activeFilters.noPrint && r.lastPrintedAt) return false;
   if(activeFilters.over1m || activeFilters.over2m){
@@ -1441,6 +1443,7 @@ function matchesFilters(r){
     if(activeFilters.over2m && elapsedDays<60) return false;
   }
   if(activeFilters.priceChanged && !r.priceChanged) return false;
+  if(activeFilters.repairOnly && r.repair!=='has') return false;
   return true;
 }
 
@@ -1563,14 +1566,21 @@ document.getElementById('listTbody').addEventListener('click', function(e){
   if(aaBtn){ openAa(aaBtn.dataset.vin); return; }
 });
 
-// ---- 絞込ボタン(印刷歴がない／印刷後1カ月経過／印刷後2カ月経過／価格変更車) ----
-document.querySelectorAll('.filterRow .filterbtn').forEach(function(btn){
+// ---- 絞込ボタン(印刷歴がない／印刷後1カ月経過／印刷後2カ月経過／価格変更車／修復歴あり) ----
+// data-filter属性を持つボタンのみを対象にする(絞込解除ボタンはdata-filterを持たないため、この汎用トグルの対象外)
+document.querySelectorAll('.filterRow .filterbtn[data-filter]').forEach(function(btn){
   btn.addEventListener('click', function(){
     var key=btn.dataset.filter;
     activeFilters[key]=!activeFilters[key];
     btn.classList.toggle('active', activeFilters[key]);
     renderList();
   });
+});
+// ---- 絞込解除ボタン:有効な絞込を全てOFFに戻す ----
+document.getElementById('filterResetBtn').addEventListener('click', function(){
+  Object.keys(activeFilters).forEach(function(k){ activeFilters[k]=false; });
+  document.querySelectorAll('.filterRow .filterbtn[data-filter]').forEach(function(b){ b.classList.remove('active'); });
+  renderList();
 });
 
 // ---- AA出品票モーダル(アップロード・D&D対応。pricing.html/ciel-systemハブと同じロジックでaaPhotos/{vin}を直接編集) ----
@@ -1847,7 +1857,9 @@ document.getElementById('selectAllBox').addEventListener('change', async functio
 });
 
 document.getElementById('listSearchBox').addEventListener('input', function(){
-  document.getElementById('listSearchClearBtn').style.display = this.value ? '' : 'none';
+  // style.display='' だとCSS側のdisplay:none(初期値)にフォールバックして表示されないバグがあったため、
+  // 明示的に表示用の値(inline-block)をセットするよう修正(v1.07)
+  document.getElementById('listSearchClearBtn').style.display = this.value ? 'inline-block' : 'none';
   renderList();
 });
 document.getElementById('listSearchClearBtn').addEventListener('click', function(){
