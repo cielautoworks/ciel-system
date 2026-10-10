@@ -329,7 +329,7 @@
 
 <div class="panel">
   <div class="topBar">
-    <h1>プライスシート作成（A3横） <span style="font-size:12px;font-weight:400;opacity:.75;">v1.10</span></h1>
+    <h1>プライスシート作成（A3横） <span style="font-size:12px;font-weight:400;opacity:.75;">v1.11</span></h1>
     <a class="btn" href="./index.html">🏠 一覧へ</a>
     <a class="btn" id="backToAdsLink" href="./ads.html" data-base-href="./ads.html">📊 広告掲載へ</a>
     <a class="btn" id="backToPricingLink" href="./pricing.html" data-base-href="./pricing.html">💰 プライシングへ</a>
@@ -1483,6 +1483,10 @@ const MS_PER_DAY = 86400000;
     fitPreviewSize();
     fitPriceWidth();
     fitHlItems();
+    // v1.11バグ修正：アウトライン太さ統一(peOutlineUniform)がONのとき、ここで再計算し忘れると
+    // 文字サイズだけ更新されてアウトラインが古い基準(別PC・タブ開き直し・リサイズ前のサイズ)の
+    // ままズレて太く(または細く)見えてしまう。fitPriceWidth()の直後に必ず再同期する。
+    applyPeOutlineUniformWidth(document, st);
     priceDrag.positionHandles();
     labelDrag.positionHandles();
   }
