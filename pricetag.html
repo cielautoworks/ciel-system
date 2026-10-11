@@ -187,7 +187,10 @@
   .aaBtn.has2{border-color:var(--warn-text);color:var(--warn-text);}
   .aaBtn.has0{opacity:.35;}
   .aaBtn:hover{background:rgba(74,171,207,0.12);}
-  .aaModalPanelPhotos{background:var(--card);border:2px solid var(--border);border-radius:14px;padding:22px 24px;width:98vw;max-width:1800px;max-height:97vh;overflow-y:auto;position:relative;}
+  /* v1.20:背景タップで閉じる機能自体は既にあったが(aaOverlayクリックでclose)、
+     パネルが98vw/97vhとほぼ画面いっぱいで背景(タップ可能な余白)がほとんど無く、
+     実質的に閉じられないのと同じ状態だったため、余白が確実に見える大きさに調整した。 */
+  .aaModalPanelPhotos{background:var(--card);border:2px solid var(--border);border-radius:14px;padding:22px 24px;width:92vw;max-width:1800px;max-height:90vh;overflow-y:auto;position:relative;}
   .aaEmptyNote{color:var(--text-muted);font-size:12px;padding:20px;}
   .aaImagesRow{display:flex;gap:20px;justify-content:center;flex-wrap:nowrap;min-height:300px;align-items:flex-start;}
   .aaSlot{display:flex;flex-direction:column;align-items:center;gap:8px;flex:1 1 0;min-width:0;max-width:860px;}
@@ -202,6 +205,10 @@
   .aaUploadStatus{margin-top:12px;font-size:12px;color:var(--text-sub);min-height:16px;text-align:center;}
   .aaUploadStatus.ok{color:var(--ok-text);}
   .aaUploadStatus.err{color:var(--danger-text);}
+  /* v1.20:一覧の「プレビュー」モーダル。.wrap/.paperは元々テンプレート編集タブの
+     ライブプレビューで使っているクラスをそのまま流用(em基準の仕組みも共通化できるため)。 */
+  .previewModalPanel{width:min(96vw,1500px);max-height:94vh;display:flex;flex-direction:column;}
+  .previewModalStage{flex:1;min-height:0;display:flex;align-items:center;justify-content:center;overflow:hidden;padding:6px;}
   .aaZoomOverlay{position:fixed;inset:0;background:rgba(0,0,0,0.85);display:none;align-items:center;justify-content:center;z-index:300;cursor:zoom-out;}
   .aaZoomOverlay.open{display:flex;}
   .aaZoomOverlay img{max-width:96vw;max-height:96vh;object-fit:contain;cursor:zoom-in;transition:transform .05s linear;}
@@ -350,7 +357,7 @@
 
 <div class="panel">
   <div class="topBar">
-    <h1>プライスシート作成（A3横） <span style="font-size:12px;font-weight:400;opacity:.75;">v1.19</span></h1>
+    <h1>プライスシート作成（A3横） <span style="font-size:12px;font-weight:400;opacity:.75;">v1.20</span></h1>
     <a class="btn" href="./index.html">🏠 一覧へ</a>
     <a class="btn" id="backToAdsLink" href="./ads.html" data-base-href="./ads.html">📊 広告掲載へ</a>
     <a class="btn" id="backToPricingLink" href="./pricing.html" data-base-href="./pricing.html">💰 プライシングへ</a>
@@ -406,7 +413,7 @@
             <th>AA</th>
             <th data-sort="carName" title="クリックで並べ替え">車名</th>
             <th data-sort="grade" title="クリックで並べ替え">グレード</th>
-            <th data-sort="price" title="クリックで並べ替え">総額<br>(万円)</th>
+            <th data-sort="price" title="クリックで並べ替え">総額</th>
             <th data-sort="year" title="クリックで並べ替え">年式</th>
             <th data-sort="mileage" title="クリックで並べ替え">走行</th>
             <th data-sort="shaken" title="クリックで並べ替え">車検</th>
@@ -657,6 +664,19 @@
     <p class="modalVin" id="aaVinLabel"></p>
     <div class="aaImagesRow" id="aaImagesRow"></div>
     <div class="aaUploadStatus" id="aaUploadStatus"></div>
+  </div>
+</div>
+
+<!-- v1.20:一覧の「👁 プレビュー」ボタン:実データ・実テンプレートで価格シートを表示するだけのモーダル(印刷はしない) -->
+<div class="modalOverlay" id="previewModalOverlay" style="display:none;">
+  <div class="modalPanel previewModalPanel">
+    <div class="modalHeader">
+      <h3>プレビュー</h3>
+      <button type="button" class="modalCloseX" id="previewModalCloseX">✕</button>
+    </div>
+    <div class="previewModalStage" id="previewModalStage">
+      <div class="wrap" id="previewModalWrap"></div>
+    </div>
   </div>
 </div>
 <div class="aaZoomOverlay" id="aaZoomOverlay">
@@ -1881,7 +1901,8 @@ function matchesFilters(r){
 }
 
 // v1.19:一覧の並べ替え。列名(th[data-sort])クリックで切替。同じ列を再クリックで昇順⇔降順。
-var sortState={key:null, dir:1};
+// v1.20:初期表示は仕入日の新しい順(降順)にした(以前は常に車台番号の昇順固定だった)。
+var sortState={key:'supplyDate', dir:-1};
 var SORT_GETTERS={
   vin: function(r){ return r.vin||null; },
   supplyDate: function(r){ return r.supplyDate||null; },
@@ -1921,6 +1942,7 @@ document.querySelectorAll('table.listTable thead th[data-sort]').forEach(functio
     renderList();
   });
 });
+updateSortHeaderUI(); // v1.20:初期表示(仕入情報・降順)の矢印表示を最初から反映しておく
 
 // 初期値は広告掲載車両のみ表示。ボタンで全車両表示に切り替えられる(pricing.htmlのfilterbtnと同じ方式)。
 var showAllVehicles=false;
@@ -1968,6 +1990,7 @@ function renderList(){
       '<td>'+(templates.length?('<div class="tplRadioGroup"><div class="tplNames">'+tplNames+'</div><div class="tplRadios">'+tplRadios+'</div></div>'):'<span class="countHint">テンプレート未作成</span>')+'</td>'+
       '<td><div class="rowActionBtns">'+
         '<button type="button" class="btn editRowBtn" data-vin="'+r.vin+'">✎ 編集</button>'+
+        '<button type="button" class="btn previewRowBtn" data-vin="'+r.vin+'">👁 プレビュー</button>'+
         '<button type="button" class="btn printRowBtn" data-vin="'+r.vin+'">🖨 印刷</button>'+
       '</div></td>'+
       renderPrintDateCell(r)+
@@ -2036,6 +2059,8 @@ document.getElementById('listTbody').addEventListener('change', function(e){
 document.getElementById('listTbody').addEventListener('click', function(e){
   var editBtn=e.target.closest('.editRowBtn');
   if(editBtn){ openEditModal(editBtn.dataset.vin); return; }
+  var previewBtn=e.target.closest('.previewRowBtn');
+  if(previewBtn){ openPreviewModal(previewBtn.dataset.vin); return; }
   var printBtn=e.target.closest('.printRowBtn');
   if(printBtn){ printSingleVehicle(printBtn.dataset.vin); return; }
   var aaBtn=e.target.closest('.aaBtn');
@@ -2609,6 +2634,66 @@ async function printSingleVehicle(vin){
   pendingPrintRecord={ vins:[vin], mode:'single' };
   window.print();
 }
+
+// v1.20:一覧の「👁 プレビュー」ボタン。印刷と同じ組み立て(buildPaperFromFields)・
+// フィット処理(fitPriceWidthFor等)をそのまま流用し、印刷せずモーダルで表示するだけのもの。
+// .wrap(previewModalWrap)のサイズ・font-size基準の決め方は、テンプレート編集タブの
+// fitPreviewSize()と同じ考え方(モーダルの表示領域に420:297のアスペクト比で収まる
+// 最大サイズを計算し、その幅の1/100をem基準のpxにする)。
+var previewModalOpen=false;
+var currentPreviewSettings=null;
+function fitPreviewModalSize(){
+  var stage=document.getElementById('previewModalStage');
+  var wrapEl=document.getElementById('previewModalWrap');
+  var availW=stage.clientWidth, availH=stage.clientHeight;
+  if(availW<=0||availH<=0) return;
+  var ratio=420/297;
+  var w=availW, h=w/ratio;
+  if(h>availH){ h=availH; w=h*ratio; }
+  wrapEl.style.width=w+'px';
+  wrapEl.style.height=h+'px';
+  wrapEl.style.fontSize=(w/100)+'px';
+}
+function openPreviewModal(vin){
+  var row=rows.find(function(r){ return r.vin===vin; });
+  if(!row) return;
+  var tplId = (row.templateId && priceTagTemplates[row.templateId]) ? row.templateId : (templates[0] && templates[0].id);
+  var tpl = priceTagTemplates[tplId];
+  var settings = tpl ? tpl.settings : DEFAULT_SETTINGS;
+  var wrapEl=document.getElementById('previewModalWrap');
+  wrapEl.innerHTML='';
+  var paperEl=buildPaperFromFields(row, settings);
+  wrapEl.appendChild(paperEl);
+  document.getElementById('previewModalOverlay').style.display='flex';
+  previewModalOpen=true;
+  currentPreviewSettings=settings;
+  requestAnimationFrame(function(){
+    fitPreviewModalSize();
+    fitPriceWidthFor(paperEl, settings);
+    fitHlItemsFor(paperEl);
+    applyPeOutlineUniformWidth(paperEl, settings);
+  });
+}
+function closePreviewModal(){
+  previewModalOpen=false;
+  currentPreviewSettings=null;
+  document.getElementById('previewModalOverlay').style.display='none';
+  document.getElementById('previewModalWrap').innerHTML='';
+}
+document.getElementById('previewModalCloseX').addEventListener('click', closePreviewModal);
+document.getElementById('previewModalOverlay').addEventListener('click', function(e){
+  if(e.target.id==='previewModalOverlay') closePreviewModal();
+});
+window.addEventListener('resize', function(){
+  if(!previewModalOpen) return;
+  var wrapEl=document.getElementById('previewModalWrap');
+  var paperEl=wrapEl.querySelector('.paper');
+  if(!paperEl) return;
+  fitPreviewModalSize();
+  fitPriceWidthFor(paperEl, currentPreviewSettings||DEFAULT_SETTINGS);
+  fitHlItemsFor(paperEl);
+  applyPeOutlineUniformWidth(paperEl, currentPreviewSettings||DEFAULT_SETTINGS);
+});
 
 document.getElementById('printSelectedBtn').addEventListener('click', printSelectedVehicles);
 window.addEventListener('afterprint', function(){
