@@ -153,6 +153,13 @@
   table.listTable{border-collapse:collapse;width:auto;max-width:100%;font-size:12.5px;color:var(--text);}
   table.listTable th,table.listTable td{border-bottom:1px solid var(--border);padding:6px 8px;text-align:left;vertical-align:middle;white-space:nowrap;}
   table.listTable th{background:var(--thead-bg);font-weight:700;position:sticky;top:0;z-index:1;white-space:normal;}
+  /* v1.19:列名クリックでの並べ替え。矢印は::afterで表示し、並べ替え対象外の列(AA・使用テンプレート・操作)には
+     data-sort属性自体を付けていないため、以下のスタイルも自動的にかからない。 */
+  table.listTable th[data-sort]{cursor:pointer;user-select:none;}
+  table.listTable th[data-sort]:hover{background:var(--hover-bg);}
+  table.listTable th[data-sort]::after{content:'\0020⇅';opacity:.35;font-size:.9em;}
+  table.listTable th[data-sort].sortAsc::after{content:'\0020▲';opacity:1;}
+  table.listTable th[data-sort].sortDesc::after{content:'\0020▼';opacity:1;}
   table.listTable td input[type=text],table.listTable td select{font-size:12px;padding:3px 5px;border:1px solid var(--border);border-radius:4px;box-sizing:border-box;background:var(--card);color:var(--text);}
   .tplRadioGroup{display:flex;flex-direction:column;gap:2px;align-items:center;}
   .tplRadioGroup .tplNames,.tplRadioGroup .tplRadios{display:flex;gap:6px;}
@@ -343,7 +350,7 @@
 
 <div class="panel">
   <div class="topBar">
-    <h1>プライスシート作成（A3横） <span style="font-size:12px;font-weight:400;opacity:.75;">v1.18</span></h1>
+    <h1>プライスシート作成（A3横） <span style="font-size:12px;font-weight:400;opacity:.75;">v1.19</span></h1>
     <a class="btn" href="./index.html">🏠 一覧へ</a>
     <a class="btn" id="backToAdsLink" href="./ads.html" data-base-href="./ads.html">📊 広告掲載へ</a>
     <a class="btn" id="backToPricingLink" href="./pricing.html" data-base-href="./pricing.html">💰 プライシングへ</a>
@@ -394,19 +401,19 @@
         <thead>
           <tr>
             <th><input type="checkbox" id="selectAllBox" title="表示中の車両をすべて選択/解除"></th>
-            <th>車台番号</th>
-            <th>仕入情報</th>
+            <th data-sort="vin" title="クリックで並べ替え">車台</th>
+            <th data-sort="supplyDate" title="クリックで並べ替え">仕入情報</th>
             <th>AA</th>
-            <th>車名</th>
-            <th>グレード</th>
-            <th>支払総額<br>(万円)</th>
-            <th>年式</th>
-            <th>走行距離</th>
-            <th>車検</th>
-            <th>修復歴</th>
+            <th data-sort="carName" title="クリックで並べ替え">車名</th>
+            <th data-sort="grade" title="クリックで並べ替え">グレード</th>
+            <th data-sort="price" title="クリックで並べ替え">総額<br>(万円)</th>
+            <th data-sort="year" title="クリックで並べ替え">年式</th>
+            <th data-sort="mileage" title="クリックで並べ替え">走行</th>
+            <th data-sort="shaken" title="クリックで並べ替え">車検</th>
+            <th data-sort="repair" title="クリックで並べ替え">修復歴</th>
             <th>使用テンプレート</th>
             <th>操作</th>
-            <th>最終印刷日</th>
+            <th data-sort="lastPrintedAt" title="クリックで並べ替え">最終印刷日</th>
           </tr>
         </thead>
         <tbody id="listTbody"></tbody>
@@ -719,6 +726,25 @@ function splitPrintDateTwoLine(ts){
   var d=new Date(ts);
   function pad(n){return (n<10?'0':'')+n;}
   return [String(d.getFullYear()), pad(d.getMonth()+1)+'/'+pad(d.getDate())];
+}
+// v1.19:一覧の並べ替え用。年式("R5年1月"/"H30年"/"2023年1月"等の表示文字列)から
+// normShaken()のym(年*12+月)と同じ考え方で、比較可能な数値を取り出す(表示文字列自体は変更しない)。
+function yearSortValue(yearDisp){
+  if(!yearDisp) return null;
+  var y=null, m=0, mm;
+  if((mm=yearDisp.match(/(\d{4})年/))){ y=parseInt(mm[1],10); }
+  else if((mm=yearDisp.match(/R(\d{1,2})年/))){ y=2018+parseInt(mm[1],10); }
+  else if((mm=yearDisp.match(/H(\d{1,2})年/))){ y=1988+parseInt(mm[1],10); }
+  if(y==null) return null;
+  var mo=yearDisp.match(/年(\d{1,2})月/);
+  if(mo) m=parseInt(mo[1],10);
+  return y*12+m;
+}
+// 走行距離("12.3万km"等)から数値(万km単位)を取り出す。
+function mileageSortValue(mileageDisp){
+  if(!mileageDisp) return null;
+  var m=String(mileageDisp).match(/([\d.]+)/);
+  return m?parseFloat(m[1]):null;
 }
 const TOTAL_ADD = 100000; // pricing.htmlと同じ:支払総額(万円) = 車体価格 + この額
 const MS_PER_DAY = 86400000;
@@ -1812,6 +1838,7 @@ function buildRows(){
       mileage: manual.mileage!=null?manual.mileage:autoMileage,
       shakenDisp: manual.shakenDisp!=null?manual.shakenDisp:autoShakenDisp,
       repair: manual.repair!=null?manual.repair:(autoRepairHas?'has':'none'),
+      shakenYm: shakenInfo?shakenInfo.ym:null, // v1.19:並べ替え用(表示用のshakenDispとは別に保持)
       repairDetail: manual.repairDetail!=null?manual.repairDetail:'',
       price: price,
       printTarget: !!ptd.printTarget,
@@ -1853,6 +1880,48 @@ function matchesFilters(r){
   return true;
 }
 
+// v1.19:一覧の並べ替え。列名(th[data-sort])クリックで切替。同じ列を再クリックで昇順⇔降順。
+var sortState={key:null, dir:1};
+var SORT_GETTERS={
+  vin: function(r){ return r.vin||null; },
+  supplyDate: function(r){ return r.supplyDate||null; },
+  carName: function(r){ return r.carName||null; },
+  grade: function(r){ return r.grade||null; },
+  price: function(r){ var v=parseFloat(r.price); return isNaN(v)?null:v; },
+  year: function(r){ return yearSortValue(r.year); },
+  mileage: function(r){ return mileageSortValue(r.mileage); },
+  shaken: function(r){ return r.shakenYm; },
+  repair: function(r){ return r.repair==='has'?1:0; },
+  lastPrintedAt: function(r){ return r.lastPrintedAt||null; },
+};
+function sortVisibleRows(visible){
+  if(!sortState.key || !SORT_GETTERS[sortState.key]) return visible;
+  var getter=SORT_GETTERS[sortState.key], dir=sortState.dir;
+  return visible.slice().sort(function(a,b){
+    var va=getter(a), vb=getter(b);
+    var aEmpty=(va==null||va==='' ), bEmpty=(vb==null||vb==='');
+    if(aEmpty && bEmpty) return 0;
+    if(aEmpty) return 1; // 空値は常に末尾
+    if(bEmpty) return -1;
+    if(typeof va==='string') return va.localeCompare(vb)*dir;
+    return (va-vb)*dir;
+  });
+}
+function updateSortHeaderUI(){
+  document.querySelectorAll('table.listTable thead th[data-sort]').forEach(function(th){
+    th.classList.remove('sortAsc','sortDesc');
+    if(th.getAttribute('data-sort')===sortState.key){ th.classList.add(sortState.dir===1?'sortAsc':'sortDesc'); }
+  });
+}
+document.querySelectorAll('table.listTable thead th[data-sort]').forEach(function(th){
+  th.addEventListener('click', function(){
+    var key=th.getAttribute('data-sort');
+    if(sortState.key===key){ sortState.dir=-sortState.dir; } else { sortState.key=key; sortState.dir=1; }
+    updateSortHeaderUI();
+    renderList();
+  });
+});
+
 // 初期値は広告掲載車両のみ表示。ボタンで全車両表示に切り替えられる(pricing.htmlのfilterbtnと同じ方式)。
 var showAllVehicles=false;
 function updateShowAllBtnUI(){
@@ -1873,6 +1942,7 @@ function renderList(){
   var q=document.getElementById('listSearchBox').value.trim();
   var tbody=document.getElementById('listTbody');
   var visible=rows.filter(function(r){ return matchesSearch(r,q) && (showAllVehicles || r.isAdListed) && matchesFilters(r); });
+  visible=sortVisibleRows(visible);
   tbody.innerHTML = visible.map(function(r){
     var defaultTplId = templates[0] && templates[0].id;
     var tplNames = templates.map(function(t){ return '<span>'+escapeHtml(t.name)+'</span>'; }).join('');
