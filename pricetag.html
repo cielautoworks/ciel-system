@@ -88,6 +88,9 @@
   .modalVin{font-family:monospace;font-size:12.5px;color:var(--text-sub);margin:0 0 14px;}
   .modalFieldsGrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px 14px;}
   .modalBtnRow{display:flex;gap:10px;margin-top:18px;}
+  /* v1.21:編集モーダル上部の「前の車両/次の車両」ボタン行。.modalBtnRowの見た目(flex:1のボタン2つ)を
+     流用しつつ、位置が一番上(車台番号表示より上)なのでmargin-topではなくmargin-bottomにする。 */
+  .editNavRow{margin-top:0;margin-bottom:12px;}
   .modalBtnRow .btn{flex:1;justify-content:center;}
   /* ---- 車両情報の修正モーダル(v1.10〜)：左にAA画像ビューア、右に既存フォーム ---- */
   /* v1.12〜：AA画像をできるだけ大きく、入力欄コラムは幅を半分程度まで狭める */
@@ -357,7 +360,7 @@
 
 <div class="panel">
   <div class="topBar">
-    <h1>プライスシート作成（A3横） <span style="font-size:12px;font-weight:400;opacity:.75;">v1.20</span></h1>
+    <h1>プライスシート作成（A3横） <span style="font-size:12px;font-weight:400;opacity:.75;">v1.21</span></h1>
     <a class="btn" href="./index.html">🏠 一覧へ</a>
     <a class="btn" id="backToAdsLink" href="./ads.html" data-base-href="./ads.html">📊 広告掲載へ</a>
     <a class="btn" id="backToPricingLink" href="./pricing.html" data-base-href="./pricing.html">💰 プライシングへ</a>
@@ -632,6 +635,10 @@
         <div class="editAaImgWrap" id="editAaImgWrap"></div>
       </div>
       <div class="editModalFormCol">
+        <div class="modalBtnRow editNavRow">
+          <button type="button" class="btn" id="editModalPrevBtn">◀ 前の車両</button>
+          <button type="button" class="btn" id="editModalNextBtn">次の車両 ▶</button>
+        </div>
         <p class="modalVin" id="editModalVin"></p>
         <div class="modalFieldsGrid">
           <label class="field"><span>メーカー</span><input type="text" id="em-maker"></label>
@@ -1903,6 +1910,8 @@ function matchesFilters(r){
 // v1.19:一覧の並べ替え。列名(th[data-sort])クリックで切替。同じ列を再クリックで昇順⇔降順。
 // v1.20:初期表示は仕入日の新しい順(降順)にした(以前は常に車台番号の昇順固定だった)。
 var sortState={key:'supplyDate', dir:-1};
+// v1.21:編集モーダルの前の車両/次の車両ボタン用。renderList()実行の都度、現在表示中の順序で更新する。
+var lastVisibleVins=[];
 var SORT_GETTERS={
   vin: function(r){ return r.vin||null; },
   supplyDate: function(r){ return r.supplyDate||null; },
@@ -1965,6 +1974,10 @@ function renderList(){
   var tbody=document.getElementById('listTbody');
   var visible=rows.filter(function(r){ return matchesSearch(r,q) && (showAllVehicles || r.isAdListed) && matchesFilters(r); });
   visible=sortVisibleRows(visible);
+  // v1.21:編集モーダルの「前の車両/次の車両」ボタンが、今まさに画面に表示されている順序
+  // (検索・絞込・並べ替えを反映した順)で移動できるように、表示順のVIN一覧を控えておく。
+  lastVisibleVins = visible.map(function(r){ return r.vin; });
+  if(document.getElementById('editModalOverlay').style.display!=='none') updateEditNavButtons();
   tbody.innerHTML = visible.map(function(r){
     var defaultTplId = templates[0] && templates[0].id;
     var tplNames = templates.map(function(t){ return '<span>'+escapeHtml(t.name)+'</span>'; }).join('');
@@ -2300,10 +2313,19 @@ document.getElementById('editAaSwitchRow').addEventListener('click', function(e)
   currentEditAaSlot=btn.dataset.slot;
   renderEditAaCol(currentEditAaPhotos);
 });
+// v1.21:「前の車両/次の車両」ボタンの有効/無効を、現在表示中の順序(lastVisibleVins)内での
+// 位置に応じて切り替える。対象のVINが現在の絞込・検索条件で表示されなくなった場合(ボタンを
+// 押した直後に絞込条件が変わった等)も考慮し、見つからない場合は両方とも無効にする。
+function updateEditNavButtons(){
+  var idx=lastVisibleVins.indexOf(currentEditVin);
+  document.getElementById('editModalPrevBtn').disabled = !(idx>0);
+  document.getElementById('editModalNextBtn').disabled = !(idx>=0 && idx<lastVisibleVins.length-1);
+}
 async function openEditModal(vin){
   var row=rows.find(function(r){ return r.vin===vin; });
   if(!row) return;
   currentEditVin=vin;
+  updateEditNavButtons();
   document.getElementById('editModalVin').textContent='車台番号: '+vin;
   document.getElementById('em-maker').value=row.maker||'';
   document.getElementById('em-carname').value=row.carName||'';
@@ -2333,7 +2355,9 @@ function closeEditModal(){
   currentEditAaPhotos=null;
   currentEditAaSlot=null;
 }
-async function saveEditModal(){
+// v1.21:保存処理そのもの(Firebaseへの反映)と、保存後にモーダルを閉じる処理を分離した。
+// 「前の車両/次の車両」ボタンは、モーダルを閉じずに持続したまま保存だけ行いたいため。
+async function persistEditModalFields(){
   if(!currentEditVin) return;
   var vin=currentEditVin;
   var buf={
@@ -2349,11 +2373,29 @@ async function saveEditModal(){
   };
   var row=rows.find(function(r){ return r.vin===vin; });
   if(row) Object.assign(row, buf);
-  closeEditModal();
-  renderList();
   try{ await update(ref(db,'priceTagData/'+vin+'/manual'), buf); }
   catch(err){ console.error('modal save error:', err); alert('保存に失敗しました: '+err.message); }
 }
+async function saveEditModal(){
+  if(!currentEditVin) return;
+  await persistEditModalFields();
+  closeEditModal();
+  renderList();
+}
+// v1.21:「前の車両/次の車両」。現在の入力内容は(確認済みの仕様により)自動的に保存してから、
+// 表示中の一覧の並び(lastVisibleVins、検索・絞込・並べ替えを反映した順序)で隣の車両へ移動する。
+async function navigateEditModal(delta){
+  var idx=lastVisibleVins.indexOf(currentEditVin);
+  if(idx<0) return;
+  var nextIdx=idx+delta;
+  if(nextIdx<0 || nextIdx>=lastVisibleVins.length) return;
+  var nextVin=lastVisibleVins[nextIdx];
+  await persistEditModalFields();
+  renderList();
+  await openEditModal(nextVin);
+}
+document.getElementById('editModalPrevBtn').addEventListener('click', function(){ navigateEditModal(-1); });
+document.getElementById('editModalNextBtn').addEventListener('click', function(){ navigateEditModal(1); });
 document.getElementById('editModalCloseX').addEventListener('click', closeEditModal);
 document.getElementById('editModalCancelBtn').addEventListener('click', closeEditModal);
 document.getElementById('editModalSaveBtn').addEventListener('click', saveEditModal);
