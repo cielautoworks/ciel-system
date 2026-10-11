@@ -360,7 +360,7 @@
 
 <div class="panel">
   <div class="topBar">
-    <h1>プライスシート作成（A3横） <span style="font-size:12px;font-weight:400;opacity:.75;">v1.22</span></h1>
+    <h1>プライスシート作成（A3横） <span style="font-size:12px;font-weight:400;opacity:.75;">v1.23</span></h1>
     <a class="btn" href="./index.html">🏠 一覧へ</a>
     <a class="btn" id="backToAdsLink" href="./ads.html" data-base-href="./ads.html">📊 広告掲載へ</a>
     <a class="btn" id="backToPricingLink" href="./pricing.html" data-base-href="./pricing.html">💰 プライシングへ</a>
@@ -395,6 +395,8 @@
       <span class="countHint" id="listCountHint"></span>
       <span style="flex:1"></span>
       <span class="countHint" id="selectedCountHint">0台選択中</span>
+      <span class="countHint" id="bulkPrintProgress" style="display:none;"></span>
+      <button type="button" class="btn" id="bulkPrintCancelBtn" style="display:none;">印刷を中断</button>
       <button class="btn main" id="printSelectedBtn" disabled>🖨 選択車両を一括印刷</button>
     </div>
     <div class="filterRow">
@@ -2637,12 +2639,42 @@ async function finalizePrintRecord(){
   renderList();
 }
 
-async function printSelectedVehicles(){
-  var targets=rows.filter(function(r){ return r.printTarget; });
-  if(!targets.length) return;
+// v1.23:大量ページ(A3フルカラー)を一度に一括印刷すると、プリンタ側のバッファ超過と
+// 思われる不具合(白紙ページ・印刷崩れ)が発生する問題への対応。
+// 指定台数(BULK_PRINT_BATCH_SIZE)ごとにグループ分けし、印刷ダイアログを閉じるたびに、
+// 少し間をおいて(この間に「印刷を中断」で止められる)自動的に次のグループの印刷
+// ダイアログを開く。選択台数がBULK_PRINT_BATCH_SIZE以下の場合は従来通り1回で印刷する。
+var BULK_PRINT_BATCH_SIZE = 10;
+var BULK_PRINT_DELAY_MS = 1500;
+var bulkPrintQueue = null; // {batches:[[row,...],...], idx:0}
+var bulkPrintTimer = null;
+
+function chunkArray(arr, size){
+  var out=[];
+  for(var i=0;i<arr.length;i+=size){ out.push(arr.slice(i,i+size)); }
+  return out;
+}
+
+function updateBulkPrintProgressUI(waiting){
+  var el=document.getElementById('bulkPrintProgress');
+  var cancelBtn=document.getElementById('bulkPrintCancelBtn');
+  if(bulkPrintQueue && bulkPrintQueue.batches.length>1){
+    el.style.display='';
+    cancelBtn.style.display='';
+    var cur=bulkPrintQueue.idx+1, total=bulkPrintQueue.batches.length;
+    el.textContent = waiting
+      ? ('一括印刷: '+cur+'/'+total+'グループ目を印刷しました。まもなく次のグループの印刷ダイアログが開きます…')
+      : ('一括印刷: '+cur+'/'+total+'グループ目を印刷中…');
+  } else {
+    el.style.display='none';
+    cancelBtn.style.display='none';
+  }
+}
+
+async function renderBulkPrintPapers(batchRows){
   var stage=document.getElementById('printStage');
   stage.innerHTML='';
-  var papers=targets.map(function(row){
+  var papers=batchRows.map(function(row){
     var tplId = (row.templateId && priceTagTemplates[row.templateId]) ? row.templateId : (templates[0] && templates[0].id);
     var tpl = priceTagTemplates[tplId];
     var settings = tpl ? tpl.settings : DEFAULT_SETTINGS;
@@ -2656,8 +2688,29 @@ async function printSelectedVehicles(){
     fitHlItemsFor(p.paperEl);
     applyPeOutlineUniformWidth(p.paperEl, p.settings);
   });
-  pendingPrintRecord={ vins: targets.map(function(r){ return r.vin; }), mode:'bulk' };
+}
+
+async function printNextBulkBatch(){
+  if(!bulkPrintQueue) return;
+  if(bulkPrintQueue.idx >= bulkPrintQueue.batches.length){ bulkPrintQueue=null; updateBulkPrintProgressUI(); return; }
+  updateBulkPrintProgressUI(false);
+  var batch=bulkPrintQueue.batches[bulkPrintQueue.idx];
+  await renderBulkPrintPapers(batch);
+  pendingPrintRecord={ vins: batch.map(function(r){ return r.vin; }), mode:'bulk' };
   window.print();
+}
+
+function cancelBulkPrint(){
+  if(bulkPrintTimer){ clearTimeout(bulkPrintTimer); bulkPrintTimer=null; }
+  bulkPrintQueue=null;
+  updateBulkPrintProgressUI();
+}
+
+async function printSelectedVehicles(){
+  var targets=rows.filter(function(r){ return r.printTarget; });
+  if(!targets.length) return;
+  bulkPrintQueue={ batches: chunkArray(targets, BULK_PRINT_BATCH_SIZE), idx:0 };
+  await printNextBulkBatch();
 }
 // 一覧の「🖨 印刷」ボタン:チェック(printTarget)の状態に関係なく、その1台だけを印刷する。
 async function printSingleVehicle(vin){
@@ -2739,9 +2792,21 @@ window.addEventListener('resize', function(){
 });
 
 document.getElementById('printSelectedBtn').addEventListener('click', printSelectedVehicles);
+document.getElementById('bulkPrintCancelBtn').addEventListener('click', cancelBulkPrint);
 window.addEventListener('afterprint', function(){
   document.getElementById('printStage').innerHTML='';
   if(pendingPrintRecord) finalizePrintRecord();
+  // v1.23:分割一括印刷の続き。次のグループがあれば、少し間をおいてから自動的に印刷する。
+  if(bulkPrintQueue){
+    bulkPrintQueue.idx++;
+    if(bulkPrintQueue.idx < bulkPrintQueue.batches.length){
+      updateBulkPrintProgressUI(true);
+      bulkPrintTimer=setTimeout(function(){ bulkPrintTimer=null; printNextBulkBatch(); }, BULK_PRINT_DELAY_MS);
+    } else {
+      bulkPrintQueue=null;
+      updateBulkPrintProgressUI();
+    }
+  }
 });
 
 // ---- 認証(car-app/ads.html/pricing.htmlと同じ匿名認証) ----
