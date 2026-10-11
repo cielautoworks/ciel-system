@@ -360,7 +360,7 @@
 
 <div class="panel">
   <div class="topBar">
-    <h1>プライスシート作成（A3横） <span style="font-size:12px;font-weight:400;opacity:.75;">v1.21</span></h1>
+    <h1>プライスシート作成（A3横） <span style="font-size:12px;font-weight:400;opacity:.75;">v1.22</span></h1>
     <a class="btn" href="./index.html">🏠 一覧へ</a>
     <a class="btn" id="backToAdsLink" href="./ads.html" data-base-href="./ads.html">📊 広告掲載へ</a>
     <a class="btn" id="backToPricingLink" href="./pricing.html" data-base-href="./pricing.html">💰 プライシングへ</a>
@@ -752,7 +752,8 @@ function splitPrintDateTwoLine(ts){
   if(!ts) return null;
   var d=new Date(ts);
   function pad(n){return (n<10?'0':'')+n;}
-  return [String(d.getFullYear()), pad(d.getMonth()+1)+'/'+pad(d.getDate())];
+  // v1.22:上段「YYYY/MM/DD」・下段「HH:mm」表示に変更
+  return [d.getFullYear()+'/'+pad(d.getMonth()+1)+'/'+pad(d.getDate()), pad(d.getHours())+':'+pad(d.getMinutes())];
 }
 // v1.19:一覧の並べ替え用。年式("R5年1月"/"H30年"/"2023年1月"等の表示文字列)から
 // normShaken()のym(年*12+月)と同じ考え方で、比較可能な数値を取り出す(表示文字列自体は変更しない)。
