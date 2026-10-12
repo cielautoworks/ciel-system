@@ -360,7 +360,7 @@
 
 <div class="panel">
   <div class="topBar">
-    <h1>プライスシート作成（A3横） <span style="font-size:12px;font-weight:400;opacity:.75;">v1.26</span></h1>
+    <h1>プライスシート作成（A3横） <span style="font-size:12px;font-weight:400;opacity:.75;">v1.27</span></h1>
     <a class="btn" href="./index.html">🏠 一覧へ</a>
     <a class="btn" id="backToAdsLink" href="./ads.html" data-base-href="./ads.html">📊 広告掲載へ</a>
     <a class="btn" id="backToPricingLink" href="./pricing.html" data-base-href="./pricing.html">💰 プライシングへ</a>
@@ -822,6 +822,15 @@ const MS_PER_DAY = 86400000;
     {k:'pricePosX3',n:'総額数字の位置（左右）：3桁の時',min:-25,max:25,step:.2,def:0,css:null},
     {k:'pricePosY2',n:'総額数字の位置（上下）：2桁の時',min:-25,max:25,step:.2,def:0,css:null},
     {k:'pricePosY3',n:'総額数字の位置（上下）：3桁の時',min:-25,max:25,step:.2,def:0,css:null},
+    // v1.27:価格の数字(大きい方)の基本サイズを、自動計算(成り行きで枠いっぱいまで広げる)から
+    // 手動固定値に変更。年式・走行距離・車検など他項目の文字量に一切左右されず、編集画面・
+    // プレビュー・印刷・一括印刷のどこでも常に同じサイズになる。枠からはみ出す場合だけ、
+    // 年式等の帯と同様に自動で縮める安全装置を残す(fitPriceWidth/fitPriceWidthFor参照)。
+    // 旧テンプレート(このキーを持たない)は、初回読み込み時に旧方式と同じ結果を1回だけ算出して
+    // 移行するため、見た目は変わらない(migratePriceBaseEmIfNeeded参照)。
+    {k:'priceBaseEm2',n:'価格の基本サイズ：2桁の時',min:4,max:60,step:.5,def:48,css:null},
+    {k:'priceBaseEm3',n:'価格の基本サイズ：3桁の時',min:4,max:60,step:.5,def:36,css:null},
+    {k:'priceBaseEmOther',n:'価格の基本サイズ：1桁/4桁以上の時',min:4,max:60,step:.5,def:30,css:null},
     {k:'priceDigits2Mult',n:'価格が2桁の時の倍率',min:.5,max:1.5,step:.02,def:1,css:null},
     {k:'priceDigits3Mult',n:'価格が3桁の時の倍率',min:.5,max:1.5,step:.02,def:1,css:null},
     // v1.17バグ修正：min(.15)とstep(.02)の組み合わせだと、既定値1.0がステップの刻み目
@@ -1064,8 +1073,11 @@ const MS_PER_DAY = 86400000;
     // 順番を間違えると、古い基準サイズのまま価格の文字サイズ（2桁/3桁別アスペクト比含む）がずれる。
     fitPreviewSize();
     fitHeadLineFor(document);
-    fitPriceWidth();
+    // v1.27:価格の数字の高さ判定は、年式・走行距離・車検の帯が縮み終わった後の高さを基準に
+    // 行う必要があるため、必ずfitHlItems()を先に呼ぶ(逆順だと帯がまだ縮む前の高さで判定して
+    // しまい、本来入るはずのサイズより小さく打ち切られることがあった)。
     fitHlItems();
+    fitPriceWidth();
     // アウトライン太さ統一は各要素のfont-sizeが確定した後でないと正しい基準px幅を計算できないため、
     // 必ずfitPriceWidth()より後に呼ぶ。
     applyPeOutlineUniformWidth(document, st);
@@ -1378,6 +1390,10 @@ const MS_PER_DAY = 86400000;
     if(!wrap) return;
     wrap.querySelectorAll('.peG-priceNum').forEach(function(r){ r.style.fontSize=el.style.fontSize; });
   }
+  // v1.27:基本サイズのキー名(priceBaseEm2/3/Other)を桁数から求める。
+  function priceBaseEmKey(digits){
+    return 'priceBaseEm'+(digits===2?'2':(digits===3?'3':'Other'));
+  }
   function fitPriceWidth(){
     var el=document.getElementById('priceNum');
     var b=document.getElementById('priceBox');
@@ -1387,18 +1403,35 @@ const MS_PER_DAY = 86400000;
     pushEffectivePricePosX();
     pushEffectivePricePosY();
     var scaleX=parseFloat(st[priceScaleXKey()])||1;
-    var size=PRICE_MIN;
-    el.style.fontSize=size+'em';
-    while(size<PRICE_MAX){
-      var next=size+PRICE_STEP;
-      el.style.fontSize=next+'em';
-      var effWidth=el.scrollWidth*scaleX;
-      if(effWidth>b.clientWidth || el.scrollHeight>b.clientHeight){
-        el.style.fontSize=size+'em';break;
-      }
-      size=next;
-    }
     var digits=currentPriceDigits();
+    var baseEm=parseFloat(st[priceBaseEmKey(digits)]);
+    var size;
+    if(!isNaN(baseEm) && baseEm>0){
+      // v1.27:固定値(テンプレートで手動調整したサイズ)をそのまま使う。他の項目の文字量には
+      // 左右されない。万一枠からはみ出す場合だけ、年式等の帯と同じ考え方で自動的に縮める
+      // (安全装置。普段のご利用では発動しない想定)。
+      size=baseEm;
+      el.style.fontSize=size+'em';
+      var guard=0;
+      while((el.scrollWidth*scaleX>b.clientWidth || el.scrollHeight>b.clientHeight) && size>PRICE_MIN && guard<120){
+        size-=PRICE_STEP;
+        el.style.fontSize=size+'em';
+        guard++;
+      }
+    } else {
+      // 旧方式(フォールバック):基本サイズが未設定の場合のみ、従来通り枠いっぱいまで自動で広げる。
+      size=PRICE_MIN;
+      el.style.fontSize=size+'em';
+      while(size<PRICE_MAX){
+        var next=size+PRICE_STEP;
+        el.style.fontSize=next+'em';
+        var effWidth=el.scrollWidth*scaleX;
+        if(effWidth>b.clientWidth || el.scrollHeight>b.clientHeight){
+          el.style.fontSize=size+'em';break;
+        }
+        size=next;
+      }
+    }
     var mult=1;
     if(digits===2) mult=parseFloat(st.priceDigits2Mult)||1;
     else if(digits===3) mult=parseFloat(st.priceDigits3Mult)||1;
@@ -1630,8 +1663,9 @@ const MS_PER_DAY = 86400000;
   function refitAll(){
     fitPreviewSize();
     fitHeadLineFor(document);
-    fitPriceWidth();
+    // v1.27:価格の数字の高さ判定の基準になるため、必ずfitHlItems()を先に呼ぶ。
     fitHlItems();
+    fitPriceWidth();
     // v1.11バグ修正：アウトライン太さ統一(peOutlineUniform)がONのとき、ここで再計算し忘れると
     // 文字サイズだけ更新されてアウトラインが古い基準(別PC・タブ開き直し・リサイズ前のサイズ)の
     // ままズレて太く(または細く)見えてしまう。fitPriceWidth()の直後に必ず再同期する。
@@ -1652,8 +1686,11 @@ const MS_PER_DAY = 86400000;
   var HEAD_IDS={'p-maker':1,'p-carname':1,'p-grade':1,'p-gradenote':1};
   function bindText(inputId,paperId){
     var i=document.getElementById(inputId),p=document.getElementById(paperId);
-    i.addEventListener('input',function(){p.textContent=i.value;if(HEAD_IDS[p.id]){fitHeadLineFor(document);fitPriceWidth();clampPriceLabelBadgeFor(document);}if(p===document.getElementById('priceNum'))fitPriceWidth();if(HL_IDS[p.id])fitHlItems();});
-    p.addEventListener('input',function(){i.value=p.textContent;if(HEAD_IDS[p.id]){fitHeadLineFor(document);fitPriceWidth();clampPriceLabelBadgeFor(document);}if(p===document.getElementById('priceNum'))fitPriceWidth();if(HL_IDS[p.id])fitHlItems();});
+    // v1.27:年式・走行距離・車検(HL_IDS)を編集した場合、帯の高さが変わりうるため、
+    // fitHlItems()の後にfitPriceWidth()も再実行し、価格の数字の安全装置(はみ出し時の縮小)の
+    // 判定を常に最新の帯の高さで行う。
+    i.addEventListener('input',function(){p.textContent=i.value;if(HEAD_IDS[p.id]){fitHeadLineFor(document);fitPriceWidth();clampPriceLabelBadgeFor(document);}if(p===document.getElementById('priceNum'))fitPriceWidth();if(HL_IDS[p.id]){fitHlItems();fitPriceWidth();}});
+    p.addEventListener('input',function(){i.value=p.textContent;if(HEAD_IDS[p.id]){fitHeadLineFor(document);fitPriceWidth();clampPriceLabelBadgeFor(document);}if(p===document.getElementById('priceNum'))fitPriceWidth();if(HL_IDS[p.id]){fitHlItems();fitPriceWidth();}});
   }
   bindText('in-maker','p-maker');
   bindText('in-carname','p-carname');
@@ -1817,6 +1854,9 @@ function loadTemplateIntoEditor(id){
   // priceLabelBadgeColorのみ保存)を読み込んだ際、枠色は旧設定と同じ色を初期値として引き継ぎ、
   // 見た目が変わらないようにする(背景色は元々未設定=透過だったので、新規追加のデフォルト値を使う)。
   if(!('priceLabelBadgeBorderColor' in st) && 'priceLabelBadgeColor' in st){ st.priceLabelBadgeBorderColor=st.priceLabelBadgeColor; }
+  // v1.27:価格の数字の基本サイズを固定値化。このキーを持たない(=旧方式のまま自動計算して
+  // いた)テンプレートかどうかを、CFGの初期値で補う前に控えておく(補った後だと判別できないため)。
+  var needsPriceBaseMigration = !('priceBaseEm2' in st) || !('priceBaseEm3' in st) || !('priceBaseEmOther' in st);
   // 古いテンプレートに、後から追加された調整項目(CFGの新しいキー)が無い場合は初期値で補う
   CFG.forEach(function(c){ if(!(c.k in st)) st[c.k]=c.def; });
   ['priceFont','hlFont','headFont','manyenFont','priceLabelFont','gradeFont','gradeNoteFont',
@@ -1831,6 +1871,42 @@ function loadTemplateIntoEditor(id){
   if(statusEl) statusEl.textContent='';
   syncControlsUI();
   apply();
+  // v1.27:旧テンプレートの移行は見た目を一切変えないことが最優先のため、通常の表示(apply())を
+  // 済ませた後に行う(移行処理はダミーの桁数文字列で一時的に測定するため)。
+  if(needsPriceBaseMigration) migratePriceBaseEmIfNeeded();
+}
+
+// v1.27:価格の数字の基本サイズ(priceBaseEm2/3/Other)を持たない旧テンプレートを、今回初めて
+// 編集画面で開いたタイミングで1回だけ移行する。2桁・3桁・その他それぞれのダミー数字
+// (88/888/8)を一時的に表示し、年式等の帯を縮め終えた状態を基準に、旧方式(fitPriceWidth)と
+// 全く同じロジックで「枠いっぱいまで広げたときのサイズ」を算出して固定値として保存する。
+// 終わったら元の表示に戻すので、画面には一瞬も変化が見えない。
+function migratePriceBaseEmIfNeeded(){
+  var el=document.getElementById('priceNum');
+  var b=document.getElementById('priceBox');
+  if(!el || !b) return;
+  var savedText=el.textContent;
+  var savedFontSize=el.style.fontSize;
+  // 年式・走行距離・車検の帯が縮み終わった状態を基準にする(順序修正と同じ考え方)。
+  fitHlItems();
+  [[2,'priceScaleX2','priceBaseEm2','88'],[3,'priceScaleX3','priceBaseEm3','888'],['Other','priceScaleXOther','priceBaseEmOther','8']].forEach(function(row){
+    var xKey=row[1], baseKey=row[2], dummy=row[3];
+    el.textContent=dummy;
+    var scaleX=parseFloat(st[xKey])||1;
+    var size=PRICE_MIN; el.style.fontSize=size+'em';
+    while(size<PRICE_MAX){
+      var next=size+PRICE_STEP; el.style.fontSize=next+'em';
+      var effWidth=el.scrollWidth*scaleX;
+      if(effWidth>b.clientWidth || el.scrollHeight>b.clientHeight){ el.style.fontSize=size+'em'; break; }
+      size=next;
+    }
+    st[baseKey]=size;
+  });
+  el.textContent=savedText;
+  el.style.fontSize=savedFontSize;
+  syncControlsUI();
+  apply();
+  save();
 }
 
 async function loadAllData(){
@@ -2576,12 +2652,29 @@ function fitPriceWidthFor(paperEl, settings){
   var posY = settings[posYKey]!=null ? settings[posYKey] : (settings.pricePosY!=null?settings.pricePosY:0);
   paperEl.style.setProperty('--pricePosX', posX);
   paperEl.style.setProperty('--pricePosY', posY);
-  var size=PRICE_MIN; el.style.fontSize=size+'em';
-  while(size<PRICE_MAX){
-    var next=size+PRICE_STEP; el.style.fontSize=next+'em';
-    var effWidth=el.scrollWidth*scaleX;
-    if(effWidth>b.clientWidth || el.scrollHeight>b.clientHeight){ el.style.fontSize=size+'em'; break; }
-    size=next;
+  var baseKey = 'priceBaseEm'+(d===2?'2':(d===3?'3':'Other'));
+  var baseEm = parseFloat(settings[baseKey]);
+  var size;
+  if(!isNaN(baseEm) && baseEm>0){
+    // v1.27:固定値をそのまま使う。万一枠からはみ出す場合だけ自動的に縮める安全装置
+    // (document版のfitPriceWidth()と同じロジック。通常は発動しない想定)。
+    size=baseEm;
+    el.style.fontSize=size+'em';
+    var guard=0;
+    while((el.scrollWidth*scaleX>b.clientWidth || el.scrollHeight>b.clientHeight) && size>PRICE_MIN && guard<120){
+      size-=PRICE_STEP;
+      el.style.fontSize=size+'em';
+      guard++;
+    }
+  } else {
+    // 旧方式(フォールバック):基本サイズが未設定の場合のみ、従来通り枠いっぱいまで自動で広げる。
+    size=PRICE_MIN; el.style.fontSize=size+'em';
+    while(size<PRICE_MAX){
+      var next=size+PRICE_STEP; el.style.fontSize=next+'em';
+      var effWidth=el.scrollWidth*scaleX;
+      if(effWidth>b.clientWidth || el.scrollHeight>b.clientHeight){ el.style.fontSize=size+'em'; break; }
+      size=next;
+    }
   }
   var mult=1;
   if(d===2) mult=parseFloat(settings.priceDigits2Mult)||1;
@@ -2699,8 +2792,8 @@ function printCurrentPreview(){
   stage.appendChild(paperEl);
   requestAnimationFrame(function(){
     fitHeadLineFor(paperEl);
-    fitPriceWidthFor(paperEl, st);
     fitHlItemsFor(paperEl);
+    fitPriceWidthFor(paperEl, st);
     applyPeOutlineUniformWidth(paperEl, st);
     clampPriceLabelBadgeFor(paperEl);
     window.print();
@@ -2786,8 +2879,8 @@ async function renderBulkPrintPapers(batchRows){
   await new Promise(function(r){ requestAnimationFrame(r); });
   papers.forEach(function(p){
     fitHeadLineFor(p.paperEl);
-    fitPriceWidthFor(p.paperEl, p.settings);
     fitHlItemsFor(p.paperEl);
+    fitPriceWidthFor(p.paperEl, p.settings);
     applyPeOutlineUniformWidth(p.paperEl, p.settings);
     clampPriceLabelBadgeFor(p.paperEl);
   });
@@ -2832,8 +2925,8 @@ async function printSingleVehicle(vin){
   stage.appendChild(paperEl);
   await new Promise(function(r){ requestAnimationFrame(r); });
   fitHeadLineFor(paperEl);
-  fitPriceWidthFor(paperEl, settings);
   fitHlItemsFor(paperEl);
+  fitPriceWidthFor(paperEl, settings);
   applyPeOutlineUniformWidth(paperEl, settings);
   clampPriceLabelBadgeFor(paperEl);
   pendingPrintRecord={ vins:[vin], mode:'single' };
@@ -2878,8 +2971,8 @@ function openPreviewModal(vin){
   requestAnimationFrame(function(){
     fitPreviewModalSize();
     fitHeadLineFor(paperEl);
-    fitPriceWidthFor(paperEl, settings);
     fitHlItemsFor(paperEl);
+    fitPriceWidthFor(paperEl, settings);
     applyPeOutlineUniformWidth(paperEl, settings);
     clampPriceLabelBadgeFor(paperEl);
   });
@@ -2901,8 +2994,8 @@ window.addEventListener('resize', function(){
   if(!paperEl) return;
   fitPreviewModalSize();
   fitHeadLineFor(paperEl);
-  fitPriceWidthFor(paperEl, currentPreviewSettings||DEFAULT_SETTINGS);
   fitHlItemsFor(paperEl);
+  fitPriceWidthFor(paperEl, currentPreviewSettings||DEFAULT_SETTINGS);
   applyPeOutlineUniformWidth(paperEl, currentPreviewSettings||DEFAULT_SETTINGS);
   clampPriceLabelBadgeFor(paperEl);
 });
