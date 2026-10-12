@@ -307,7 +307,7 @@
   .labelBadge .priceLabelRow{display:none;}
   .labelBadge .priceLabelWrap{display:inline-block;}
   .priceLabelBadge{display:inline-block;border-style:solid;border-width:calc(var(--priceLabelBadgeBorderEm,1)*.14em);border-color:var(--priceLabelBadgeBorderColor,#2563eb);color:var(--priceLabelBadgeColor,#2563eb);background:var(--priceLabelBadgeBgColor,#fff);font-weight:var(--priceLabelWeight,900);font-size:calc(var(--priceLabelEm)*.62em);line-height:1.15;text-align:center;padding:calc(var(--priceLabelBadgePadEm,1)*.18em) calc(var(--priceLabelBadgePadEm,1)*.5em);border-radius:.35em;cursor:pointer;font-family:var(--priceLabelFont);
-    transform:translate(calc(var(--labelPosX)*1em),calc(var(--labelPosY)*1em)) scale(var(--labelScaleX),var(--labelScaleY));
+    transform:translate(calc(var(--labelPosX)*1em),calc((var(--labelPosY)*1em) + var(--labelClampY,0px))) scale(var(--labelScaleX),var(--labelScaleY));
     transform-origin:left center;}
   .priceDecTail{font-family:var(--priceFont);font-size:calc(var(--priceDecTailEm)*1em);font-weight:900;color:var(--priceColor);line-height:1;position:relative;z-index:1;}
   .priceDecTail:empty{display:none;}
@@ -360,7 +360,7 @@
 
 <div class="panel">
   <div class="topBar">
-    <h1>プライスシート作成（A3横） <span style="font-size:12px;font-weight:400;opacity:.75;">v1.23</span></h1>
+    <h1>プライスシート作成（A3横） <span style="font-size:12px;font-weight:400;opacity:.75;">v1.24</span></h1>
     <a class="btn" href="./index.html">🏠 一覧へ</a>
     <a class="btn" id="backToAdsLink" href="./ads.html" data-base-href="./ads.html">📊 広告掲載へ</a>
     <a class="btn" id="backToPricingLink" href="./pricing.html" data-base-href="./pricing.html">💰 プライシングへ</a>
@@ -1063,11 +1063,13 @@ const MS_PER_DAY = 86400000;
     // それに依存する価格の自動フィット・年式距離車検のフィット・ハンドル位置を計算する。
     // 順番を間違えると、古い基準サイズのまま価格の文字サイズ（2桁/3桁別アスペクト比含む）がずれる。
     fitPreviewSize();
+    fitHeadLineFor(document);
     fitPriceWidth();
     fitHlItems();
     // アウトライン太さ統一は各要素のfont-sizeが確定した後でないと正しい基準px幅を計算できないため、
     // 必ずfitPriceWidth()より後に呼ぶ。
     applyPeOutlineUniformWidth(document, st);
+    clampPriceLabelBadgeFor(document);
     priceDrag.positionHandles();
     labelDrag.positionHandles();
   }
@@ -1581,12 +1583,14 @@ const MS_PER_DAY = 86400000;
   //   基準サイズが更新される前に古い基準で価格サイズを計算してしまうバグの元になるため統一）
   function refitAll(){
     fitPreviewSize();
+    fitHeadLineFor(document);
     fitPriceWidth();
     fitHlItems();
     // v1.11バグ修正：アウトライン太さ統一(peOutlineUniform)がONのとき、ここで再計算し忘れると
     // 文字サイズだけ更新されてアウトラインが古い基準(別PC・タブ開き直し・リサイズ前のサイズ)の
     // ままズレて太く(または細く)見えてしまう。fitPriceWidth()の直後に必ず再同期する。
     applyPeOutlineUniformWidth(document, st);
+    clampPriceLabelBadgeFor(document);
     priceDrag.positionHandles();
     labelDrag.positionHandles();
   }
@@ -1597,10 +1601,13 @@ const MS_PER_DAY = 86400000;
 
   // ---- 入力欄 ⇔ 用紙プレビュー 同期（上部フォームで編集 / 用紙を直接クリック編集の両対応） ----
   var HL_IDS={'p-year':1,'p-mileage':1,'p-shaken-disp':1};
+  // v1.24:メーカー・車名・グレード・グレード補記のいずれかを編集した際も、ヘッダー行の
+  // 折り返し(グレード補記の自動縮小)を再計算する。
+  var HEAD_IDS={'p-maker':1,'p-carname':1,'p-grade':1,'p-gradenote':1};
   function bindText(inputId,paperId){
     var i=document.getElementById(inputId),p=document.getElementById(paperId);
-    i.addEventListener('input',function(){p.textContent=i.value;if(p===document.getElementById('priceNum'))fitPriceWidth();if(HL_IDS[p.id])fitHlItems();});
-    p.addEventListener('input',function(){i.value=p.textContent;if(p===document.getElementById('priceNum'))fitPriceWidth();if(HL_IDS[p.id])fitHlItems();});
+    i.addEventListener('input',function(){p.textContent=i.value;if(HEAD_IDS[p.id]){fitHeadLineFor(document);fitPriceWidth();clampPriceLabelBadgeFor(document);}if(p===document.getElementById('priceNum'))fitPriceWidth();if(HL_IDS[p.id])fitHlItems();});
+    p.addEventListener('input',function(){i.value=p.textContent;if(HEAD_IDS[p.id]){fitHeadLineFor(document);fitPriceWidth();clampPriceLabelBadgeFor(document);}if(p===document.getElementById('priceNum'))fitPriceWidth();if(HL_IDS[p.id])fitHlItems();});
   }
   bindText('in-maker','p-maker');
   bindText('in-carname','p-carname');
@@ -2556,6 +2563,46 @@ function fitHlItemsFor(paperEl){
     guard++;
   }
 }
+// v1.24:グレード補記(gradeNote)が長文だとヘッダー行(メーカー・車名・グレード・グレード補記)が
+// 3行以上に折り返り、下の価格・支払総額バッジ表示エリアの高さを想定以上に圧迫してしまい、
+// バッジの位置が上の罫線と重なる不具合への対応。グレード補記の文字サイズを自動的に縮小し、
+// ヘッダー行が常に最大2行分の高さに収まるようにする(文字を削らず、小さくするだけ)。
+// scopeRootはdocument(ライブ編集プレビュー)またはpaperEl(印刷・プレビューモーダル用の複製)。
+function fitHeadLineFor(scopeRoot){
+  var headLine=scopeRoot.querySelector('.headLine');
+  var gradeNote=scopeRoot.querySelector('.gradeNote');
+  if(!headLine || !gradeNote) return;
+  gradeNote.style.fontSize='';
+  if(!gradeNote.textContent) return;
+  var cs=getComputedStyle(headLine);
+  var lineHeight=parseFloat(cs.lineHeight);
+  if(!lineHeight || isNaN(lineHeight)){ lineHeight=parseFloat(cs.fontSize)*1.3; }
+  var maxHeight=lineHeight*2 + 1; // ヘッダー行は最大2行分まで許容
+  var base=parseFloat(getComputedStyle(gradeNote).fontSize)||16;
+  var min=base*0.4, size=base, guard=0;
+  while(headLine.scrollHeight>maxHeight && size>min && guard<60){
+    size-=base*0.03;
+    gradeNote.style.fontSize=size+'px';
+    guard++;
+  }
+}
+// v1.24:上記の自動縮小でも、極端に長いグレード補記などで2行に収まりきらない場合の保険。
+// 支払総額バッジは位置を手動調整(labelPosX/Y)できる仕様上、どうしても特定の車両でだけ
+// ヘッダー行と重なってしまう可能性が残るため、実際の罫線位置とバッジ位置を測定し、
+// 重なっていた場合だけその場で下にずらして回避する(重ならない通常のケースでは
+// --labelClampYが0pxのままなので、見た目は一切変わらない)。
+function clampPriceLabelBadgeFor(scopeRoot){
+  var head=scopeRoot.querySelector('.head');
+  var badge=scopeRoot.querySelector('.priceLabelBadge');
+  if(!head || !badge) return;
+  var cssHost=(scopeRoot===document)?document.documentElement:scopeRoot;
+  cssHost.style.setProperty('--labelClampY','0px');
+  var margin=4;
+  var overlap=(head.getBoundingClientRect().bottom+margin)-badge.getBoundingClientRect().top;
+  if(overlap>0){
+    cssHost.style.setProperty('--labelClampY', overlap+'px');
+  }
+}
 
 function buildPaperFromFields(fields, settings){
   var paperEl=document.createElement('div');
@@ -2599,9 +2646,11 @@ function printCurrentPreview(){
   var paperEl=buildPaperFromFields(fields, st);
   stage.appendChild(paperEl);
   requestAnimationFrame(function(){
+    fitHeadLineFor(paperEl);
     fitPriceWidthFor(paperEl, st);
     fitHlItemsFor(paperEl);
     applyPeOutlineUniformWidth(paperEl, st);
+    clampPriceLabelBadgeFor(paperEl);
     window.print();
   });
 }
@@ -2684,9 +2733,11 @@ async function renderBulkPrintPapers(batchRows){
   });
   await new Promise(function(r){ requestAnimationFrame(r); });
   papers.forEach(function(p){
+    fitHeadLineFor(p.paperEl);
     fitPriceWidthFor(p.paperEl, p.settings);
     fitHlItemsFor(p.paperEl);
     applyPeOutlineUniformWidth(p.paperEl, p.settings);
+    clampPriceLabelBadgeFor(p.paperEl);
   });
 }
 
@@ -2724,9 +2775,11 @@ async function printSingleVehicle(vin){
   var paperEl=buildPaperFromFields(row, settings);
   stage.appendChild(paperEl);
   await new Promise(function(r){ requestAnimationFrame(r); });
+  fitHeadLineFor(paperEl);
   fitPriceWidthFor(paperEl, settings);
   fitHlItemsFor(paperEl);
   applyPeOutlineUniformWidth(paperEl, settings);
+  clampPriceLabelBadgeFor(paperEl);
   pendingPrintRecord={ vins:[vin], mode:'single' };
   window.print();
 }
@@ -2765,9 +2818,11 @@ function openPreviewModal(vin){
   currentPreviewSettings=settings;
   requestAnimationFrame(function(){
     fitPreviewModalSize();
+    fitHeadLineFor(paperEl);
     fitPriceWidthFor(paperEl, settings);
     fitHlItemsFor(paperEl);
     applyPeOutlineUniformWidth(paperEl, settings);
+    clampPriceLabelBadgeFor(paperEl);
   });
 }
 function closePreviewModal(){
@@ -2786,9 +2841,11 @@ window.addEventListener('resize', function(){
   var paperEl=wrapEl.querySelector('.paper');
   if(!paperEl) return;
   fitPreviewModalSize();
+  fitHeadLineFor(paperEl);
   fitPriceWidthFor(paperEl, currentPreviewSettings||DEFAULT_SETTINGS);
   fitHlItemsFor(paperEl);
   applyPeOutlineUniformWidth(paperEl, currentPreviewSettings||DEFAULT_SETTINGS);
+  clampPriceLabelBadgeFor(paperEl);
 });
 
 document.getElementById('printSelectedBtn').addEventListener('click', printSelectedVehicles);
