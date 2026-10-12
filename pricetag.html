@@ -360,7 +360,7 @@
 
 <div class="panel">
   <div class="topBar">
-    <h1>プライスシート作成（A3横） <span style="font-size:12px;font-weight:400;opacity:.75;">v1.24</span></h1>
+    <h1>プライスシート作成（A3横） <span style="font-size:12px;font-weight:400;opacity:.75;">v1.26</span></h1>
     <a class="btn" href="./index.html">🏠 一覧へ</a>
     <a class="btn" id="backToAdsLink" href="./ads.html" data-base-href="./ads.html">📊 広告掲載へ</a>
     <a class="btn" id="backToPricingLink" href="./pricing.html" data-base-href="./pricing.html">💰 プライシングへ</a>
@@ -1417,15 +1417,21 @@ const MS_PER_DAY = 86400000;
     function elOf(){return document.getElementById(cfg.elId);}
     function containerOf(){return document.getElementById(cfg.containerId);}
     function boxOf(){return document.getElementById(cfg.selBoxId);}
+    // v1.26:.paperはtransform:scaleで縮小表示されるようになったため(applyCanonicalPaperScale
+    // 参照)、選択枠(selBox)自身も同じ.paperの内側にあり、描画時に同じ縮小率がかかる。
+    // getBoundingClientRectで取れる値は画面上の見た目のピクセル数(縮小後)なので、そのまま
+    // left/top/width/heightに使うと二重に縮小されてしまう。currentPaperScale()で縮小率を
+    // 逆算し、canonical(等倍)座標系の値に変換してから渡す。
     function positionHandles(){
       var e=elOf(),c=containerOf(),s=boxOf();
       var br=c.getBoundingClientRect();
       var nr=e.getBoundingClientRect();
       if(!nr.width&&!nr.height)return;
-      s.style.left=(nr.left-br.left)+'px';
-      s.style.top=(nr.top-br.top)+'px';
-      s.style.width=nr.width+'px';
-      s.style.height=nr.height+'px';
+      var scale=currentPaperScale(document.getElementById('paper'));
+      s.style.left=((nr.left-br.left)/scale)+'px';
+      s.style.top=((nr.top-br.top)/scale)+'px';
+      s.style.width=(nr.width/scale)+'px';
+      s.style.height=(nr.height/scale)+'px';
     }
     // stKeys の各値は固定のst参照キー文字列、または「今どのキーを見るか」を返す関数（桁数で参照先を切り替える場合）
     function rk(k){return typeof k==='function'?k():k;}
@@ -1443,17 +1449,22 @@ const MS_PER_DAY = 86400000;
     // handle=='move' は枠内ドラッグで平行移動。それ以外（nw/n/ne/e/se/s/sw/w）は
     // 「反対側の辺・角を固定したまま、つまんだ辺・角をマウスに追従させる」という
     // ペイント等の選択枠と同じ考え方で、位置(translate)と拡大率(scale)を同時に解く。
+    // v1.26:.paperがtransform:scaleで縮小表示されるようになったため(applyCanonicalPaperScale
+    // 参照)、マウスの移動量(ev.clientX/Y、画面上のピクセル数)は、canonical(等倍)座標系で
+    // 保存されているfontPx基準の位置(st[posXKey]等)と単位が合わなくなった。currentPaperScale()
+    // で縮小率を逆算し、マウス側の値をcanonical座標系に変換してから従来通りの計算を行う。
     function startDrag(e,handle){
       e.preventDefault();
       e.stopPropagation();
       var el=elOf();
       var fontPx=parseFloat(getComputedStyle(el).fontSize)||100;
+      var scale=currentPaperScale(document.getElementById('paper'));
       var posXKey=rk(cfg.stKeys.posX),posYKey=rk(cfg.stKeys.posY),scaleXKey=rk(cfg.stKeys.scaleX),scaleYKey=rk(cfg.stKeys.scaleY);
       if(handle==='move'){
         var sx0=e.clientX,sy0=e.clientY;
         var startX=st[posXKey],startY=st[posYKey];
         function onMoveM(ev){
-          var dx=ev.clientX-sx0,dy=ev.clientY-sy0;
+          var dx=(ev.clientX-sx0)/scale,dy=(ev.clientY-sy0)/scale;
           st[posXKey]=+(startX+dx/fontPx).toFixed(3);
           st[posYKey]=+(startY+dy/fontPx).toFixed(3);
           syncSliders();applyTransformOnly();positionHandles();
@@ -1466,24 +1477,26 @@ const MS_PER_DAY = 86400000;
       var sxOld=st[scaleXKey],syOld=st[scaleYKey];
       var txOld=st[posXKey]*fontPx,tyOld=st[posYKey]*fontPx;
       var rect=el.getBoundingClientRect();
+      var rectLeft=rect.left/scale,rectTop=rect.top/scale,rectBottom=rect.bottom/scale;
       var W=el.offsetWidth||1,H=el.offsetHeight||1;
-      var Ox=rect.left-txOld,Oy=(rect.top+rect.bottom)/2-tyOld;
+      var Ox=rectLeft-txOld,Oy=(rectTop+rectBottom)/2-tyOld;
       var axisX=null,axisY=null;
       if(handle.indexOf('w')>=0) axisX={qa:W,qd:0};
       else if(handle.indexOf('e')>=0) axisX={qa:0,qd:W};
       if(handle.indexOf('n')>=0) axisY={qa:H/2,qd:-H/2};
       else if(handle.indexOf('s')>=0) axisY={qa:-H/2,qd:H/2};
-      var anchorScreenX=axisX?(rect.left+sxOld*axisX.qa):0;
-      var anchorScreenY=axisY?((rect.top+rect.bottom)/2+syOld*axisY.qa):0;
+      var anchorScreenX=axisX?(rectLeft+sxOld*axisX.qa):0;
+      var anchorScreenY=axisY?((rectTop+rectBottom)/2+syOld*axisY.qa):0;
       function onMove(ev){
+        var evX=ev.clientX/scale, evY=ev.clientY/scale;
         if(axisX){
-          var sxNew=clamp((ev.clientX-anchorScreenX)/(axisX.qd-axisX.qa),SCALE_MIN,SCALE_MAX);
+          var sxNew=clamp((evX-anchorScreenX)/(axisX.qd-axisX.qa),SCALE_MIN,SCALE_MAX);
           var txNew=anchorScreenX-Ox-sxNew*axisX.qa;
           st[scaleXKey]=+sxNew.toFixed(3);
           st[posXKey]=+(txNew/fontPx).toFixed(3);
         }
         if(axisY){
-          var syNew=clamp((ev.clientY-anchorScreenY)/(axisY.qd-axisY.qa),SCALE_MIN,SCALE_MAX);
+          var syNew=clamp((evY-anchorScreenY)/(axisY.qd-axisY.qa),SCALE_MIN,SCALE_MAX);
           var tyNew=anchorScreenY-Oy-syNew*axisY.qa;
           st[scaleYKey]=+syNew.toFixed(3);
           st[posYKey]=+(tyNew/fontPx).toFixed(3);
@@ -1559,13 +1572,46 @@ const MS_PER_DAY = 86400000;
     }
   }
 
+  // v1.26:編集画面・プレビューモーダルは画面の空きスペースに合わせた表示サイズになるため、
+  // 印刷(#printStage、常に420mm基準)とは実際の描画ピクセル数(解像度)が異なっていた。
+  // 「年式・走行距離・車検」の帯や支払総額の数字の自動フィット計算(scrollWidth/clientHeight等の
+  // 実ピクセル測定に基づく)は、この解像度の違いにより編集画面・プレビュー・印刷の3箇所で
+  // 微妙に異なる結果に収束してしまい、支払総額の数字のサイズや位置が画面ごとに微妙にずれて
+  // 見える原因になっていた。
+  // 対策として、.paper自体は印刷と全く同じ基準(420mm/297mm、1em=420mm/100)でレイアウト計算
+  // させ、画面に収まるようtransform:scaleだけで縮小表示する(自動フィット計算は常に印刷と
+  // 同じ解像度で行われるため、3箇所の見え方が一致する)。
+  // CSSのmm→px換算(96/25.4px)はブラウザの実ディスプレイ解像度に関わらず常に一定の値。
+  var MM_TO_CSS_PX = 96/25.4;
+  var CANONICAL_PAPER_W_PX = 420*MM_TO_CSS_PX;
+  // transform:scaleで縮小表示している要素の内部で実測ピクセル値(getBoundingClientRect等)を
+  // 使う処理は、この拡大率で逆算して「canonical(等倍)座標系」に変換する必要がある。
+  // .paperの実際のレイアウトサイズ(offsetWidth、transform非依存)と、画面上の見た目の
+  // サイズ(getBoundingClientRect、transform依存)の比率から、その場で算出する
+  // (印刷・transform未適用の場合は常に1になる)。
+  function currentPaperScale(paperEl){
+    if(!paperEl || !paperEl.offsetWidth) return 1;
+    var visW=paperEl.getBoundingClientRect().width;
+    return visW>0 ? (visW/paperEl.offsetWidth) : 1;
+  }
+  function applyCanonicalPaperScale(paperEl, displayW){
+    paperEl.style.width='420mm';
+    paperEl.style.height='297mm';
+    paperEl.style.fontSize='calc(420mm/100)';
+    paperEl.style.transformOrigin='top left';
+    paperEl.style.transform='scale('+(displayW/CANONICAL_PAPER_W_PX)+')';
+  }
+
   // ---- 左側プレビューを「はみ出さず・出来るだけ大きく」自動フィット（高さ優先） ----
   // 左カラムはスクロールさせない方針のため、入力欄ブロックの下に残った高さに合わせて
-  // 420:297のアスペクト比を保ったまま用紙サイズ（px）を決め、.wrapに直接書き込む。
+  // 420:297のアスペクト比を保ったまま表示サイズ（px）を決め、.wrapに直接書き込む。
+  // .paper自体のレイアウト計算は常にcanonical(420mm)基準で行い、見た目のサイズだけ
+  // transform:scaleで.wrapの大きさに合わせる(上記コメント参照)。
   function fitPreviewSize(){
     var pw=document.querySelector('.previewWrap');
     var wrap=document.querySelector('.wrap');
-    if(!pw||!wrap)return;
+    var paperEl=document.getElementById('paper');
+    if(!pw||!wrap||!paperEl)return;
     var availW=pw.clientWidth,availH=pw.clientHeight;
     if(availW<=0||availH<=0)return;
     var ratio=420/297;
@@ -1573,7 +1619,7 @@ const MS_PER_DAY = 86400000;
     if(h>availH){h=availH;w=h*ratio;}
     wrap.style.width=w+'px';
     wrap.style.height=h+'px';
-    wrap.style.fontSize=(w/100)+'px';
+    applyCanonicalPaperScale(paperEl, w);
   }
 
   // ---- リサイズ時の再計算はすべてここに一本化する ----
@@ -2591,6 +2637,10 @@ function fitHeadLineFor(scopeRoot){
 // ヘッダー行と重なってしまう可能性が残るため、実際の罫線位置とバッジ位置を測定し、
 // 重なっていた場合だけその場で下にずらして回避する(重ならない通常のケースでは
 // --labelClampYが0pxのままなので、見た目は一切変わらない)。
+// v1.26:編集画面・プレビューはtransform:scaleで縮小表示するようになったため(canonicalPaperScale
+// 参照)、getBoundingClientRectで測定した重なり量(画面上の見た目のピクセル数)は、バッジ自身の
+// transform(canonical=等倍の座標系で計算される)にそのまま渡すと縮小率の分だけズレてしまう。
+// 測定値をcurrentPaperScale()で逆算し、canonical座標系の値に変換してから渡す。
 function clampPriceLabelBadgeFor(scopeRoot){
   var head=scopeRoot.querySelector('.head');
   var badge=scopeRoot.querySelector('.priceLabelBadge');
@@ -2600,7 +2650,9 @@ function clampPriceLabelBadgeFor(scopeRoot){
   var margin=4;
   var overlap=(head.getBoundingClientRect().bottom+margin)-badge.getBoundingClientRect().top;
   if(overlap>0){
-    cssHost.style.setProperty('--labelClampY', overlap+'px');
+    var paperEl=(scopeRoot===document)?document.getElementById('paper'):scopeRoot.querySelector('.paper');
+    var scale=currentPaperScale(paperEl);
+    cssHost.style.setProperty('--labelClampY', (overlap/scale)+'px');
   }
 }
 
@@ -2758,7 +2810,11 @@ function cancelBulkPrint(){
 }
 
 async function printSelectedVehicles(){
-  var targets=rows.filter(function(r){ return r.printTarget; });
+  // v1.25:印刷命令を出す順番を、一覧画面で現在選択されている並び順(sortState)に合わせる。
+  // 以前は(検索・絞込・並べ替えと無関係に)Firebaseの内部データ順で印刷されており、
+  // どの車両が何グループ目に含まれるか画面から分からず分かりにくかったための対応。
+  // 検索・絞込で一部が画面から隠れていても、印刷対象(チェック済み)の車両はすべて含める。
+  var targets=sortVisibleRows(rows.filter(function(r){ return r.printTarget; }));
   if(!targets.length) return;
   bulkPrintQueue={ batches: chunkArray(targets, BULK_PRINT_BATCH_SIZE), idx:0 };
   await printNextBulkBatch();
@@ -2786,9 +2842,11 @@ async function printSingleVehicle(vin){
 
 // v1.20:一覧の「👁 プレビュー」ボタン。印刷と同じ組み立て(buildPaperFromFields)・
 // フィット処理(fitPriceWidthFor等)をそのまま流用し、印刷せずモーダルで表示するだけのもの。
-// .wrap(previewModalWrap)のサイズ・font-size基準の決め方は、テンプレート編集タブの
-// fitPreviewSize()と同じ考え方(モーダルの表示領域に420:297のアスペクト比で収まる
-// 最大サイズを計算し、その幅の1/100をem基準のpxにする)。
+// .wrap(previewModalWrap)のサイズの決め方は、テンプレート編集タブのfitPreviewSize()と
+// 同じ考え方(モーダルの表示領域に420:297のアスペクト比で収まる最大サイズを計算する)。
+// v1.26:.paper自体のレイアウト計算は常にcanonical(420mm)基準で行い、見た目のサイズだけ
+// transform:scaleでモーダルの大きさに合わせる(applyCanonicalPaperScale()のコメント参照。
+// 編集画面・印刷と解像度を揃えることで、支払総額の数字サイズ等のズレを無くす)。
 var previewModalOpen=false;
 var currentPreviewSettings=null;
 function fitPreviewModalSize(){
@@ -2801,7 +2859,8 @@ function fitPreviewModalSize(){
   if(h>availH){ h=availH; w=h*ratio; }
   wrapEl.style.width=w+'px';
   wrapEl.style.height=h+'px';
-  wrapEl.style.fontSize=(w/100)+'px';
+  var paperEl=wrapEl.querySelector('.paper');
+  if(paperEl) applyCanonicalPaperScale(paperEl, w);
 }
 function openPreviewModal(vin){
   var row=rows.find(function(r){ return r.vin===vin; });
