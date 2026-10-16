@@ -204,7 +204,7 @@ body:not(.debugMode) .debugOnly{display:none !important;}
 <header>
 <div class="header-row">
   <div>
-    <h1>広告掲載状況ダッシュボード <span style="font-size:12px;font-weight:400;opacity:.75;">v1.32</span></h1>
+    <h1>広告掲載状況ダッシュボード <span style="font-size:12px;font-weight:400;opacity:.75;">v1.33</span></h1>
     <p>カーセンサー ／ グーネット ／ QuickNetwork（業販） ／ オートサーバー（業販） ／ JUテントリ（業販） の5サイト突合(棚卸一覧は参考照合用)　※データはFirebaseで共有されます</p>
   </div>
   <div style="display:flex;gap:8px;flex-shrink:0;">
@@ -338,6 +338,7 @@ body:not(.debugMode) .debugOnly{display:none !important;}
     <button type="button" class="searchClearBtn" id="searchClearBtn">×</button>
   </div>
   <button class="filterbtn active" data-filter="all">すべて</button>
+  <button class="filterbtn d" data-filter="allmissing">全サイト未掲載</button>
   <button class="filterbtn d" data-filter="missing">掲載漏れのみ</button>
   <button class="filterbtn w" data-filter="notinstock">棚卸に該当なし(要確認)</button>
   <button class="filterbtn w" data-filter="price">価格ずれのみ</button>
@@ -433,11 +434,40 @@ async function loadAdsData(){
     manualShufuku = data.manualShufuku || {};
     lastLoadedLabel = data.lastUpdated || null;
     document.getElementById('lastUpdated').textContent = lastLoadedLabel ? ('データ基準日: ' + lastLoadedLabel) : 'データがまだ保存されていません。CSVを読み込んで保存してください。';
-    setSyncStatus('● 同期済み', 'ok');
+    const stockOk = await loadStockTargets();
+    setSyncStatus(stockOk ? '● 同期済み' : '● 同期済み(在庫・プライシング対象の読み込みに失敗したため、広告サイト未掲載の車両は表示されていません)', stockOk ? 'ok' : 'err');
     recompute();
   } catch(err){
     console.error('loadAdsData error:', err);
     setSyncStatus('● 読み込みエラー: ' + err.message, 'err');
+  }
+}
+
+// car-appの在庫(stock。アーカイブ=納車済みは含めない)のうち、pricing.htmlの「対象」スイッチがON
+// (pricingData/{vin}/retailTarget が false 以外。未設定もON扱い＝pricing.htmlと同じ判定)の車両を取得する。
+// 広告サイトのどこにもデータが無い車両も一覧に出すために使う。読み取り専用で、このページから書き込みはしない。
+async function loadStockTargets(){
+  try{
+    const [stockSnap, pdSnap] = await Promise.all([
+      get(ref(db, 'stock')),
+      get(ref(db, 'pricingData')),
+    ]);
+    const stock = stockSnap.val() || {};
+    const pricingData = pdSnap.val() || {};
+    const out = {};
+    Object.values(stock).forEach(sv=>{
+      if(!sv || !sv.vin) return;
+      const vin = normVin(sv.vin);
+      if(!vin) return;
+      if(pricingData[vin]?.retailTarget === false) return;
+      out[vin] = {car_name: sv.name || '', date: sv.date || ''};
+    });
+    stockTargets = out;
+    return true;
+  } catch(err){
+    console.error('loadStockTargets error:', err);
+    stockTargets = {};
+    return false;
   }
 }
 
@@ -693,6 +723,7 @@ let noGyohanVins = {};
 let aaPhotoCounts = {};
 let manualShufuku = {}; // 修復歴の手動設定(true=あり/false=なし)。未設定の車台番号はグーネットのCSV値に従う
 let lastLoadedLabel = null;
+let stockTargets = {}; // 在庫かつプライシング対象ONの車両(loadStockTargetsで取得。adsDataには保存しない)
 const SITES = ['carsensor','goonet','quicknetwork','autoserver','jutentori'];
 const GYOHAN_ONLY_SITES = ['quicknetwork','autoserver','jutentori'];
 const SITE_LABEL = {carsensor:'CS', goonet:'goo', quicknetwork:'Quick', autoserver:'AS', jutentori:'テントリ'};
@@ -724,6 +755,17 @@ function normShiireDate(s){
   return {label:s, sortKey:null};
 }
 
+// car-appのstock.date(仕入日。YYYY-MM-DD形式)を、棚卸CSV由来の仕入日と同じR{令和年}/MM/DD表示に整える。
+// 棚卸CSVに無い車両(プライシング対象の在庫から追加した車両)の仕入日表示に使う。
+function stockDateToShiire(s){
+  if(!s) return null;
+  const m = String(s).trim().match(/^(\d{4})[-\/.](\d{1,2})[-\/.](\d{1,2})/);
+  if(!m) return {label:String(s).trim(), sortKey:null};
+  const year=parseInt(m[1],10), month=parseInt(m[2],10), day=parseInt(m[3],10);
+  const label = year >= 2019 ? `R${year-2018}/${String(month).padStart(2,'0')}/${String(day).padStart(2,'0')}` : `${year}/${String(month).padStart(2,'0')}/${String(day).padStart(2,'0')}`;
+  return {label, sortKey: year*372+month*31+day};
+}
+
 function normShaken(s){
   if(!s) return null;
   s = String(s).trim();
@@ -747,6 +789,7 @@ function buildCanonicalVinMap(rawData){
   const allVins = new Set();
   SITES.forEach(s => Object.keys(rawData[s]||{}).forEach(v => allVins.add(v)));
   Object.keys(rawData.tanaoroshi||{}).forEach(v => allVins.add(v));
+  Object.keys(rawData.stockTarget||{}).forEach(v => allVins.add(v));
 
   const bySerial = {};
   allVins.forEach(vin=>{
@@ -778,7 +821,7 @@ function buildCanonicalVinMap(rawData){
 function applyCanonicalVins(rawData){
   const canonicalOf = buildCanonicalVinMap(rawData);
   const out = {};
-  SITES.concat(['tanaoroshi']).forEach(s=>{
+  SITES.concat(['tanaoroshi','stockTarget']).forEach(s=>{
     out[s] = {};
     Object.entries(rawData[s]||{}).forEach(([vin,rec])=>{
       const cv = canonicalOf[vin] || vin;
@@ -793,20 +836,24 @@ let rows = [];
 let total = 0;
 
 function recompute(){
-  const rawCanon = applyCanonicalVins(raw);
+  const rawCanon = applyCanonicalVins({...raw, stockTarget: stockTargets});
   const stockRecords = rawCanon.tanaoroshi || {};
   const stockVins = new Set(Object.keys(stockRecords));
+  const targetRecords = rawCanon.stockTarget || {};
 
+  // 広告サイトのいずれかにデータがある車両＋在庫かつプライシング対象ONの車両(広告サイト未掲載でも表示する)
   const vinSet = new Set();
   SITES.forEach(s => Object.keys(rawCanon[s]||{}).forEach(v => vinSet.add(v)));
+  Object.keys(targetRecords).forEach(v => vinSet.add(v));
 
   rows = [...vinSet].map(vin => {
     const bySite = {};
     SITES.forEach(s => bySite[s] = (rawCanon[s]||{})[vin] || null);
     const inStock = stockVins.has(vin);
     const stockInfo = stockRecords[vin] || null;
-    const carName = (stockInfo||bySite.carsensor||bySite.goonet||bySite.quicknetwork||bySite.autoserver||{}).car_name || '';
-    const shiireDate = normShiireDate(stockInfo?.shiire_date);
+    const targetInfo = targetRecords[vin] || null;
+    const carName = (stockInfo||bySite.carsensor||bySite.goonet||bySite.quicknetwork||bySite.autoserver||targetInfo||{}).car_name || '';
+    const shiireDate = normShiireDate(stockInfo?.shiire_date) || stockDateToShiire(targetInfo?.date);
     const aaCount = aaPhotoCounts[vin] || 0;
 
     const retailPrices = [bySite.carsensor?.price_total, bySite.goonet?.price_total].filter(v=>v!=null);
@@ -834,6 +881,7 @@ function recompute(){
     const activeSites = checkSites.filter(s => isActive(s, bySite[s]));
     const missingSitesAll = checkSites.filter(s => !isActive(s, bySite[s]));
     const missing = activeSites.length > 0 && activeSites.length < checkSites.length;
+    const allMissing = activeSites.length === 0; // どのサイトにも掲載中でない(データ自体が無い、または一時非掲載のみ)
 
     const notInStock = !inStock;
 
@@ -851,12 +899,12 @@ function recompute(){
     const shufukuCsOnly = !bySite.goonet; // グーネットのデータが無い(カーセンサーのみ等)ため未確認
     const shufukuDiff = hasManualShufuku && shufukuCsv != null && shufukuManual !== shufukuCsv; // 手動値がグーネットの値と異なる
 
-    const flagCount = (missing?1:0) + (notInStock?1:0) + (priceMismatch?1:0) + (mileageMismatch?1:0) + (shakenMismatch?1:0);
+    const flagCount = (allMissing?1:0) + (missing?1:0) + (notInStock?1:0) + (priceMismatch?1:0) + (mileageMismatch?1:0) + (shakenMismatch?1:0);
 
     return {vin, carName, maker, gradeNote, yearDisp, bySite, inStock, notInStock, retailMismatch, gyohanMismatch, priceMismatch,
              mileages, mileageMismatch, shakenNorm, shakenMismatch, skipGyohan, shiireDate, aaCount,
              shufukuCsv, shufukuManual, shufukuEffective, shufukuCsOnly, shufukuDiff,
-             missing, missingSites: missing ? missingSitesAll : [], flagCount};
+             allMissing, missing, missingSites: missing ? missingSitesAll : [], flagCount};
   });
 
   total = rows.length;
@@ -866,11 +914,12 @@ function recompute(){
 
 function renderSummary(){
   const missingCount = rows.filter(r=>r.missing).length;
+  const allMissingCount = rows.filter(r=>r.allMissing).length;
   const notInStockCount = rows.filter(r=>r.notInStock).length;
   const priceMismatchCount = rows.filter(r=>r.priceMismatch).length;
   const mileageMismatchCount = rows.filter(r=>r.mileageMismatch).length;
   const shakenMismatchCount = rows.filter(r=>r.shakenMismatch).length;
-  const cleanCount = rows.filter(r=>!r.missing && !r.priceMismatch && !r.mileageMismatch && !r.shakenMismatch).length;
+  const cleanCount = rows.filter(r=>!r.allMissing && !r.missing && !r.priceMismatch && !r.mileageMismatch && !r.shakenMismatch).length;
   // CS/gooの「未掲載」は、以下の2パターンをまとめて指していたため分けて集計する。
   // ・真の未掲載:そのサイトのCSVにレコード自体が無い(一度も掲載していない)
   // ・一時非掲載:レコード(価格等)はあるが、掲載状況が「掲載」ではない(掲載を止めている)
@@ -883,7 +932,8 @@ function renderSummary(){
   const missJutentoriCount = rows.filter(r=>!r.skipGyohan && !isActive('jutentori', r.bySite.jutentori)).length;
 
   document.getElementById('summary').innerHTML = `
-    <div class="card" data-filter="all"><p class="label">対象車両数(4サイト合算)</p><p class="value">${total}台</p></div>
+    <div class="card" data-filter="all"><p class="label">対象車両数(広告5サイト＋プライシング対象在庫)</p><p class="value">${total}台</p></div>
+    <div class="card danger" data-filter="allmissing"><p class="label">全サイト未掲載</p><p class="value">${allMissingCount}台</p></div>
     <div class="card danger" data-filter="missing"><p class="label">掲載漏れ(サイト間)</p><p class="value">${missingCount}台</p></div>
     <div class="card warn" data-filter="notinstock"><p class="label">棚卸に該当なし(要確認)</p><p class="value">${notInStockCount}台</p></div>
     <div class="card warn" data-filter="price"><p class="label">価格ずれ</p><p class="value">${priceMismatchCount}台</p></div>
@@ -936,6 +986,7 @@ function shakenSiteCell(site, r){
 
 function flagBadges(r){
   const b = [];
+  if(r.allMissing) b.push('<span class="badge miss">全サイト未掲載</span>');
   if(r.missing) b.push(`<span class="badge miss">掲載漏れ: ${r.missingSites.map(s=>SITE_LABEL[s]).join('・')}</span>`);
   if(r.notInStock) b.push(`<span class="badge warn">棚卸に該当なし(要確認)</span>`);
   if(r.priceMismatch) b.push('<span class="badge warn">価格ずれ</span>');
@@ -974,6 +1025,7 @@ function getSortValue(r, key){
 function applyFilters(){
   let filtered = rows;
   if(currentFilter==='missing') filtered = filtered.filter(r=>r.missing);
+  if(currentFilter==='allmissing') filtered = filtered.filter(r=>r.allMissing);
   if(currentFilter==='notinstock') filtered = filtered.filter(r=>r.notInStock);
   if(currentFilter==='miss_carsensor') filtered = filtered.filter(r=>!r.bySite.carsensor);
   if(currentFilter==='temp_miss_carsensor') filtered = filtered.filter(r=>r.bySite.carsensor && r.bySite.carsensor.status !== '掲載');
@@ -985,7 +1037,7 @@ function applyFilters(){
   if(currentFilter==='price') filtered = filtered.filter(r=>r.priceMismatch);
   if(currentFilter==='mileage') filtered = filtered.filter(r=>r.mileageMismatch);
   if(currentFilter==='shaken') filtered = filtered.filter(r=>r.shakenMismatch);
-  if(currentFilter==='clean') filtered = filtered.filter(r=>!r.missing && !r.priceMismatch && !r.mileageMismatch && !r.shakenMismatch);
+  if(currentFilter==='clean') filtered = filtered.filter(r=>!r.allMissing && !r.missing && !r.priceMismatch && !r.mileageMismatch && !r.shakenMismatch);
   if(currentSearch){
     const q = currentSearch.toLowerCase();
     filtered = filtered.filter(r => r.vin.toLowerCase().includes(q) || r.carName.toLowerCase().includes(q));
