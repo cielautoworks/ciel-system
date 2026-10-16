@@ -1,6 +1,6 @@
 # ciel-system 共通仕様書（アプリ間の「契約」部分のみ）
 
-最終更新: 2026-10-16
+最終更新: 2026-10-17
 
 ## この文書の位置づけ
 
@@ -35,18 +35,30 @@ const firebaseConfig = {
 
 ## 2. ルートノード対応表
 
-| ノード | 主な書き込み元 | 他ツールからの参照 | 内容 |
-|---|---|---|---|
-| `stock/{id}` | car-app | ciel-systemハブ(棚卸CSVで未登録車のみ新規登録)、pricing.html/pricetag.html(読取専用) | 在庫車両。フィールド例: `id, vin, name, color, year, shaken, sup, date, price, total, regNo, status1, status2, memo` |
-| `stockArchive/{id}` | car-app | pricing.html/pricetag.html(読取専用) | 納車済みアーカイブ(stockと同形式) |
-| `cars/{id}` | car-app | - | 代車・レンタカー。`stockId`経由でstockを都度参照(vin・colorは持たない) |
-| `juHistory/{normVin}/{source_kai_shuppinNo}` | ju-history.html | pricing.html/pricetag.html(読取専用) | オークション出品・落札履歴。フィールド例: `source, kai, date, shuppinNo, carName, grade, nendo, category('shuppin'|'rakusatsu'), status, pref, sharyDai, recycle, shuppinRyo, seiyakuRyo, rakusatsuRyo, jizei, maxBid` |
-| `adsData/{carsensor,goonet,quicknetwork,autoserver,jutentori,tanaoroshi}` | ads.html | pricetag.html等(読取専用) | 各広告サイトの掲載データ・棚卸CSV由来データ |
-| `adsData/lastUpdated, noGyohanVins, manualShufuku, aaPhotoCounts` | ads.html | 各ツール(読取専用) | 更新日時・業販除外フラグ・修復歴手動設定・AA画像枚数 |
-| `aaPhotos/{VIN}` | ads.html | ju-history.html/car-app(閲覧専用) | AA出品票画像。通信量対策で一覧データとは別パスに保存し、モーダルを開いた時だけ取得する |
-| `pricingData/{vin}` | pricing.html | pricetag.html(読取専用) | 車体価格(`body`)等 |
-| `priceTagTemplates/{templateId}` | pricetag.html | - | 価格表テンプレート設定 |
-| `priceTagData/{vin}/manual/{field}`, `priceTagData/{vin}/printTarget`, `priceTagData/{vin}/templateId` | pricetag.html | - | 一覧の個別編集値・印刷対象・使用テンプレート |
+2026-10-16に各担当セッションがコードを調査し、実際の読み書きに合わせて更新した。「その他の書き込み(実態)」列は本来の担当外からの書き込みで、整理するかどうかは未決定(下の「既知の課題」参照)。
+
+| ノード | 主な書き込み元 | その他の書き込み(実態) | 読取専用で参照するツール | 内容 |
+|---|---|---|---|---|
+| `stock/{id}` | car-app | ハブ・pricing.html(棚卸CSVで未登録車のみ新規登録) | ads.html(在庫一覧。v1.33〜)、ju-history.html、pricetag.html | 在庫車両。フィールド例: `id, vin, name, color, year, shaken, sup, date, price, total, regNo, status1, status2, memo`。car-appはこのほか `cleaned, photographed, maintained, needsParts, isLoaner, addedAt, displayNote, deliveryClean, deliveryMaint, docDone` も持つ |
+| `stockArchive/{id}` | car-app | - | ハブ、ju-history.html、pricing.html | 納車済みアーカイブ(stockと同形式＋`archivedAt`) |
+| `cars/{id}` | car-app | - | - | 代車・レンタカー。`stockId`経由でstockを都度参照(vin・colorは持たない) |
+| `juHistory/{normVin}/{source_kai_shuppinNo}` | ju-history.html | pricing.html(精算書CSV取込) | ハブ、pricing.html | オークション出品・落札履歴。フィールド例: `source, kai, date, shuppinNo, carName, grade, nendo, category('shuppin'|'rakusatsu'), status, pref, sharyDai, recycle, shuppinRyo, seiyakuRyo, rakusatsuRyo, jizei, maxBid` |
+| `adsData/{carsensor,goonet,quicknetwork,autoserver,jutentori}` | ads.html | - | pricetag.html(carsensor, goonet) | 各広告サイトの掲載データ |
+| `adsData/tanaoroshi/{normVin}` | ads.html | car-app・ハブ・pricing.html(CSV取込時に未登録分を追加) | ju-history.html、pricing.html | 棚卸CSV由来データ(`car_name, color, shaken, shiire_date`) |
+| `adsData/lastUpdated, noGyohanVins, manualShufuku` | ads.html | - | pricetag.html(manualShufuku) | 更新日時・業販除外フラグ・修復歴手動設定 |
+| `adsData/aaPhotoCounts` | ads.html | car-app・ハブ・pricing.html・pricetag.html(いずれも全体を上書き) | ju-history.html | AA画像枚数 |
+| `aaPhotos/{VIN}` | ads.html | car-app・ハブ・pricing.html・pricetag.html | ju-history.html | AA出品票画像(`img1, img2`)。通信量対策で一覧データとは別パスに保存し、モーダルを開いた時だけ取得する |
+| `pricingData/{normVin}` | pricing.html | ハブ(`manualCost`) | ads.html(`retailTarget`のみ。v1.33〜)、pricetag.html(`body`)、ハブ | 車体価格(`body`)・`extraCost, as, marginTotal, marginWholesale, retailTarget, manualCost, manualRecycle, updatedAt` |
+| `priceTagTemplates/{templateId}` | pricetag.html | - | - | 価格表テンプレート設定 |
+| `priceTagData/{vin}/manual/{field}`, `printTarget`, `templateId`, `lastPrintedAt`, `lastPrintedPrice` | pricetag.html | - | - | 一覧の個別編集値・印刷対象・使用テンプレート・最終印刷日時と価格 |
+| `newsLog` | car-app | ハブ・pricing.html(新規登録の通知) | - | 変更履歴(car-appが3ヶ月より古いものを自動削除) |
+| `inspections`, `inspectionPhotos`, `loanHistories` | car-app | - | - | car-app専用(点検シート・貸出履歴) |
+| `listings`, `listingPhotos` | (廃止) | - | car-app(読取・削除のみ) | v1.90で廃止した旧方式の残り |
+
+**既知の課題(2026-10-16調査。対応方針は未決定)**
+- `adsData/aaPhotoCounts` を複数ツールが全体上書きしており、同時に使うと他ツールの更新分が消えるおそれがある。ads.htmlの「データ更新」は `adsData` 全体を丸ごと上書きする。
+- `aaPhotos` のキーがツールによって違う(car-app: 生のVIN、ads.html: canonicalVinMapの正式番号、その他: normVin)。
+- ハブとpricing.htmlは、棚卸CSVから `stock` に新規登録する時にVINを正規化して保存している(3章の「生の表記のまま」と異なる)。
 
 **注意**: `stock.price`・`stock.total`は棚卸CSV由来だが用途が未確認。推測で原価・粗利計算等に使わないこと(使う場合は必ずユーザーに確認する)。
 
@@ -65,7 +77,8 @@ function normVin(v){ return (v||'').replace(/\s+/g,'').toUpperCase(); }
 
 - 各ツールは別ファイルのまま、ヘッダーのボタンでURL遷移する方式(1ファイルへの統合はしない方針。理由: ID・変数名の重複が多く書き換え範囲が大きいため。2026-09-28決定)。
 - 検索ボックスの入力中文字列は、リンクをタップした瞬間にURLの`?q=`パラメータへ反映される。遷移先のページは読み込み時にこのパラメータを見て検索欄に自動入力し、絞り込みも自動実行する。
-- 実装済みのリンク: ads.html⇔pricing.html(相互)。ciel-systemハブ→各ツール(「🏠 一覧へ」で戻るリンクは各ツール側に維持)。
+- 実装済みのリンク: ads.html⇔pricing.html(相互)、ads.html⇔pricetag.html(相互)、pricing.html⇔pricetag.html(相互)。ciel-systemハブ→各ツール(「🏠 一覧へ」で戻るリンクは各ツール側に維持。car-appのみ外部URLで新しいタブを開く)。
+- `?q=` の対応状況(2026-10-16調査): ads.html・pricing.html・pricetag.html(v1.28〜)は受け取りと送り出しの両方に対応。ju-history.html・ハブ・car-appは `?q=` を使わない。
 - **新しいツール間リンクを追加する場合、または`?q=`以外の新しいクエリパラメータを導入する場合は、両端のツールに影響するため、どちらか片方のセッションだけで進めず、両方を確認してから実装すること。**
 
 ## 5. 新しいツールを作る/既存ノードを参照する時の原則
