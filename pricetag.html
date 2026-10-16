@@ -360,7 +360,7 @@
 
 <div class="panel">
   <div class="topBar">
-    <h1>プライスシート作成（A3横） <span style="font-size:12px;font-weight:400;opacity:.75;">v1.27</span></h1>
+    <h1>プライスシート作成（A3横） <span style="font-size:12px;font-weight:400;opacity:.75;">v1.28</span></h1>
     <a class="btn" href="./index.html">🏠 一覧へ</a>
     <a class="btn" id="backToAdsLink" href="./ads.html" data-base-href="./ads.html">📊 広告掲載へ</a>
     <a class="btn" id="backToPricingLink" href="./pricing.html" data-base-href="./pricing.html">💰 プライシングへ</a>
@@ -1727,16 +1727,16 @@ const MS_PER_DAY = 86400000;
   syncRepairBadge();
   apply();
 
-  // ads.html / pricing.html からの遷移時、検索語(?q=)を保持したまま戻れるようにする。
-  // このツール自体には検索ボックスがないため、受け取った?q=をそのまま戻るリンクに引き渡すだけ。
+  // ads.html / pricing.html との間で検索語(?q=)を引き継ぐ(v1.28〜)。
+  // ・読み込み時に?q=があれば一覧の検索欄に自動入力する(絞り込みはloadAllData()後のrenderList()で反映される)
+  // ・検索欄の入力内容を、広告掲載へ/プライシングへのリンクの?q=に常に反映する
   (function(){
     var q=new URLSearchParams(location.search).get('q')||'';
-    ['backToAdsLink','backToPricingLink'].forEach(function(id){
-      var link=document.getElementById(id);
-      if(!link) return;
-      var base=link.dataset.baseHref;
-      link.href = q ? base+'?q='+encodeURIComponent(q) : base;
-    });
+    if(q){
+      document.getElementById('listSearchBox').value=q;
+      document.getElementById('listSearchClearBtn').style.display='inline-block';
+    }
+    updateCrossToolLink();
   })();
 
   document.getElementById('printBtn').onclick=function(){printCurrentPreview();};
@@ -2099,6 +2099,17 @@ function renderPrintDateCell(r){
   if(!lines) return '<td class="printDateCell noPrint">未印刷</td>';
   var cls='printDateCell'+(r.priceChanged?' priceChanged':'');
   return '<td class="'+cls+'">'+escapeHtml(lines[0])+'<br>'+escapeHtml(lines[1])+'</td>';
+}
+
+// v1.28:検索欄の文字列を、広告掲載へ/プライシングへのリンクの?q=に反映する(ads.html/pricing.htmlと同じ方式)
+function updateCrossToolLink(){
+  var q=document.getElementById('listSearchBox').value.trim();
+  ['backToAdsLink','backToPricingLink'].forEach(function(id){
+    var link=document.getElementById(id);
+    if(!link) return;
+    var base=link.dataset.baseHref;
+    link.href = q ? base+'?q='+encodeURIComponent(q) : base;
+  });
 }
 
 function renderList(){
@@ -2580,11 +2591,13 @@ document.getElementById('listSearchBox').addEventListener('input', function(){
   // style.display='' だとCSS側のdisplay:none(初期値)にフォールバックして表示されないバグがあったため、
   // 明示的に表示用の値(inline-block)をセットするよう修正(v1.07)
   document.getElementById('listSearchClearBtn').style.display = this.value ? 'inline-block' : 'none';
+  updateCrossToolLink();
   renderList();
 });
 document.getElementById('listSearchClearBtn').addEventListener('click', function(){
   document.getElementById('listSearchBox').value='';
   this.style.display='none';
+  updateCrossToolLink();
   renderList();
 });
 
