@@ -102,13 +102,16 @@ input[type=number]{width:64px;}
 .layer.dragover-bot{box-shadow:0 3px 0 0 var(--sky);}
 .layBtn.active{background:var(--sky);border-color:var(--sky);color:#fff;font-weight:700;}
 .dsgn label{margin-right:6px;cursor:pointer;}
+.it.missing{background:repeating-linear-gradient(45deg,#d6d6d6,#d6d6d6 6px,#ececec 6px,#ececec 12px);display:flex;align-items:center;justify-content:center;color:#555;font-size:12px;}
+.it.missing img{display:none;}
+.it.missing::after{content:"画像未保存";}
 #toast{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);background:#222;color:#fff;padding:8px 16px;border-radius:8px;font-size:13px;display:none;z-index:50;}
 </style>
 </head>
 <body>
 <header>
   <div class="header-row">
-    <h1>チラシ作成 <span style="font-size:12px;font-weight:400;opacity:.75;">v1.03</span></h1>
+    <h1>チラシ作成 <span style="font-size:12px;font-weight:400;opacity:.75;">v1.04</span></h1>
     <div class="hdrBtns">
       <button type="button" class="updateBtn headerRefreshBtn" id="settingsBtn">⚙ 設定</button>
       <a class="updateBtn headerRefreshBtn" href="./index.html">🏠 一覧へ</a>
@@ -128,6 +131,8 @@ input[type=number]{width:64px;}
       <span class="lbl">コピー先</span><select id="copyTo"></select>
       <button class="btn" id="copyBtn">このレイアウトをコピー</button>
       <span class="hint" id="sizeInfo"></span>
+      <button class="btn main" id="cloudBtn" title="画像をFirebaseに保存します(配置データは自動で保存されます)">☁ 画像を保存</button>
+      <span class="hint" id="cloudInfo"></span>
     </div>
   </div>
   <div class="toolbar">
@@ -211,6 +216,10 @@ input[type=number]{width:64px;}
       <span>ダークモード</span>
       <label class="switch"><input type="checkbox" id="darkModeToggle"><span class="slider"></span></label>
     </div>
+    <div class="settingsRow">
+      <span>取り込む画像の大きさ<br><span class="hint">長辺の最大ピクセル。小さいほど保存容量が減ります(取り込み時に縮小されます)</span></span>
+      <select id="maxPx"><option value="1200">1200px</option><option value="1600">1600px</option><option value="2000">2000px</option><option value="3000">3000px</option><option value="0">縮小しない</option></select>
+    </div>
     <button class="settingsCloseBtn" id="settingsCloseBtn">閉じる</button>
   </div>
 </div>
@@ -251,14 +260,14 @@ function r1(v){return Math.round(v*10)/10;}
 function ar(){var d=G.designs[S.design]||{w:3,h:4};return d.h/d.w;}
 
 /* ---------- 履歴 ---------- */
-function snap(){return JSON.stringify(S);}
+function snap(){return JSON.stringify(S,function(k,v){return k==='ua'?undefined:v;});}
 function commit(){
   var s=snap();
   if(undoStack.length&&undoStack[undoStack.length-1]===s)return;
   undoStack.push(s); if(undoStack.length>100)undoStack.shift();
   redoStack=[]; scheduleSave(); updateUndoBtns();
 }
-function restore(s){S=JSON.parse(s);G.layouts[G.cur]=S;sel=sel.filter(function(id){return byId(id);});syncToolbar();render();}
+function restore(s){var ua=S.ua;S=JSON.parse(s);S.ua=Date.now();G.layouts[G.cur]=S;sel=sel.filter(function(id){return byId(id);});syncToolbar();render();}
 function undo(){ if(undoStack.length<2)return; redoStack.push(undoStack.pop()); restore(undoStack[undoStack.length-1]); scheduleSave(); updateUndoBtns(); }
 function redo(){ if(!redoStack.length)return; var s=redoStack.pop(); undoStack.push(s); restore(s); scheduleSave(); updateUndoBtns(); }
 function updateUndoBtns(){$('undoBtn').disabled=undoStack.length<2;$('redoBtn').disabled=!redoStack.length;}
@@ -278,7 +287,71 @@ function idb(){
   return dbp;
 }
 var saveT=null;
-function scheduleSave(){clearTimeout(saveT);saveT=setTimeout(doSave,500);}
+function scheduleSave(){S.ua=Date.now();clearTimeout(saveT);saveT=setTimeout(doSave,500);scheduleCloud();}
+/* ---------- Firebase(配置データのみ自動保存。画像は「☁ 画像を保存」ボタンの時だけ) ---------- */
+var FB=null, localLoaded=false, remoteDone=false, cloudT=null;
+function cloudStatus(t){var e=$('cloudInfo');if(e)e.textContent=t;}
+function pushLayout(i){
+  var l=G.layouts[i]; if(!FB||!l)return Promise.resolve();
+  return FB.saveLayout(i,JSON.stringify(l),l.ua||Date.now());
+}
+function scheduleCloud(){
+  if(!FB)return; clearTimeout(cloudT); cloudStatus('☁ 保存待ち…');
+  cloudT=setTimeout(function(){
+    pushLayout(G.cur).then(function(){cloudStatus('☁ 保存済み');}).catch(function(e){console.error(e);cloudStatus('☁ 保存できませんでした');});
+  },1500);
+}
+function usedImgIds(){
+  var used={};
+  G.layouts.forEach(function(l){if(!l)return;
+    l.items.forEach(function(i){if(i.imgId)used[i.imgId]=1;});
+    Object.keys(l.alt||{}).forEach(function(k){l.alt[k].items.forEach(function(i){if(i.imgId)used[i.imgId]=1;});});});
+  return Object.keys(used);
+}
+function unsavedImgs(){return usedImgIds().filter(function(id){return IMGS[id]&&!IMGS[id].saved;});}
+function updateCloudBtn(){
+  var n=unsavedImgs().length, b=$('cloudBtn'); if(!b)return;
+  b.textContent='☁ 画像を保存'+(n?'(未保存 '+n+'枚)':''); b.disabled=!FB;
+}
+$('cloudBtn').onclick=function(){
+  if(!FB)return;
+  var ids=unsavedImgs(); cloudStatus('☁ 保存中…');
+  var chain=Promise.resolve(), done=0;
+  ids.forEach(function(id){chain=chain.then(function(){
+    return FB.saveImage(id,{name:IMGS[id].name||'',data:IMGS[id].data,ua:Date.now()}).then(function(){IMGS[id].saved=true;done++;updateCloudBtn();});
+  });});
+  chain.then(function(){return Promise.all([0,1,2,3].map(pushLayout));})
+    .then(function(){doSave();cloudStatus('☁ 保存済み');toast('保存しました(画像 '+done+'枚)');updateCloudBtn();})
+    .catch(function(e){console.error(e);cloudStatus('☁ 保存できませんでした');toast('保存できませんでした');});
+};
+function tryRemote(){ if(FB&&localLoaded&&!remoteDone){remoteDone=true;remoteSync();} }
+window.addEventListener('flyerfb',function(){FB=window.flyerFB;tryRemote();updateCloudBtn();});
+function remoteSync(){
+  cloudStatus('☁ 同期中…');
+  FB.getLayouts().then(function(r){
+    r=r||{}; var changed=false;
+    for(var i=0;i<4;i++){
+      var rem=r[i], loc=G.layouts[i];
+      if(rem&&rem.json){
+        if(!loc||(loc.ua||0)<(rem.ua||0)){
+          try{G.layouts[i]=norm(JSON.parse(rem.json));G.layouts[i].ua=rem.ua||0;changed=true;}catch(e){}
+        }else if((loc.ua||0)>(rem.ua||0))pushLayout(i);
+      }else if(loc&&loc.items.length)pushLayout(i);
+    }
+    if(changed){
+      if(!G.layouts[G.cur])G.layouts[G.cur]=newState('レイアウト'+(G.cur+1));
+      S=G.layouts[G.cur]; sel=[]; undoStack=[snap()]; redoStack=[]; updateUndoBtns();
+      Object.keys(els).forEach(function(id){els[id].remove();delete els[id];});
+      syncToolbar(); render(); doSave();
+    }
+    cloudStatus('☁ 同期済み');
+    var miss=usedImgIds().filter(function(id){return !IMGS[id];});
+    miss.forEach(function(id){
+      FB.getImage(id).then(function(o){ if(o&&o.data){IMGS[id]={name:o.name||'',data:o.data,saved:true};render();doSave();} });
+    });
+    updateCloudBtn();
+  }).catch(function(e){console.error(e);cloudStatus('☁ オフライン(このパソコンにのみ保存)');});
+}
 function doSave(){
   idb().then(function(db){
     var tx=db.transaction('kv','readwrite');
@@ -342,6 +415,7 @@ function render(){
       if(!im||im.tagName!=='IMG'){el.innerHTML='<img alt="">';im=el.firstChild;}
       var src=d?d.data:'';
       if(im.getAttribute('src')!==src)im.setAttribute('src',src);
+      el.classList.toggle('missing',!d);
       el.style.opacity=it.opacity==null?1:it.opacity;
     }
     if(el.parentNode!==st)st.appendChild(el);
@@ -358,6 +432,7 @@ function render(){
 function updateSizeInfo(){
   var seen={},tot=0;
   S.items.forEach(function(i){if(i.imgId&&!seen[i.imgId]){seen[i.imgId]=1;var d=IMGS[i.imgId];if(d)tot+=d.data.length*0.75;}});
+  updateCloudBtn();
   $('sizeInfo').textContent='このレイアウトの画像容量: '+(tot/1048576).toFixed(1)+'MB';
 }
 function clearOverlay(){
@@ -523,6 +598,17 @@ function addSlot(){
   it.no=nextNo(); S.seq=it.no+1;
   S.items.push(it); sel=[it.id]; commit(); render();
 }
+function shrink(im,orig){
+  var L=parseInt($('maxPx').value), nw=im.naturalWidth, nh=im.naturalHeight;
+  var sc=L>0?Math.min(1,L/Math.max(nw,nh)):1;
+  try{
+    var c=document.createElement('canvas'); c.width=Math.max(1,Math.round(nw*sc)); c.height=Math.max(1,Math.round(nh*sc));
+    c.getContext('2d').drawImage(im,0,0,c.width,c.height);
+    var out=c.toDataURL('image/webp',0.82);
+    if(out.indexOf('data:image/webp')!==0)return orig;
+    return (out.length<orig.length||sc<1)?out:orig;
+  }catch(e){return orig;}
+}
 function addImages(files){
   var list=[].slice.call(files).filter(function(f){return /^image\//.test(f.type);});
   if(!list.length)return;
@@ -534,7 +620,7 @@ function addImages(files){
         var im=new Image();
         im.onload=function(){
           var id=uid(), iid='g'+id;
-          IMGS[iid]={name:f.name,data:fr.result};
+          IMGS[iid]={name:f.name,data:shrink(im,fr.result)};
           var w=Math.min(W()*0.5,W()), h=w*im.naturalHeight/im.naturalWidth;
           if(h>H()*0.8){h=H()*0.8;w=h*im.naturalWidth/im.naturalHeight;}
           S.items.push({id:id,type:'image',imgId:iid,name:f.name,x:(W()-w)/2,y:(H()-h)/2,w:w,h:h,opacity:1});
@@ -785,7 +871,7 @@ $('copyBtn').onclick=function(){
   var tg=G.layouts[t];
   if(tg&&tg.items.length&&!confirm('レイアウト'+(t+1)+'の内容は上書きされます。よろしいですか?'))return;
   var c=JSON.parse(JSON.stringify(S)); c.name=(S.name||'レイアウト')+'のコピー';
-  G.layouts[t]=c; scheduleSave(); syncToolbar(); toast('レイアウト'+(t+1)+'にコピーしました');
+  c.ua=Date.now(); G.layouts[t]=c; doSave(); if(FB)pushLayout(t); syncToolbar(); toast('レイアウト'+(t+1)+'にコピーしました');
 };
 function cloneItems(a){return JSON.parse(JSON.stringify(a));}
 function setPaper(k,w,h){
@@ -840,6 +926,8 @@ function applyTheme(t){
 }
 $('darkModeToggle').checked=document.documentElement.getAttribute('data-theme')==='dark';
 $('darkModeToggle').onchange=function(){applyTheme(this.checked?'dark':'light');};
+try{var mp=localStorage.getItem('flyerMaxPx');$('maxPx').value=mp!=null?mp:'2000';}catch(e){$('maxPx').value='2000';}
+$('maxPx').onchange=function(){try{localStorage.setItem('flyerMaxPx',this.value);}catch(e){}};
 $('settingsBtn').onclick=function(){$('settingsOverlay').style.display='flex';};
 $('settingsCloseBtn').onclick=function(){$('settingsOverlay').style.display='none';};
 $('settingsOverlay').onclick=function(e){if(e.target===this)this.style.display='none';};
@@ -847,7 +935,7 @@ $('settingsOverlay').onclick=function(e){if(e.target===this)this.style.display='
 /* ---------- ファイル保存/読込(画像込みのJSON) ---------- */
 $('saveFile').onclick=function(){
   var used={}; S.items.forEach(function(i){if(i.imgId&&IMGS[i.imgId])used[i.imgId]=IMGS[i.imgId];});
-  var blob=new Blob([JSON.stringify({app:'ciel-flyer',version:'1.02',state:S,designs:G.designs,images:used})],{type:'application/json'});
+  var blob=new Blob([JSON.stringify({app:'ciel-flyer',version:'1.04',state:S,designs:G.designs,images:used})],{type:'application/json'});
   var a=document.createElement('a'); a.href=URL.createObjectURL(blob);
   var d=new Date(), pad=function(n){return ('0'+n).slice(-2);};
   a.download='flyer-layout-'+d.getFullYear()+pad(d.getMonth()+1)+pad(d.getDate())+'-'+pad(d.getHours())+pad(d.getMinutes())+'.json';
@@ -864,7 +952,7 @@ $('loadFile').onchange=function(){
       var o=JSON.parse(fr.result);
       if(o.app!=='ciel-flyer'||!o.state)throw new Error('形式が違います');
       if(!confirm('いま編集中の内容は置き換えられます。よろしいですか?'))return;
-      S=norm(o.state); G.layouts[G.cur]=S; Object.keys(o.images||{}).forEach(function(k){IMGS[k]=o.images[k];}); sel=[]; zoomMode='fit'; $('zoomSel').value='fit';
+      S=norm(o.state); G.layouts[G.cur]=S; Object.keys(o.images||{}).forEach(function(k){IMGS[k]=o.images[k];IMGS[k].saved=false;}); sel=[]; zoomMode='fit'; $('zoomSel').value='fit';
       Object.keys(els).forEach(function(id){els[id].remove();delete els[id];});
       syncToolbar(); commit(); render(); toast('開きました');
     }catch(err){alert('ファイルを開けませんでした: '+err.message);}
@@ -881,10 +969,48 @@ loadSaved().then(function(saved){
   for(var li=0;li<4;li++){ if(G.layouts[li])norm(G.layouts[li]); }
   if(!G.layouts[G.cur])G.layouts[G.cur]=newState('レイアウト'+(G.cur+1));
   S=G.layouts[G.cur];
+  localLoaded=true; if(window.flyerFB&&window.flyerFB.ready)FB=window.flyerFB;
   syncToolbar(); undoStack=[snap()]; updateUndoBtns(); render();
+  tryRemote();
   if(!saved)toast('「＋ コマ追加」や「コマを格子に並べる」から始めてみましょう');
 });
 })();
+</script>
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getDatabase, ref, get, set }
+  from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
+import { getAuth, onAuthStateChanged, signInAnonymously }
+  from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyAFJKdWkTa9WvX9W3ZA95P0BoDDugQUkuM",
+  authDomain: "ciel-autoworks.firebaseapp.com",
+  databaseURL: "https://ciel-autoworks-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "ciel-autoworks",
+};
+const fbApp = initializeApp(firebaseConfig);
+const db = getDatabase(fbApp);
+const auth = getAuth(fbApp);
+
+// flyer専用ノード: flyerLayouts/{0..3}(配置データのJSON文字列) と flyerImages/{imgId}(画像Base64)。
+// 他ツールのノードには一切書き込まない。
+let started=false;
+onAuthStateChanged(auth, async function(user){
+  if(user && !started){
+    started=true;
+    window.flyerFB={
+      ready:true,
+      saveLayout:(i,json,ua)=>set(ref(db,'flyerLayouts/'+i),{json:json,ua:ua}),
+      getLayouts:()=>get(ref(db,'flyerLayouts')).then(s=>s.val()),
+      saveImage:(id,o)=>set(ref(db,'flyerImages/'+id),o),
+      getImage:(id)=>get(ref(db,'flyerImages/'+id)).then(s=>s.val())
+    };
+    window.dispatchEvent(new Event('flyerfb'));
+  }else if(!user && !started){
+    try{ await signInAnonymously(auth); }catch(err){ console.error('Auth error:', err); }
+  }
+});
 </script>
 </body>
 </html>
