@@ -137,7 +137,7 @@ input[type=number]{width:64px;}
 <body>
 <header>
   <div class="header-row">
-    <h1>チラシ作成 <span style="font-size:12px;font-weight:400;opacity:.75;">v1.21</span></h1>
+    <h1>チラシ作成 <span style="font-size:12px;font-weight:400;opacity:.75;">v1.22</span></h1>
     <div class="hdrBtns">
       <button type="button" class="updateBtn headerRefreshBtn" id="settingsBtn">⚙ 設定</button>
       <a class="updateBtn headerRefreshBtn" href="./index.html">🏠 一覧へ</a>
@@ -1148,7 +1148,7 @@ $('settingsOverlay').onclick=function(e){if(e.target===this)this.style.display='
 /* ---------- ファイル保存/読込(画像込みのJSON) ---------- */
 $('saveFile').onclick=function(){
   var used={}; S.items.forEach(function(i){if(i.imgId&&IMGS[i.imgId])used[i.imgId]=IMGS[i.imgId];});
-  var blob=new Blob([JSON.stringify({app:'ciel-flyer',version:'1.21',state:S,designs:G.designs,images:used})],{type:'application/json'});
+  var blob=new Blob([JSON.stringify({app:'ciel-flyer',version:'1.22',state:S,designs:G.designs,images:used})],{type:'application/json'});
   var a=document.createElement('a'); a.href=URL.createObjectURL(blob);
   var d=new Date(), pad=function(n){return ('0'+n).slice(-2);};
   a.download='flyer-layout-'+d.getFullYear()+pad(d.getMonth()+1)+pad(d.getDate())+'-'+pad(d.getHours())+pad(d.getMinutes())+'.json';
@@ -1588,7 +1588,20 @@ $('cBulkBtn').onclick=function(){
 $('cZoomIn').onclick=function(){CE.zoom=Math.min(4,CE.zoom*1.25);cRender();};
 $('cZoomOut').onclick=function(){CE.zoom=Math.max(0.3,CE.zoom/1.25);cRender();};
 $('cZoomFit').onclick=function(){CE.zoom=1;cRender();};
-$('cCloudBtn').onclick=function(){$('cloudBtn').click();};
+$('cCloudBtn').onclick=function(){
+  if(!FB){toast('Firebaseに接続できていません');return;}
+  var k=CE.k, c=cc(), ids={};
+  c.items.forEach(function(i){if(i.imgId)ids[i.imgId]=1;}); if(c.samplePhoto)ids[c.samplePhoto]=1;
+  var un=Object.keys(ids).filter(function(id){return IMGS[id]&&!IMGS[id].saved;});
+  if(!confirm('コマデザイン'+k+'を上書き保存しますか?\n(画像 '+un.length+'枚も保存します。レイアウトは保存されません)'))return;
+  cloudStatus('☁ 保存中…');
+  var chain=Promise.resolve(), done=0;
+  un.forEach(function(id){chain=chain.then(function(){
+    return FB.saveImage(id,{name:IMGS[id].name||'',data:IMGS[id].data,ua:Date.now()}).then(function(){IMGS[id].saved=true;done++;});});});
+  chain.then(function(){if(!(c.ua>0))c.ua=Date.now();return pushCell(k);})
+    .then(function(){delete cloudPending['C'+k];doSave();cloudStatus('☁ 保存済み');toast('コマデザイン'+k+'を保存しました(画像 '+done+'枚)');updateCloudBtn();})
+    .catch(function(e){console.error(e);cloudStatus('☁ 保存できませんでした');toast('保存できませんでした');});
+};
 
 /* コマ設定(表示項目・サンプル文字・サンプル画像) */
 function openCellSettings(){
