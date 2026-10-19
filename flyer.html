@@ -156,7 +156,7 @@ input[type=number]{width:64px;}
 <body>
 <header>
   <div class="header-row">
-    <h1>チラシ作成 <span style="font-size:12px;font-weight:400;opacity:.75;">v1.30</span></h1>
+    <h1>チラシ作成 <span style="font-size:12px;font-weight:400;opacity:.75;">v1.31</span></h1>
     <div class="hdrBtns">
       <button type="button" class="updateBtn headerRefreshBtn" id="settingsBtn">⚙ 設定</button>
       <a class="updateBtn headerRefreshBtn" href="./index.html">🏠 一覧へ</a>
@@ -184,6 +184,7 @@ input[type=number]{width:64px;}
       <button class="btn" id="undoBtn">↶ 元に戻す</button>
       <button class="btn" id="redoBtn">↷ やり直し</button>
     </div>
+    <div class="tgroup"><button class="btn" id="lPrevBtn" title="サンプルの車両(または選んだ車両)でチラシの仕上がりを確認します">👁 プレビュー</button></div>
     <div class="tgroup" style="margin-left:auto;"><button class="btn accent" id="lsBtn">⚙ レイアウト設定</button></div>
   </div>
   <div class="toolbar">
@@ -328,7 +329,8 @@ input[type=number]{width:64px;}
     <div class="tgroup"><span class="lbl">一括フォント</span><select id="cBulkFont"></select><button class="btn" id="cBulkBtn">全ての文字に適用</button>
       <label style="margin-left:8px;"><input type="checkbox" id="cSyncInfo"> 文字情報のスタイルを同期</label>
       <button class="btn" id="cUnifyInfo" title="車名・グレード・年式・走行距離・車検の文字の大きさを、選択中(なければ車名)のものに揃えます">文字情報のサイズを統一</button>
-      <label><input type="checkbox" id="cSyncPrice"> 価格・.8・万円のスタイルを同期</label></div>
+      <label><input type="checkbox" id="cSyncPrice"> 価格・.8・万円のスタイルを同期</label>
+      <label title="車両画像の透明でない部分を検出し、枠の中央に置いて、縦か横が枠に当たるまで拡大します"><input type="checkbox" id="cPhotoFit"> 車両画像を自動調整</label></div>
   </div>
   <div class="toolbar">
     <div class="tgroup"><span class="lbl">項目を追加</span><select id="cFieldSel"></select><button class="btn main" id="cAddField">＋ 追加</button>
@@ -338,6 +340,7 @@ input[type=number]{width:64px;}
     <div class="tgroup"><span class="lbl">表示</span><button class="btn" id="cZoomOut">－</button><button class="btn" id="cZoomFit">全体</button><button class="btn" id="cZoomIn">＋</button></div>
     <div class="tgroup"><button class="btn" id="cUndo">↶ 元に戻す</button><button class="btn" id="cRedo">↷ やり直し</button></div>
     <div class="tgroup"><span class="lbl" title="価格の数字・.8・万円の位置や大きさ・縦横比を、2桁と3桁で別々に保存します">価格の桁数(編集中)</span><button class="btn layBtn" id="cDg2">2桁</button><button class="btn layBtn" id="cDg3">3桁</button></div>
+    <div class="tgroup"><button class="btn" id="cPrevBtn" title="サンプルの内容で、3桁と2桁の仕上がりを確認します">👁 プレビュー</button></div>
     <div class="tgroup"><button class="btn main" id="cCloudBtn">💾 保存</button></div>
     <div class="tgroup" style="margin-left:auto;"><button class="btn accent" id="cSetBtn">⚙ コマ設定</button></div>
   </div>
@@ -1258,7 +1261,7 @@ $('settingsOverlay').onclick=function(e){if(e.target===this)this.style.display='
 /* ---------- ファイル保存/読込(画像込みのJSON) ---------- */
 $('saveFile').onclick=function(){
   var used={}; S.items.forEach(function(i){if(i.imgId&&IMGS[i.imgId])used[i.imgId]=IMGS[i.imgId];});
-  var blob=new Blob([JSON.stringify({app:'ciel-flyer',version:'1.30',state:S,designs:G.designs,images:used})],{type:'application/json'});
+  var blob=new Blob([JSON.stringify({app:'ciel-flyer',version:'1.31',state:S,designs:G.designs,images:used})],{type:'application/json'});
   var a=document.createElement('a'); a.href=URL.createObjectURL(blob);
   var d=new Date(), pad=function(n){return ('0'+n).slice(-2);};
   a.download='flyer-layout-'+d.getFullYear()+pad(d.getMonth()+1)+pad(d.getDate())+'-'+pad(d.getHours())+pad(d.getMinutes())+'.json';
@@ -1440,7 +1443,17 @@ function buildItemEl(it,pxu,data,edit){
   }
   if(it.type==='photo'){
     el.style.justifyContent='center'; el.style.alignItems='center';
-    if(data&&data.photo){var p=document.createElement('img');p.src=data.photo;p.style.cssText='width:100%;height:100%;object-fit:contain;object-position:'+(data.photoAnchor==='bottom'?'center bottom':'center center')+';pointer-events:none;-webkit-user-drag:none;';el.appendChild(p);}
+    if(data&&data.photo){
+      var p=document.createElement('img');p.src=data.photo;
+      var inf=data.photoInfo;
+      if(data.photoFit&&inf){ // 自動調整: 透明でない範囲を枠の中央に置き、縦か横が枠に当たるまで拡大
+        var fw=it.w*pxu, fh=it.h*pxu, bwF=(inf.fx1-inf.fx0)*inf.a, bhF=(inf.fy1-inf.fy0);
+        var Hh=Math.min(fw/bwF,fh/bhF), Ww=inf.a*Hh;
+        p.style.cssText='position:absolute;pointer-events:none;-webkit-user-drag:none;max-width:none;width:'+Ww+'px;height:'+Hh+'px;left:'+(fw/2-((inf.fx0+inf.fx1)/2)*Ww)+'px;top:'+(fh/2-((inf.fy0+inf.fy1)/2)*Hh)+'px;';
+        el.style.overflow='hidden';
+      }else p.style.cssText='width:100%;height:100%;object-fit:contain;object-position:'+(data.photoAnchor==='bottom'?'center bottom':'center center')+';pointer-events:none;-webkit-user-drag:none;';
+      el.appendChild(p);
+    }
     else{el.style.background='repeating-linear-gradient(45deg,#e4e7ea,#e4e7ea 12px,#f1f3f5 12px,#f1f3f5 24px)';el.style.color='#667';el.style.fontSize=Math.max(10,Math.min(it.h,it.w*0.5)*pxu*0.5)+'px';el.textContent='🚗';}
     if(edit){ // 画像の中心が分かる十字
       var hx=document.createElement('div');hx.className='xhair';hx.style.cssText='left:0;right:0;top:50%;height:1px;';
@@ -1501,8 +1514,11 @@ function buildCellEl(cell,k,pxw,data,edit,rootEl){
   var root=rootEl||document.createElement('div'); root.innerHTML='';
   root.style.cssText='position:relative;isolation:isolate;width:'+pxw+'px;height:'+hpx+'px;overflow:'+(edit?'visible':'hidden')+';box-sizing:border-box;'+(edit?'outline:1px dashed #999;':'')+
     (f.bgOn?'background:'+f.bg+';':(edit?'background:repeating-conic-gradient(#d9d9d9 0 25%,#f4f4f4 0 50%) 0 0/20px 20px;':'background:transparent;'))+'border-radius:'+((f.radius||0)*pxu)+'px;';
-  var dm=valMap(cell.sample,data); dm.photoAnchor=cell.photoAnchor||'center';
-  if(!dm.photo&&edit&&cell.showSample&&cell.samplePhoto&&IMGS[cell.samplePhoto])dm.photo=IMGS[cell.samplePhoto].data;
+  var dm=valMap(cell.sample,data); dm.photoAnchor=cell.photoAnchor||'center'; dm.photoFit=!!cell.photoAutoFit;
+  if(!dm.photo&&edit&&cell.showSample&&cell.samplePhoto&&IMGS[cell.samplePhoto]){
+    dm.photo=IMGS[cell.samplePhoto].data; dm.photoInfo=PINFO['s:'+cell.samplePhoto]||null;
+    if(cell.photoAutoFit&&!dm.photoInfo)analyzePhoto('s:'+cell.samplePhoto,dm.photo).then(function(){if(view==='cell')cRender();});
+  }
   if(edit){['total','body'].forEach(function(b){var m=String(dm[b+'Main']||'');
     if(CE.dg===2&&m.length>2)m=m.slice(-2); else if(CE.dg===3){while(m.length<3)m='1'+m;} dm[b+'Main']=m;});}
   var els=[];
@@ -1562,7 +1578,7 @@ function cSyncBar(){
   $('caw').value=d.w; $('cah').value=d.h;
   $('cfOn').checked=!!f.on; $('cfColor').value=f.color; $('cfW').value=f.w; $('cfR').value=f.radius;
   $('cbgOn').checked=!!f.bgOn; $('cbg').value=f.bg;
-  $('cSyncInfo').checked=!!cc().syncInfo; $('cSyncPrice').checked=!!cc().syncPrice;
+  $('cSyncInfo').checked=!!cc().syncInfo; $('cSyncPrice').checked=!!cc().syncPrice; $('cPhotoFit').checked=!!cc().photoAutoFit;
 }
 function cSnap(){return JSON.stringify(cc());}
 function cCommit(){
@@ -1680,6 +1696,7 @@ $('cUnifyInfo').onclick=function(){
   mem.forEach(function(m){if(m!==src){m.size=src.size;m.h=src.h;}});
   cCommit(); cRender(); toast('「'+itemLabel(src)+'」の大きさに揃えました');
 };
+$('cPhotoFit').onchange=function(){cc().photoAutoFit=this.checked;cCommit();cRender();};
 $('cSyncInfo').onchange=function(){cc().syncInfo=this.checked;if(this.checked)syncAdoptAll('info');cCommit();cRender();};
 $('cSyncPrice').onchange=function(){cc().syncPrice=this.checked;if(this.checked)syncAdoptAll('price');cCommit();cRender();};
 var COLOR_HIST=[];
@@ -2014,6 +2031,25 @@ function showView(v){
 });
 
 /* ================= ③ 掲載車両の選択 ================= */
+var PINFO={};
+function analyzePhoto(key,url){
+  if(PINFO[key])return Promise.resolve(PINFO[key]);
+  return new Promise(function(res){
+    var im=new Image();
+    im.onload=function(){
+      var L=400, sc=Math.min(1,L/Math.max(im.naturalWidth,im.naturalHeight)), w=Math.max(1,Math.round(im.naturalWidth*sc)), h=Math.max(1,Math.round(im.naturalHeight*sc));
+      var c=document.createElement('canvas'); c.width=w; c.height=h; var x=c.getContext('2d'); x.drawImage(im,0,0,w,h);
+      var x0=w,x1=-1,y0=h,y1=-1;
+      try{var d=x.getImageData(0,0,w,h).data;
+        for(var yy=0;yy<h;yy++){var row=yy*w*4;for(var xx=0;xx<w;xx++){if(d[row+xx*4+3]>40){if(xx<x0)x0=xx;if(xx>x1)x1=xx;if(yy<y0)y0=yy;if(yy>y1)y1=yy;}}}
+      }catch(e){x1=-1;}
+      var info=x1<0?{fx0:0,fy0:0,fx1:1,fy1:1,a:im.naturalWidth/im.naturalHeight}:{fx0:x0/w,fy0:y0/h,fx1:(x1+1)/w,fy1:(y1+1)/h,a:im.naturalWidth/im.naturalHeight};
+      PINFO[key]=info; res(info);
+    };
+    im.onerror=function(){res(null);};
+    im.src=url;
+  });
+}
 function normVin(v){return (v||'').replace(/\s+/g,'').toUpperCase();}
 var TOTAL_ADD=100000; // pricing.html / pricetag.htmlと同じ:支払総額(万円) = 車体価格 + この額
 function normShaken(s){
@@ -2076,7 +2112,7 @@ function loadCars(force){
 window.addEventListener('flyerfb',function(){if(view==='cars')loadCars();});
 function carData(r,no){
   return {name:r.name,grade:r.grade,year:r.year,mileage:r.mileage,shaken:r.shaken,repair:r.repairHas?'修復歴あり':'修復歴なし',
-    color:r.color,no:String(no),total:r.total,body:r.body,unit:'万円',photo:CARS.photos[r.vin]||''};
+    color:r.color,no:String(no),total:r.total,body:r.body,unit:'万円',photo:r.photoData||CARS.photos[r.vin]||'',photoInfo:r.photoInfoKey?(PINFO[r.photoInfoKey]||null):(PINFO[r.vin]||null)};
 }
 function slotsSorted(){return slots().slice().sort(function(a,b){return a.no-b.no;});}
 function carPages(){var n=slots().length;return n?Math.ceil((S.cars||[]).length/n):0;}
@@ -2256,7 +2292,7 @@ function savePhotoNow(vin,name,data,msg,thenClose){
   if(!FB){toast('Firebaseに接続できていません');return Promise.resolve();}
   var o={name:name||'',data:data,ua:Date.now()};
   return FB.savePhoto(vin,o).then(function(){
-    CARS.photos[vin]=o.data; CARS.photoIdx[vin]={ua:o.ua}; $('cpDel').disabled=false; $('cpAdj').style.display='flex';
+    CARS.photos[vin]=o.data; delete PINFO[vin]; CARS.photoIdx[vin]={ua:o.ua}; $('cpDel').disabled=false; $('cpAdj').style.display='flex';
     var onModal=($('carPhotoOverlay').style.display!=='none');
     toast(msg||'車両画像を保存しました'); renderCars();
     if(thenClose)$('carPhotoOverlay').style.display='none'; else if(onModal){cpResetShift();cpShow(o.data,'保存しました 約'+Math.round(o.data.length*0.75/1024)+'KB');}
@@ -2296,7 +2332,7 @@ $('cpDel').onclick=function(){
   var vin=CP.vin, r=CARS.byVin[vin]; if(!FB||!CARS.photoIdx[vin])return;
   if(!confirm('「'+(r?r.name:vin)+'」の保存済み車両画像を削除します。元に戻せません。よろしいですか?'))return;
   FB.deletePhoto(vin).then(function(){
-    delete CARS.photoIdx[vin]; delete CARS.photos[vin]; CP.pending=null; $('cpDel').disabled=true; $('cpAdj').style.display='none';
+    delete CARS.photoIdx[vin]; delete CARS.photos[vin]; delete PINFO[vin]; CP.pending=null; $('cpDel').disabled=true; $('cpAdj').style.display='none';
     cpShow('','削除しました'); toast('削除しました'); renderCars();
   }).catch(function(e){console.error(e);toast('削除できませんでした');});
 };
@@ -2338,24 +2374,59 @@ function buildPageEl(layout,cars,page,pxw){
   root._fit=function(){cellRoots.forEach(function(c){c._fit();});};
   return root;
 }
-var PV={page:0};
+var PV={page:0,mode:'cars'};
+function sampleRows(n){
+  var cell=G.cells[S.design], m=valMap(cell.sample,null), sp=cell.samplePhoto, photo=(sp&&IMGS[sp])?IMGS[sp].data:'', rows=[];
+  for(var i=0;i<n;i++)rows.push({vin:'__s'+i,name:m.name,grade:m.grade,year:m.year,mileage:m.mileage,shaken:m.shaken,repairHas:/あり/.test(m.repair||''),color:m.color,total:m.total,body:m.body,photoData:photo,photoInfoKey:sp?('s:'+sp):''});
+  return rows;
+}
+function renderCellPreview(c){
+  var k=CE.k, cell=G.cells[k], sp=cell.samplePhoto, photo=(sp&&IMGS[sp])?IMGS[sp].data:'';
+  var wrapAll=document.createElement('div'); wrapAll.style.cssText='display:flex;gap:20px;justify-content:center;flex-wrap:wrap;';
+  [['3桁',{}],['2桁',{total:'98.8',body:'89.8'}]].forEach(function(v){
+    var box=document.createElement('div'); box.style.cssText='text-align:center;';
+    var data=Object.assign({},v[1]); if(photo){data.photo=photo;data.photoInfo=PINFO['s:'+sp]||null;}
+    var bg=document.createElement('div'); bg.style.cssText='display:inline-block;background:repeating-conic-gradient(#d9d9d9 0 25%,#f4f4f4 0 50%) 0 0/20px 20px;box-shadow:0 2px 14px rgba(0,0,0,.35);';
+    var el=buildCellEl(cell,k,Math.min(420,(innerWidth-120)/2),data,false); bg.appendChild(el); box.appendChild(bg);
+    var lb=document.createElement('div'); lb.className='hint'; lb.textContent='価格 '+v[0]+(v[0]==='3桁'?'(168.8)':'(98.8)'); box.appendChild(lb);
+    wrapAll.appendChild(box); setTimeout(function(){el._fit();},0);
+  });
+  c.appendChild(wrapAll);
+  $('carPrevInfo').textContent='コマデザイン'+k+'(サンプルの内容。背景の市松模様は「透過」を表します)';
+}
 function renderPreview(){
-  var pages=Math.max(1,carPages()), c=$('carPrevBody'); c.innerHTML='';
-  var cars0=S.cars;
+  var c=$('carPrevBody'); c.innerHTML='';
+  $('carPrevPrev').style.display=$('carPrevNext').style.display=(PV.mode==='cell')?'none':'';
+  if(PV.mode==='cell'){renderCellPreview(c);return;}
+  var cars, pages;
+  if(PV.mode==='sample'){cars=sampleRows(slots().length);pages=1;}
+  else{cars=S.cars.map(function(v){return v?(CARS.byVin[v]||null):null;});pages=Math.max(1,carPages());}
   if(PV.page>=pages)PV.page=pages-1; if(PV.page<0)PV.page=0;
-  var cars=S.cars.map(function(v){return v?(CARS.byVin[v]||null):null;});
   var maxW=Math.min(900,innerWidth-80), maxH=innerHeight-190, pxw=Math.max(200,Math.min(maxW,maxH*S.paper.w/S.paper.h));
   var wrap=document.createElement('div'); wrap.style.cssText='margin:0 auto;width:'+pxw+'px;background:repeating-conic-gradient(#d9d9d9 0 25%,#f4f4f4 0 50%) 0 0/20px 20px;box-shadow:0 2px 14px rgba(0,0,0,.35);';
   var pg=buildPageEl(S,cars,PV.page,pxw); wrap.appendChild(pg); c.appendChild(wrap); pg._fit();
-  $('carPrevInfo').textContent='ページ '+(PV.page+1)+' / '+pages+'(背景の市松模様は「透過」を表します)';
+  $('carPrevInfo').textContent=(PV.mode==='sample'?'サンプルの内容で表示(車両は選ばれていません) ':'')+'ページ '+(PV.page+1)+' / '+pages+'(背景の市松模様は「透過」を表します)';
+}
+function openPreview(mode){
+  PV.mode=mode; PV.page=0; $('carPrevOverlay').style.display='flex';
+  $('carPrevBody').innerHTML='<div class="hint">読み込み中…</div>';
+  var jobs=[];
+  var cell=G.cells[mode==='cell'?CE.k:S.design], sp=cell&&cell.samplePhoto;
+  if(mode==='cars'){
+    S.cars.filter(Boolean).forEach(function(v){jobs.push(getCarPhoto(v).then(function(d){return d?analyzePhoto(v,d):null;}));});
+  }else if(sp&&IMGS[sp]&&cell.photoAutoFit){jobs.push(analyzePhoto('s:'+sp,IMGS[sp].data));}
+  Promise.all(jobs).then(renderPreview);
 }
 $('carPreviewBtn').onclick=function(){
   if(!slots().length){alert('このレイアウトにコマがありません。「① レイアウト」でコマを置いてください。');return;}
   if(!S.cars.filter(Boolean).length){alert('車両が選ばれていません。');return;}
-  PV.page=0; $('carPrevOverlay').style.display='flex';
-  $('carPrevBody').innerHTML='<div class="hint">車両画像を読み込み中…</div>';
-  Promise.all(S.cars.filter(Boolean).map(getCarPhoto)).then(function(){renderPreview();});
+  openPreview('cars');
 };
+$('lPrevBtn').onclick=function(){
+  if(!slots().length){alert('このレイアウトにコマがありません。コマを置いてから押してください。');return;}
+  openPreview((S.cars.filter(Boolean).length&&CARS.loaded)?'cars':'sample');
+};
+$('cPrevBtn').onclick=function(){openPreview('cell');};
 $('carPrevPrev').onclick=function(){PV.page--;renderPreview();};
 $('carPrevNext').onclick=function(){PV.page++;renderPreview();};
 $('carPrevClose').onclick=function(){$('carPrevOverlay').style.display='none';};
