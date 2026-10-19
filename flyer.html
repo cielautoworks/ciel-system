@@ -108,6 +108,8 @@ input[type=number]{width:64px;}
 #cWrap .stageInner,#stageWrap .stageInner{padding:70px;}
 .handle.n,.handle.s{cursor:ns-resize;}
 .handle.e,.handle.w{cursor:ew-resize;}
+.btn.img{background:#e8760a;border-color:#e8760a;color:#fff;font-weight:700;font-size:14px;padding:7px 16px;box-shadow:0 0 0 2px rgba(232,118,10,.25);}
+.handle.rot{border-radius:50%;background:var(--hc,var(--sel));cursor:grab;}
 .cpBtn.has{background:#2c9a4a;border-color:#2c9a4a;color:#fff;font-weight:700;}
 .cpBtn.none{background:rgba(232,118,10,.15);border-color:#e8760a;color:#e8760a;font-weight:700;}
 html[data-theme="dark"] .cpBtn.none{color:#ffb366;}
@@ -144,7 +146,7 @@ html[data-theme="dark"] .cpBtn.none{color:#ffb366;}
 <body>
 <header>
   <div class="header-row">
-    <h1>チラシ作成 <span style="font-size:12px;font-weight:400;opacity:.75;">v1.26</span></h1>
+    <h1>チラシ作成 <span style="font-size:12px;font-weight:400;opacity:.75;">v1.27</span></h1>
     <div class="hdrBtns">
       <button type="button" class="updateBtn headerRefreshBtn" id="settingsBtn">⚙ 設定</button>
       <a class="updateBtn headerRefreshBtn" href="./index.html">🏠 一覧へ</a>
@@ -177,7 +179,7 @@ html[data-theme="dark"] .cpBtn.none{color:#ffb366;}
   <div class="toolbar">
     <div class="tgroup">
       <button class="btn main" id="addSlot">＋ コマ追加</button>
-      <button class="btn" id="addImg">🖼 画像追加</button>
+      <button class="btn img" id="addImg">🖼 画像追加</button>
       <input type="file" id="imgFile" accept="image/*" multiple style="display:none">
     </div>
     <div class="tgroup"><span class="lbl">格子配置</span>
@@ -621,6 +623,7 @@ function render(){
     el.className='it '+it.type+(it.type==='image'?' img':'')+(it.locked?' locked':'')+(it.hidden?' hidden':'');
     el.style.left=px(it.x)+'px'; el.style.top=px(it.y)+'px';
     el.style.width=px(it.w)+'px'; el.style.height=px(it.h)+'px';
+    el.style.transform=it.rot?'rotate('+it.rot+'deg)':'';
     el.style.zIndex=idx+1;
     if(it.type==='slot'){
       el.style.fontSize=Math.max(10,px(it.w)*0.4)+'px';
@@ -661,7 +664,7 @@ function drawOverlay(){
   var its=sel.map(byId).filter(Boolean);
   its.forEach(function(it){
     var b=document.createElement('div'); b.className='selbox';
-    b.style.cssText+='left:'+px(it.x)+'px;top:'+px(it.y)+'px;width:'+px(it.w)+'px;height:'+px(it.h)+'px;z-index:'+z;
+    b.style.cssText+='left:'+px(it.x)+'px;top:'+px(it.y)+'px;width:'+px(it.w)+'px;height:'+px(it.h)+'px;z-index:'+z+';'+(it.rot?'transform:rotate('+it.rot+'deg);':'');
     st.appendChild(b);
   });
   if(its.length>1){
@@ -670,7 +673,20 @@ function drawOverlay(){
     st.appendChild(g);
   }
   var hb=null;
-  if(its.length===1&&!its[0].locked)hb=its[0];
+  if(its.length===1&&its[0].type==='image'&&!its[0].locked){
+    var im=its[0], th=(im.rot||0)*Math.PI/180, cx=im.x+im.w/2, cy=im.y+im.h/2, co=Math.cos(th), si=Math.sin(th);
+    var wp=function(lx,ly){var X=lx,Y=ly;return [cx+X*co-Y*si,cy+X*si+Y*co];};
+    var hp=[['nw',-im.w/2,-im.h/2],['ne',im.w/2,-im.h/2],['sw',-im.w/2,im.h/2],['se',im.w/2,im.h/2]];
+    if(im.keepAspect===false)hp.push(['n',0,-im.h/2],['s',0,im.h/2],['w',-im.w/2,0],['e',im.w/2,0]);
+    hp.push(['rot',0,-im.h/2-26/scale]);
+    hp.forEach(function(c){
+      var pt=wp(c[1],c[2]), h=document.createElement('div'); h.className='handle '+c[0]; h.dataset.corner=c[0];
+      h.style.cssText+='left:'+px(pt[0])+'px;top:'+px(pt[1])+'px;z-index:'+(z+1);
+      if(c[0]==='rot')h.title='ドラッグで回転(Shiftで15°ずつ)';
+      st.appendChild(h);
+    });
+  }
+  else if(its.length===1&&!its[0].locked)hb=its[0];
   else if(its.length>1&&its.some(function(i){return !i.locked;}))hb=bbox(its);
   if(hb){
     var it=hb;
@@ -746,23 +762,35 @@ function renderProps(){
       '<span>Y</span><input type="number" data-p="y" value="'+r1(it.y)+'" step="0.5">'+
       '<span>幅</span><input type="number" data-p="w" value="'+r1(it.w)+'" step="0.5">'+
       '<span>高さ</span>'+(it.type==='slot'?'<span>'+r1(it.h)+'(縦横比固定)</span>':'<input type="number" data-p="h" value="'+r1(it.h)+'" step="0.5">')+
-      (it.type==='image'?'<span>不透明度</span><input type="number" data-p="opacity" value="'+(it.opacity==null?1:it.opacity)+'" min="0" max="1" step="0.1">':'')+
+      (it.type==='image'?'<span>不透明度</span><input type="number" data-p="opacity" value="'+(it.opacity==null?1:it.opacity)+'" min="0" max="1" step="0.1">'+
+        '<span>角度(°)</span><input type="number" data-p="rot" value="'+(it.rot||0)+'" min="-180" max="180" step="0.5">'+
+        '<span>縦横比</span><label><input type="checkbox" data-p="keepAspect" '+(it.keepAspect!==false?'checked':'')+'> 縦横比を維持する</label>':'')+
       '</div>';
   }
   h+='<div style="margin-top:8px;display:flex;flex-wrap:wrap;gap:4px;">'+
     '<button class="btn" data-z="front">最前面</button><button class="btn" data-z="up">1つ前へ</button>'+
     '<button class="btn" data-z="down">1つ後ろへ</button><button class="btn" data-z="back">最背面</button>'+
+    (its.length===1&&its[0].type==='image'?'<button class="btn" data-a="rotL">⟲ -15°</button><button class="btn" data-a="rotR">⟳ +15°</button>':'')+
     '<button class="btn" data-a="dup">複製</button><button class="btn danger" data-a="del">削除</button></div>';
   p.innerHTML=h;
   [].forEach.call(p.querySelectorAll('input[data-p]'),function(inp){
     inp.onchange=function(){
       var it=byId(sel[0]); if(!it)return; var k=inp.dataset.p;
+      if(k==='keepAspect'){
+        it.keepAspect=inp.checked;
+        if(inp.checked){ // 元の縦横比に戻す
+          if(it.ar0){it.h=it.w*it.ar0;commit();render();}
+          else{var d0=IMGS[it.imgId]; if(d0){var im0=new Image();im0.onload=function(){it.ar0=im0.naturalHeight/im0.naturalWidth;it.h=it.w*it.ar0;commit();render();};im0.src=d0.data;}}
+          return;
+        }
+        commit();render();return;
+      }
       if(k==='name'){it.name=inp.value;}
       else{
         var v=parseFloat(inp.value); if(isNaN(v))return;
         if(k==='no'){it.no=Math.max(1,Math.round(v));}
-        else if(k==='w'){v=Math.max(2,v); if(it.type==='slot'){setSlotWidth(it,v);}else it.w=v;}
-        else if(k==='h'){it.h=Math.max(2,v);}
+        else if(k==='w'){v=Math.max(2,v); if(it.type==='slot'){setSlotWidth(it,v);}else{ if(it.type==='image'&&it.keepAspect!==false)it.h=it.h*v/it.w; it.w=v; }}
+        else if(k==='h'){v=Math.max(2,v); if(it.type==='image'&&it.keepAspect!==false)it.w=it.w*v/it.h; it.h=v;}
         else if(k==='opacity'){it.opacity=Math.min(1,Math.max(0,v));}
         else it[k]=v;
       }
@@ -770,7 +798,7 @@ function renderProps(){
     };
   });
   [].forEach.call(p.querySelectorAll('button[data-z]'),function(b){b.onclick=function(){zOrder(b.dataset.z);};});
-  [].forEach.call(p.querySelectorAll('button[data-a]'),function(b){b.onclick=function(){b.dataset.a==='del'?delSel():dupSel();};});
+  [].forEach.call(p.querySelectorAll('button[data-a]'),function(b){b.onclick=function(){var a=b.dataset.a; if(a==='del')delSel(); else if(a==='dup')dupSel(); else{var it=byId(sel[0]); if(it){var r=((it.rot||0)+(a==='rotL'?-15:15)+540)%360-180; it.rot=Math.round(r);commit();render();}}};});
 }
 function esc(s){return String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');}
 
@@ -840,7 +868,7 @@ function addImages(files){
           IMGS[iid]={name:f.name,data:shrink(im,fr.result)};
           var w=Math.min(W()*0.5,W()), h=w*im.naturalHeight/im.naturalWidth;
           if(h>H()*0.8){h=H()*0.8;w=h*im.naturalWidth/im.naturalHeight;}
-          S.items.push({id:id,type:'image',imgId:iid,name:f.name,x:(W()-w)/2,y:(H()-h)/2,w:w,h:h,opacity:1});
+          S.items.push({id:id,type:'image',imgId:iid,name:f.name,x:(W()-w)/2,y:(H()-h)/2,w:w,h:h,opacity:1,rot:0,keepAspect:true,ar0:im.naturalHeight/im.naturalWidth});
           sel=[id]; res();
         };
         im.onerror=function(){toast(f.name+' を読み込めませんでした');res();};
@@ -931,6 +959,15 @@ $('stageWrap').addEventListener('pointerdown',function(e){
         ax:(c==='nw'||c==='sw')?gb.x+gb.w:gb.x,ay:(c==='nw'||c==='ne')?gb.y+gb.h:gb.y};
       $('stageWrap').setPointerCapture(e.pointerId); e.preventDefault(); return;
     }
+    var it0=byId(sel[0]);
+    if(it0&&it0.type==='image'){
+      if(c==='rot'){drag={mode:'rotate',it:it0};$('stageWrap').setPointerCapture(e.pointerId);e.preventDefault();return;}
+      var dirs={nw:[-1,-1],ne:[1,-1],sw:[-1,1],se:[1,1],n:[0,-1],s:[0,1],w:[-1,0],e:[1,0]}[c]; if(!dirs)return;
+      var th0=(it0.rot||0)*Math.PI/180, co0=Math.cos(th0), si0=Math.sin(th0), cx0=it0.x+it0.w/2, cy0=it0.y+it0.h/2;
+      var X0=-dirs[0]*it0.w/2, Y0=-dirs[1]*it0.h/2;
+      drag={mode:'iresize',it:it0,sx:dirs[0],sy:dirs[1],th:th0,Ax:cx0+X0*co0-Y0*si0,Ay:cy0+X0*si0+Y0*co0,w0:it0.w,h0:it0.h,ratio:it0.w/it0.h};
+      $('stageWrap').setPointerCapture(e.pointerId); e.preventDefault(); return;
+    }
     var it=byId(sel[0]); if(!it)return;
     drag={mode:'resize',corner:c,it:it,ax:(c==='nw'||c==='sw')?it.x+it.w:it.x,ay:(c==='nw'||c==='ne')?it.y+it.h:it.y,ratio:it.w/it.h};
     $('stageWrap').setPointerCapture(e.pointerId); e.preventDefault(); return;
@@ -981,6 +1018,22 @@ $('stageWrap').addEventListener('pointermove',function(e){
     }
     it.x=nx;it.y=ny;it.w=nw;it.h=nh;
     refreshGeom(); drawOverlay();
+  }else if(drag.mode==='iresize'){
+    var iit=drag.it, co1=Math.cos(drag.th), si1=Math.sin(drag.th);
+    var ddx=p.x-drag.Ax, ddy=p.y-drag.Ay, vx=ddx*co1+ddy*si1, vy=-ddx*si1+ddy*co1;
+    var sx=drag.sx, sy=drag.sy, nw=drag.w0, nh=drag.h0;
+    if(sx!==0&&sy!==0){
+      if(iit.keepAspect!==false){nw=Math.max(sx*vx,sy*vy*drag.ratio,5);nh=nw/drag.ratio;}
+      else{nw=Math.max(sx*vx,5);nh=Math.max(sy*vy,5);}
+    }else if(sx!==0){nw=Math.max(sx*vx,5);}else{nh=Math.max(sy*vy,5);}
+    var ox=sx*nw/2, oy=sy*nh/2, ncx=drag.Ax+ox*co1-oy*si1, ncy=drag.Ay+ox*si1+oy*co1;
+    iit.w=nw; iit.h=nh; iit.x=ncx-nw/2; iit.y=ncy-nh/2;
+    refreshGeom(); drawOverlay();
+  }else if(drag.mode==='rotate'){
+    var rit=drag.it, rcx=rit.x+rit.w/2, rcy=rit.y+rit.h/2;
+    var ang=Math.atan2(p.y-rcy,p.x-rcx)*180/Math.PI+90; if(e.shiftKey)ang=Math.round(ang/15)*15;
+    ang=((ang+180)%360+360)%360-180; rit.rot=Math.round(ang*10)/10;
+    refreshGeom(); drawOverlay();
   }else if(drag.mode==='gresize'){
     var f=Math.max(Math.abs(p.x-drag.ax)/drag.bb.w,Math.abs(p.y-drag.ay)/drag.bb.h,0.05);
     drag.orig.forEach(function(o){
@@ -1021,6 +1074,7 @@ function refreshGeom(){
   S.items.forEach(function(it){
     var el=els[it.id]; if(!el)return;
     el.style.left=px(it.x)+'px';el.style.top=px(it.y)+'px';el.style.width=px(it.w)+'px';el.style.height=px(it.h)+'px';
+    el.style.transform=it.rot?'rotate('+it.rot+'deg)':'';
     if(it.type==='slot')el.style.fontSize=Math.max(10,px(it.w)*0.4)+'px';
   });
 }
@@ -1175,7 +1229,7 @@ $('settingsOverlay').onclick=function(e){if(e.target===this)this.style.display='
 /* ---------- ファイル保存/読込(画像込みのJSON) ---------- */
 $('saveFile').onclick=function(){
   var used={}; S.items.forEach(function(i){if(i.imgId&&IMGS[i.imgId])used[i.imgId]=IMGS[i.imgId];});
-  var blob=new Blob([JSON.stringify({app:'ciel-flyer',version:'1.26',state:S,designs:G.designs,images:used})],{type:'application/json'});
+  var blob=new Blob([JSON.stringify({app:'ciel-flyer',version:'1.27',state:S,designs:G.designs,images:used})],{type:'application/json'});
   var a=document.createElement('a'); a.href=URL.createObjectURL(blob);
   var d=new Date(), pad=function(n){return ('0'+n).slice(-2);};
   a.download='flyer-layout-'+d.getFullYear()+pad(d.getMonth()+1)+pad(d.getDate())+'-'+pad(d.getHours())+pad(d.getMinutes())+'.json';
@@ -2178,7 +2232,7 @@ function buildPageEl(layout,cars,page,pxw){
     if(it.type==='image'){
       var d=IMGS[it.imgId]; if(!d)return;
       var im=document.createElement('img'); im.src=d.data;
-      im.style.cssText='position:absolute;left:'+it.x*pu+'px;top:'+it.y*pu+'px;width:'+it.w*pu+'px;height:'+it.h*pu+'px;opacity:'+(it.opacity==null?1:it.opacity)+';z-index:'+(idx+1)+';';
+      im.style.cssText='position:absolute;left:'+it.x*pu+'px;top:'+it.y*pu+'px;width:'+it.w*pu+'px;height:'+it.h*pu+'px;opacity:'+(it.opacity==null?1:it.opacity)+';z-index:'+(idx+1)+';'+(it.rot?'transform:rotate('+it.rot+'deg);transform-origin:center;':'');
       root.appendChild(im);
     }else if(it.type==='slot'){
       var rank=ss.indexOf(it), car=cars[page*per+rank]; if(!car)return;
