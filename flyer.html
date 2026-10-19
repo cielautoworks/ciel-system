@@ -100,6 +100,9 @@ input[type=number]{width:64px;}
 .lockBtn.on{background:var(--sel);border-color:var(--sel);color:#000;font-weight:700;}
 .layer.dragover-top{box-shadow:0 -3px 0 0 var(--sky);}
 .layer.dragover-bot{box-shadow:0 3px 0 0 var(--sky);}
+.settingsPanel.wide{width:540px;max-height:90vh;overflow:auto;}
+.settingsPanel h4{margin:16px 0 4px;font-size:13px;color:var(--text-sub);}
+.settingsPanel .row{display:flex;gap:6px;align-items:center;flex-wrap:wrap;padding:6px 0;}
 .layBtn.active{background:var(--sky);border-color:var(--sky);color:#fff;font-weight:700;}
 .dsgn label{margin-right:6px;cursor:pointer;}
 .it.missing{background:repeating-linear-gradient(45deg,#d6d6d6,#d6d6d6 6px,#ececec 6px,#ececec 12px);display:flex;align-items:center;justify-content:center;color:#555;font-size:12px;}
@@ -111,7 +114,7 @@ input[type=number]{width:64px;}
 <body>
 <header>
   <div class="header-row">
-    <h1>チラシ作成 <span style="font-size:12px;font-weight:400;opacity:.75;">v1.04</span></h1>
+    <h1>チラシ作成 <span style="font-size:12px;font-weight:400;opacity:.75;">v1.05</span></h1>
     <div class="hdrBtns">
       <button type="button" class="updateBtn headerRefreshBtn" id="settingsBtn">⚙ 設定</button>
       <a class="updateBtn headerRefreshBtn" href="./index.html">🏠 一覧へ</a>
@@ -126,24 +129,14 @@ input[type=number]{width:64px;}
 
 <div id="layoutView" style="flex:1;display:flex;flex-direction:column;min-height:0;">
   <div class="toolbar" id="layoutBar">
-    <div class="tgroup"><span class="lbl">レイアウト</span><span id="layBtns" class="tgroup"></span>
-      <input type="text" id="layName" placeholder="名前" style="width:130px">
-      <span class="lbl">コピー先</span><select id="copyTo"></select>
-      <button class="btn" id="copyBtn">このレイアウトをコピー</button>
-      <span class="hint" id="sizeInfo"></span>
-      <button class="btn main" id="cloudBtn" title="画像をFirebaseに保存します(配置データは自動で保存されます)">☁ 画像を保存</button>
+    <div class="tgroup"><span class="lbl">レイアウト</span>
+      <select id="laySel" style="max-width:240px"></select>
+      <span class="hint" id="infoLine"></span>
+    </div>
+    <div class="tgroup">
+      <button class="btn main" id="cloudBtn" title="背景などの画像も含めて、いまのレイアウトをFirebaseに保存します">💾 保存</button>
       <span class="hint" id="cloudInfo"></span>
-    </div>
-  </div>
-  <div class="toolbar">
-    <div class="tgroup"><span class="lbl">用紙</span>
-      <select id="paperSel"></select>
-      <input type="number" id="pw" min="10" step="1"> × <input type="number" id="ph" min="10" step="1">
-      <button class="btn" id="rotBtn" title="縦横を入れ替え">⟳ 縦横</button>
-    </div>
-    <div class="tgroup dsgn"><span class="lbl">コマデザイン</span>
-      <label><input type="radio" name="design" value="A">A</label><label><input type="radio" name="design" value="B">B</label><label><input type="radio" name="design" value="C">C</label><label><input type="radio" name="design" value="D">D</label>
-      <span class="hint" id="dsgnInfo"></span>
+      <span class="hint" id="sizeInfo"></span>
     </div>
     <div class="tgroup">
       <button class="btn main" id="addSlot">＋ コマ追加</button>
@@ -165,11 +158,6 @@ input[type=number]{width:64px;}
     <div class="tgroup">
       <button class="btn" id="undoBtn">↶ 元に戻す</button>
       <button class="btn" id="redoBtn">↷ やり直し</button>
-    </div>
-    <div class="tgroup">
-      <button class="btn" id="saveFile">💾 ファイルに保存</button>
-      <button class="btn" id="loadFileBtn">📂 ファイルを開く</button>
-      <input type="file" id="loadFile" accept=".json,application/json" style="display:none">
     </div>
   </div>
   <div class="toolbar" id="alignBar">
@@ -210,7 +198,7 @@ input[type=number]{width:64px;}
   </div>
 </div>
 <div class="settingsOverlay" id="settingsOverlay" style="display:none;">
-  <div class="settingsPanel">
+  <div class="settingsPanel wide">
     <h3>設定</h3>
     <div class="settingsRow">
       <span>ダークモード</span>
@@ -219,6 +207,27 @@ input[type=number]{width:64px;}
     <div class="settingsRow">
       <span>取り込む画像の大きさ<br><span class="hint">長辺の最大ピクセル。小さいほど保存容量が減ります(取り込み時に縮小されます)</span></span>
       <select id="maxPx"><option value="1200">1200px</option><option value="1600">1600px</option><option value="2000">2000px</option><option value="3000">3000px</option><option value="0">縮小しない</option></select>
+    </div>
+    <h4>このレイアウトの設定</h4>
+    <div class="row"><span>名前</span><input type="text" id="layName" placeholder="レイアウト名" style="width:220px"></div>
+    <div class="row"><span>用紙</span>
+      <select id="paperSel"></select>
+      <input type="number" id="pw" min="10" step="1"> × <input type="number" id="ph" min="10" step="1">
+      <button class="btn" id="rotBtn" title="縦横を入れ替え">⟳ 縦横</button>
+    </div>
+    <div class="row dsgn"><span>コマデザイン</span>
+      <label><input type="radio" name="design" value="A">A</label><label><input type="radio" name="design" value="B">B</label><label><input type="radio" name="design" value="C">C</label><label><input type="radio" name="design" value="D">D</label>
+      <span class="hint" id="dsgnInfo"></span>
+    </div>
+    <h4>レイアウトの管理</h4>
+    <div class="row"><span>他のレイアウトへ</span><select id="copyTo"></select><button class="btn" id="copyBtn">上書きコピー</button></div>
+    <div class="row"><button class="btn" id="newBtn">新規レイアウト保存</button><button class="btn danger" id="delBtn">レイアウト削除</button>
+      <span class="hint">「新規レイアウト保存」は、いまのレイアウトを新しい名前で複製します</span></div>
+    <h4>ファイル</h4>
+    <div class="row">
+      <button class="btn" id="saveFile">💾 ファイルに保存</button>
+      <button class="btn" id="loadFileBtn">📂 ファイルを開く</button>
+      <input type="file" id="loadFile" accept=".json,application/json" style="display:none">
     </div>
     <button class="settingsCloseBtn" id="settingsCloseBtn">閉じる</button>
   </div>
@@ -244,13 +253,13 @@ var S, IMGS={}, sel=[], scale=1, zoomMode='fit';
 var undoStack=[], redoStack=[];
 var els={}; // id -> element
 
-var G={layouts:[null,null,null,null],cur:0,designs:{A:{w:3,h:4},B:{w:4,h:3},C:{w:1,h:1},D:{w:2,h:3}}};
-function newState(n){ return {name:n||'',paper:{k:'a4p',w:210,h:297}, design:'A', items:[], seq:1, alt:{}}; }
+var G={layouts:[],cur:0,designs:{A:{w:3,h:4},B:{w:4,h:3},C:{w:1,h:1},D:{w:2,h:3}}};
+function newState(n){ return {id:'L'+Date.now().toString(36)+Math.random().toString(36).slice(2,6),name:n||'',paper:{k:'a4p',w:210,h:297}, design:'A', items:[], seq:1, alt:{}}; }
 function norm(o){
   var d=newState(); Object.keys(d).forEach(function(k){if(o[k]==null)o[k]=d[k];});
   delete o.aspect; return o;
 }
-S=newState('レイアウト1'); G.layouts[0]=S;
+S=newState('レイアウト1'); G.layouts=[S];
 
 function toast(m){var t=$('toast');t.textContent=m;t.style.display='block';clearTimeout(toast._t);toast._t=setTimeout(function(){t.style.display='none';},2200);}
 function uid(){return 'i'+Math.random().toString(36).slice(2,9);}
@@ -291,36 +300,38 @@ function scheduleSave(){S.ua=Date.now();clearTimeout(saveT);saveT=setTimeout(doS
 /* ---------- Firebase(配置データのみ自動保存。画像は「☁ 画像を保存」ボタンの時だけ) ---------- */
 var FB=null, localLoaded=false, remoteDone=false, cloudT=null;
 function cloudStatus(t){var e=$('cloudInfo');if(e)e.textContent=t;}
-function pushLayout(i){
-  var l=G.layouts[i]; if(!FB||!l)return Promise.resolve();
-  return FB.saveLayout(i,JSON.stringify(l),l.ua||Date.now());
+function pushLayout(l){
+  if(!FB||!l)return Promise.resolve();
+  return FB.saveLayout(l.id,JSON.stringify(l),l.ua||Date.now());
 }
 function scheduleCloud(){
   if(!FB)return; clearTimeout(cloudT); cloudStatus('☁ 保存待ち…');
   cloudT=setTimeout(function(){
-    pushLayout(G.cur).then(function(){cloudStatus('☁ 保存済み');}).catch(function(e){console.error(e);cloudStatus('☁ 保存できませんでした');});
+    pushLayout(S).then(function(){cloudStatus('☁ 保存済み');}).catch(function(e){console.error(e);cloudStatus('☁ 保存できませんでした');});
   },1500);
 }
-function usedImgIds(){
+function imgIdsOf(list){
   var used={};
-  G.layouts.forEach(function(l){if(!l)return;
+  list.forEach(function(l){if(!l)return;
     l.items.forEach(function(i){if(i.imgId)used[i.imgId]=1;});
     Object.keys(l.alt||{}).forEach(function(k){l.alt[k].items.forEach(function(i){if(i.imgId)used[i.imgId]=1;});});});
   return Object.keys(used);
 }
-function unsavedImgs(){return usedImgIds().filter(function(id){return IMGS[id]&&!IMGS[id].saved;});}
+function usedImgIds(){return imgIdsOf(G.layouts);}
+function unsavedImgs(){return imgIdsOf([S]).filter(function(id){return IMGS[id]&&!IMGS[id].saved;});}
 function updateCloudBtn(){
   var n=unsavedImgs().length, b=$('cloudBtn'); if(!b)return;
-  b.textContent='☁ 画像を保存'+(n?'(未保存 '+n+'枚)':''); b.disabled=!FB;
+  b.textContent='💾 保存'+(n?'(画像 '+n+'枚が未保存)':''); b.disabled=!FB;
 }
 $('cloudBtn').onclick=function(){
   if(!FB)return;
-  var ids=unsavedImgs(); cloudStatus('☁ 保存中…');
+  var ids=unsavedImgs();
+  if(!confirm('「'+(S.name||'レイアウト')+'」を上書き保存しますか?\n(配置データと、画像 '+ids.length+'枚をFirebaseに保存します)'))return; cloudStatus('☁ 保存中…');
   var chain=Promise.resolve(), done=0;
   ids.forEach(function(id){chain=chain.then(function(){
     return FB.saveImage(id,{name:IMGS[id].name||'',data:IMGS[id].data,ua:Date.now()}).then(function(){IMGS[id].saved=true;done++;updateCloudBtn();});
   });});
-  chain.then(function(){return Promise.all([0,1,2,3].map(pushLayout));})
+  chain.then(function(){return pushLayout(S);})
     .then(function(){doSave();cloudStatus('☁ 保存済み');toast('保存しました(画像 '+done+'枚)');updateCloudBtn();})
     .catch(function(e){console.error(e);cloudStatus('☁ 保存できませんでした');toast('保存できませんでした');});
 };
@@ -329,17 +340,23 @@ window.addEventListener('flyerfb',function(){FB=window.flyerFB;tryRemote();updat
 function remoteSync(){
   cloudStatus('☁ 同期中…');
   FB.getLayouts().then(function(r){
-    r=r||{}; var changed=false;
-    for(var i=0;i<4;i++){
-      var rem=r[i], loc=G.layouts[i];
-      if(rem&&rem.json){
-        if(!loc||(loc.ua||0)<(rem.ua||0)){
-          try{G.layouts[i]=norm(JSON.parse(rem.json));G.layouts[i].ua=rem.ua||0;changed=true;}catch(e){}
-        }else if((loc.ua||0)>(rem.ua||0))pushLayout(i);
-      }else if(loc&&loc.items.length)pushLayout(i);
-    }
+    r=r||{}; var changed=false, curId=S.id;
+    Object.keys(r).forEach(function(k){
+      var doc=r[k]; if(!doc)return;
+      var idx=G.layouts.findIndex(function(l){return l.id===k;}), loc=idx>=0?G.layouts[idx]:null;
+      if(doc.deleted){
+        if(loc&&(loc.ua||0)<=(doc.ua||0)){G.layouts.splice(idx,1);changed=true;}
+        return;
+      }
+      if(!doc.json)return;
+      if(!loc||(loc.ua||0)<(doc.ua||0)){
+        try{var n=norm(JSON.parse(doc.json));n.id=k;n.ua=doc.ua||0;if(loc)G.layouts[idx]=n;else G.layouts.push(n);changed=true;}catch(e){}
+      }else if((loc.ua||0)>(doc.ua||0))pushLayout(loc);
+    });
+    G.layouts.forEach(function(l){ if(!r[l.id]&&l.items.length)pushLayout(l); });
     if(changed){
-      if(!G.layouts[G.cur])G.layouts[G.cur]=newState('レイアウト'+(G.cur+1));
+      if(!G.layouts.length)G.layouts.push(newState('レイアウト1'));
+      var k2=G.layouts.findIndex(function(l){return l.id===curId;}); G.cur=k2>=0?k2:0;
       S=G.layouts[G.cur]; sel=[]; undoStack=[snap()]; redoStack=[]; updateUndoBtns();
       Object.keys(els).forEach(function(id){els[id].remove();delete els[id];});
       syncToolbar(); render(); doSave();
@@ -842,36 +859,53 @@ function fillSelects(){
   var zs=$('zoomSel'); zs.innerHTML='<option value="fit">画面に合わせる</option>';
   [25,50,75,100,150,200].forEach(function(z){zs.innerHTML+='<option value="'+z+'">'+z+'%</option>';});
 }
+function layLabel(l,i){return (l.name||'レイアウト'+(i+1));}
 function syncToolbar(){
   $('paperSel').value=S.paper.k; $('pw').value=r1(S.paper.w); $('ph').value=r1(S.paper.h);
   [].forEach.call(document.querySelectorAll('input[name=design]'),function(r){r.checked=(r.value===S.design);});
   var d=G.designs[S.design]; $('dsgnInfo').textContent='縦横比 '+d.w+' : '+d.h+'(コマテンプレ編集で決まります)';
   $('layName').value=S.name||'';
-  var lb=$('layBtns'); lb.innerHTML='';
-  for(var i=0;i<4;i++){(function(i){
-    var b=document.createElement('button'); b.className='btn layBtn'+(i===G.cur?' active':'');
-    var l=G.layouts[i]; b.textContent=(i+1)+(l&&l.name?' '+l.name.slice(0,6):''); b.title=l?(l.name||'(名前なし)'):'(空き)';
-    b.onclick=function(){switchLayout(i);}; lb.appendChild(b);
-  })(i);}
+  var pn=PAPERS.filter(function(x){return x.k===S.paper.k;})[0];
+  $('infoLine').textContent=(S.paper.k==='custom'?r1(S.paper.w)+'×'+r1(S.paper.h):pn.n)+' / コマデザイン'+S.design;
+  var ls=$('laySel'); ls.innerHTML='';
+  G.layouts.forEach(function(l,i){var o=document.createElement('option');o.value=i;o.textContent=layLabel(l,i);ls.appendChild(o);});
+  ls.value=G.cur;
   var ct=$('copyTo'); ct.innerHTML='';
-  for(var j=0;j<4;j++){ if(j===G.cur)continue; var o=document.createElement('option'); o.value=j; var l2=G.layouts[j];
-    o.textContent=(j+1)+(l2?(l2.name?' '+l2.name:'')+(l2.items.length?'(上書き)':''):'(空き)'); ct.appendChild(o); }
+  G.layouts.forEach(function(l,j){ if(j===G.cur)return; var o=document.createElement('option'); o.value=j; o.textContent=layLabel(l,j)+(l.items.length?'':'(空)'); ct.appendChild(o); });
+  $('copyBtn').disabled=!ct.options.length;
 }
+$('laySel').onchange=function(){switchLayout(parseInt(this.value));};
 function switchLayout(n){
-  if(n===G.cur)return;
-  G.layouts[G.cur]=S; G.cur=n;
-  S=G.layouts[n]||newState('レイアウト'+(n+1)); G.layouts[n]=S;
+  if(n===G.cur||!G.layouts[n])return;
+  G.layouts[G.cur]=S; G.cur=n; S=G.layouts[n];
   sel=[]; undoStack=[snap()]; redoStack=[]; updateUndoBtns();
   Object.keys(els).forEach(function(id){els[id].remove();delete els[id];});
-  syncToolbar(); render(); scheduleSave();
+  syncToolbar(); render(); doSave();
 }
 $('layName').onchange=function(){S.name=this.value;commit();syncToolbar();};
 $('copyBtn').onclick=function(){
-  var t=parseInt($('copyTo').value); if(isNaN(t))return;
-  var tg=G.layouts[t];
-  if(tg&&tg.items.length&&!confirm('レイアウト'+(t+1)+'の内容は上書きされます。よろしいですか?'))return;
-  var c=JSON.parse(JSON.stringify(S)); c.name=(S.name||'レイアウト')+'のコピー';
-  c.ua=Date.now(); G.layouts[t]=c; doSave(); if(FB)pushLayout(t); syncToolbar(); toast('レイアウト'+(t+1)+'にコピーしました');
+  var t=parseInt($('copyTo').value), tg=G.layouts[t]; if(!tg)return;
+  if(!confirm('「'+layLabel(tg,t)+'」を、いまのレイアウト(「'+layLabel(S,G.cur)+'」)の内容で上書きします。\n元に戻せません。よろしいですか?'))return;
+  var c=JSON.parse(JSON.stringify(S)); c.id=tg.id; c.name=tg.name; c.ua=Date.now();
+  G.layouts[t]=c; doSave(); if(FB)pushLayout(c); syncToolbar(); toast('上書きコピーしました');
+};
+$('newBtn').onclick=function(){
+  var nm=prompt('新しいレイアウトの名前を入力してください(いまのレイアウトを複製して保存します)',(S.name||'レイアウト')+'のコピー');
+  if(nm===null)return; nm=nm.trim()||'新しいレイアウト';
+  var c=JSON.parse(JSON.stringify(S)); c.id=newState().id; c.name=nm; c.ua=Date.now();
+  G.layouts.push(c); doSave(); if(FB)pushLayout(c);
+  switchLayout(G.layouts.length-1); toast('「'+nm+'」を保存しました');
+};
+$('delBtn').onclick=function(){
+  if(G.layouts.length<=1){alert('レイアウトが1つしかないため削除できません。');return;}
+  if(!confirm('「'+layLabel(S,G.cur)+'」を削除します。\n元に戻せません。よろしいですか?'))return;
+  var gone=S, idx=G.cur;
+  G.layouts.splice(idx,1); G.cur=Math.min(idx,G.layouts.length-1); S=G.layouts[G.cur];
+  sel=[]; undoStack=[snap()]; redoStack=[]; updateUndoBtns();
+  Object.keys(els).forEach(function(id){els[id].remove();delete els[id];});
+  syncToolbar(); render(); doSave();
+  if(FB)FB.deleteLayout(gone.id,Date.now()).catch(function(e){console.error(e);});
+  toast('削除しました');
 };
 function cloneItems(a){return JSON.parse(JSON.stringify(a));}
 function setPaper(k,w,h){
@@ -935,7 +969,7 @@ $('settingsOverlay').onclick=function(e){if(e.target===this)this.style.display='
 /* ---------- ファイル保存/読込(画像込みのJSON) ---------- */
 $('saveFile').onclick=function(){
   var used={}; S.items.forEach(function(i){if(i.imgId&&IMGS[i.imgId])used[i.imgId]=IMGS[i.imgId];});
-  var blob=new Blob([JSON.stringify({app:'ciel-flyer',version:'1.04',state:S,designs:G.designs,images:used})],{type:'application/json'});
+  var blob=new Blob([JSON.stringify({app:'ciel-flyer',version:'1.05',state:S,designs:G.designs,images:used})],{type:'application/json'});
   var a=document.createElement('a'); a.href=URL.createObjectURL(blob);
   var d=new Date(), pad=function(n){return ('0'+n).slice(-2);};
   a.download='flyer-layout-'+d.getFullYear()+pad(d.getMonth()+1)+pad(d.getDate())+'-'+pad(d.getHours())+pad(d.getMinutes())+'.json';
@@ -952,7 +986,7 @@ $('loadFile').onchange=function(){
       var o=JSON.parse(fr.result);
       if(o.app!=='ciel-flyer'||!o.state)throw new Error('形式が違います');
       if(!confirm('いま編集中の内容は置き換えられます。よろしいですか?'))return;
-      S=norm(o.state); G.layouts[G.cur]=S; Object.keys(o.images||{}).forEach(function(k){IMGS[k]=o.images[k];IMGS[k].saved=false;}); sel=[]; zoomMode='fit'; $('zoomSel').value='fit';
+      var oid=S.id; S=norm(o.state); S.id=oid; G.layouts[G.cur]=S; Object.keys(o.images||{}).forEach(function(k){IMGS[k]=o.images[k];IMGS[k].saved=false;}); sel=[]; zoomMode='fit'; $('zoomSel').value='fit';
       Object.keys(els).forEach(function(id){els[id].remove();delete els[id];});
       syncToolbar(); commit(); render(); toast('開きました');
     }catch(err){alert('ファイルを開けませんでした: '+err.message);}
@@ -965,9 +999,13 @@ fillSelects();
 loadSaved().then(function(saved){
   if(saved&&saved.layouts){
     G.layouts=saved.layouts; G.cur=saved.cur||0; if(saved.designs)G.designs=saved.designs; IMGS=saved.images||{};
-  }else if(saved&&saved.state){G.layouts=[saved.state,null,null,null];G.cur=0;IMGS=saved.images||{};}
-  for(var li=0;li<4;li++){ if(G.layouts[li])norm(G.layouts[li]); }
-  if(!G.layouts[G.cur])G.layouts[G.cur]=newState('レイアウト'+(G.cur+1));
+  }else if(saved&&saved.state){G.layouts=[saved.state];G.cur=0;IMGS=saved.images||{};}
+  (function(){ // 旧形式(4枠固定・空きnull)から可変リストへ
+    var cid=G.layouts[G.cur]&&G.layouts[G.cur].id, out=[];
+    G.layouts.forEach(function(l,i){ if(l){ norm(l); out.push(l);} });
+    if(!out.length)out.push(newState('レイアウト1'));
+    G.layouts=out; var k=out.findIndex(function(l){return l.id===cid;}); G.cur=k>=0?k:0;
+  })();
   S=G.layouts[G.cur];
   localLoaded=true; if(window.flyerFB&&window.flyerFB.ready)FB=window.flyerFB;
   syncToolbar(); undoStack=[snap()]; updateUndoBtns(); render();
@@ -1003,6 +1041,7 @@ onAuthStateChanged(auth, async function(user){
       ready:true,
       saveLayout:(i,json,ua)=>set(ref(db,'flyerLayouts/'+i),{json:json,ua:ua}),
       getLayouts:()=>get(ref(db,'flyerLayouts')).then(s=>s.val()),
+      deleteLayout:(id,ua)=>set(ref(db,'flyerLayouts/'+id),{deleted:true,ua:ua}),
       saveImage:(id,o)=>set(ref(db,'flyerImages/'+id),o),
       getImage:(id)=>get(ref(db,'flyerImages/'+id)).then(s=>s.val())
     };
