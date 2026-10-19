@@ -162,9 +162,12 @@ input[type=number]{width:64px;}
 <body>
 <header>
   <div class="header-row">
-    <h1>チラシ作成 <span style="font-size:12px;font-weight:400;opacity:.75;">v1.34</span></h1>
+    <h1>チラシ作成 <span style="font-size:12px;font-weight:400;opacity:.75;">v1.35</span></h1>
     <div class="hdrBtns">
       <button type="button" class="updateBtn headerRefreshBtn" id="settingsBtn">⚙ 設定</button>
+      <a class="updateBtn headerRefreshBtn xlink" href="./ads.html" title="広告掲載データ管理(検索語を引き継ぎます)">📢 広告</a>
+      <a class="updateBtn headerRefreshBtn xlink" href="./pricing.html" title="プライシング(検索語を引き継ぎます)">💹 プライシング</a>
+      <a class="updateBtn headerRefreshBtn xlink" href="./pricetag.html" title="価格表作成(検索語を引き継ぎます)">🏷 価格表</a>
       <a class="updateBtn headerRefreshBtn" href="./index.html">🏠 一覧へ</a>
     </div>
   </div>
@@ -257,7 +260,7 @@ input[type=number]{width:64px;}
     <div class="tgroup"><span style="position:relative;display:inline-block;"><input type="text" id="carSearch" placeholder="車名・グレード・色・車台番号で検索" style="width:280px;padding-right:26px;"><button type="button" id="carSearchClear" title="検索欄を消す" style="position:absolute;right:2px;top:50%;transform:translateY(-50%);border:none;background:transparent;color:var(--text-sub);cursor:pointer;font-size:15px;line-height:1;padding:2px 6px;display:none;">✕</button></span>
       <label><input type="checkbox" id="carAdOnly" checked> 広告掲載中のみ</label>
       <label><input type="checkbox" id="carSelOnly"> 選択済みのみ</label></div>
-    <div class="tgroup"><span class="lbl">並び替え</span><select id="carSortSel"><option value="supply">仕入</option><option value="name">車名</option><option value="color">色</option><option value="grade">グレード</option><option value="year">年式</option><option value="mileage">走行距離</option><option value="total">総額</option><option value="ad">広告掲載</option><option value="sel">選択順</option></select><button class="btn" id="carSortDir" title="昇順・降順を切り替え">▲ 昇順</button></div>
+    <div class="tgroup"><span class="lbl">並び替え</span><select id="carSortSel"><option value="supply">仕入日</option><option value="name">車名</option><option value="color">色</option><option value="grade">グレード</option><option value="year">年式</option><option value="mileage">走行距離</option><option value="total">総額</option><option value="ad">広告掲載</option><option value="sel">選択順</option></select><button class="btn" id="carSortDir" title="昇順・降順を切り替え">▲ 昇順</button></div>
     <div class="tgroup"><button class="btn" id="carAllBtn">表示中をすべて選択</button><button class="btn" id="carNoneBtn">選択をすべて解除</button><button class="btn" id="carReload">🔄 在庫を再取得</button></div>
     <div class="tgroup" style="margin-left:auto;"><button class="btn pv" id="carPreviewBtn">👁 プレビュー</button><button class="btn out" id="carOutBtn">📤 出力</button></div>
   </div>
@@ -1281,7 +1284,7 @@ $('settingsOverlay').onclick=function(e){if(e.target===this)this.style.display='
 /* ---------- ファイル保存/読込(画像込みのJSON) ---------- */
 $('saveFile').onclick=function(){
   var used={}; S.items.forEach(function(i){if(i.imgId&&IMGS[i.imgId])used[i.imgId]=IMGS[i.imgId];});
-  var blob=new Blob([JSON.stringify({app:'ciel-flyer',version:'1.34',state:S,designs:G.designs,images:used})],{type:'application/json'});
+  var blob=new Blob([JSON.stringify({app:'ciel-flyer',version:'1.35',state:S,designs:G.designs,images:used})],{type:'application/json'});
   var a=document.createElement('a'); a.href=URL.createObjectURL(blob);
   var d=new Date(), pad=function(n){return ('0'+n).slice(-2);};
   a.download='flyer-layout-'+d.getFullYear()+pad(d.getMonth()+1)+pad(d.getDate())+'-'+pad(d.getHours())+pad(d.getMinutes())+'.json';
@@ -2084,7 +2087,7 @@ function normShaken(s){
   else return {label:s};
   return {label:'R'+(year-2018)+'/'+('0'+month).slice(-2)};
 }
-var CARS={aaCounts:{},sortKey:'name',sortDir:1,loaded:false,loading:false,rows:[],byVin:{},err:'',photoIdx:{},photos:{},page:0};
+var CARS={aaCounts:{},sortKey:'supply',sortDir:-1,loaded:false,loading:false,rows:[],byVin:{},err:'',photoIdx:{},photos:{},page:0};
 function displaySupplier(sup){
   if(!sup)return '';
   if(sup.indexOf('新潟県中古車販売商工組合')>=0)return 'JU新潟';
@@ -2108,7 +2111,7 @@ function buildCarRows(stock,cs,goo,msf,pricing){
     var repairHas=hasMan?!!msf[vin]:(g?!!g.shufuku:false);
     var body=pd.body!=null?pd.body:null;
     list.push({
-      vin:vin, maker:maker, carName:carName, supply:((displaySupplier(sv.sup||'')+' '+(sv.date||'')).trim()),
+      vin:vin, maker:maker, carName:carName, supply:((displaySupplier(sv.sup||'').slice(0,10)+' '+(sv.date||'')).trim()), supplyDate:(sv.date||''),
       name:(maker&&carName.indexOf(maker)!==0?maker+' ':'')+carName, grade:grade, year:year,
       mileage:mkm!=null?((mkm/10000).toFixed(1)+'万km'):'', shaken:shText, repairHas:repairHas, color:sv.color||'',
       total:body!=null?(((body+TOTAL_ADD)/10000).toFixed(1)):'', body:body!=null?((body/10000).toFixed(1)):'',
@@ -2158,7 +2161,11 @@ function carToggle(vin,on){
   if(on&&i<0)carAdd(vin); else if(!on&&i>=0){S.cars[i]='';carTrim();}
   commit(); renderCars();
 }
+function saveListState(){
+  try{sessionStorage.setItem('flyerListState',JSON.stringify({q:$('carSearch').value,adOnly:$('carAdOnly').checked,selOnly:$('carSelOnly').checked,sortKey:CARS.sortKey,sortDir:CARS.sortDir}));}catch(e){}
+}
 function renderCars(){
+  saveListState();
   var n=slots().length, m=(S.cars||[]).filter(Boolean).length;
   $('carInfo').textContent='コマ '+n+'個 / 選択 '+m+'台'+(n?(' → '+Math.max(1,Math.ceil(S.cars.length/n))+'ページ'):'(このレイアウトにコマがありません)');
   var ls=$('carLaySel'); ls.innerHTML='';
@@ -2178,7 +2185,7 @@ function renderCars(){
     });
     var sk=CARS.sortKey, sd=CARS.sortDir;
     var val=function(r){
-      if(sk==='supply')return r.supply; if(sk==='name')return r.name; if(sk==='color')return r.color; if(sk==='grade')return r.grade;
+      if(sk==='supply')return r.supplyDate; if(sk==='name')return r.name; if(sk==='color')return r.color; if(sk==='grade')return r.grade;
       if(sk==='year'){var y=String(r.year||''),m;if((m=y.match(/(\d{4})/)))return parseInt(m[1]);if((m=y.match(/R\s*(\d+)/)))return 2018+parseInt(m[1]);if((m=y.match(/H\s*(\d+)/)))return 1988+parseInt(m[1]);if((m=y.match(/S\s*(\d+)/)))return 1925+parseInt(m[1]);return 0;}
       if(sk==='mileage')return parseFloat(r.mileage)||0; if(sk==='total')return parseFloat(r.total)||0;
       if(sk==='ad')return r.isAdListed?1:0;
@@ -2196,7 +2203,7 @@ function renderCars(){
     });
     h+='</tbody></table>'+(rows.length?'':'<div class="hint" style="padding:12px">条件に合う車両がありません。</div>');
     box.innerHTML=h;
-    [].forEach.call(box.querySelectorAll('th[data-sort]'),function(t){t.onclick=function(){var k=t.dataset.sort; if(CARS.sortKey===k)CARS.sortDir*=-1; else{CARS.sortKey=k;CARS.sortDir=1;} syncSortUI(); renderCars();};});
+    [].forEach.call(box.querySelectorAll('th[data-sort]'),function(t){t.onclick=function(){var k=t.dataset.sort; if(CARS.sortKey===k)CARS.sortDir*=-1; else{CARS.sortKey=k;CARS.sortDir=(k==='supply'?-1:1);} syncSortUI(); renderCars();};});
     [].forEach.call(box.querySelectorAll('tbody tr'),function(tr){
       var cb=tr.querySelector('input'), vin=tr.dataset.vin;
       cb.onchange=function(){carToggle(vin,cb.checked);};
@@ -2360,9 +2367,19 @@ $('cpDel').onclick=function(){
 $('cpClose').onclick=function(){$('carPhotoOverlay').style.display='none';};
 $('carPhotoOverlay').onclick=function(e){if(e.target===this)this.style.display='none';};
 $('carLaySel').onchange=function(){CARS.page=0;switchLayout(parseInt(this.value));renderCars();};
+var FLYER_FROM_Q=false;
 function syncSortUI(){$('carSortSel').value=CARS.sortKey;$('carSortDir').textContent=CARS.sortDir>0?'▲ 昇順':'▼ 降順';}
-$('carSortSel').onchange=function(){CARS.sortKey=this.value;CARS.sortDir=1;syncSortUI();renderCars();};
+$('carSortSel').onchange=function(){CARS.sortKey=this.value;CARS.sortDir=(this.value==='supply'?-1:1);syncSortUI();renderCars();};
 $('carSortDir').onclick=function(){CARS.sortDir*=-1;syncSortUI();renderCars();};
+(function(){ // 前回の状態・他アプリからの ?q= を復元
+  try{var o=JSON.parse(sessionStorage.getItem('flyerListState')||'{}');
+    if(o.sortKey){CARS.sortKey=o.sortKey;CARS.sortDir=o.sortDir||1;}
+    if(o.q!=null)$('carSearch').value=o.q; if(o.adOnly!=null)$('carAdOnly').checked=!!o.adOnly; if(o.selOnly!=null)$('carSelOnly').checked=!!o.selOnly;
+  }catch(e){}
+  var qp=null; try{qp=new URLSearchParams(location.search).get('q');}catch(e){}
+  if(qp!=null){$('carSearch').value=qp; FLYER_FROM_Q=true;}
+  syncSortUI(); carSearchSync();
+})();
 function carSearchSync(){$('carSearchClear').style.display=$('carSearch').value?'':'none';}
 $('carSearch').oninput=function(){carSearchSync();renderCars();};
 $('carSearchClear').onclick=function(){$('carSearch').value='';carSearchSync();renderCars();$('carSearch').focus();};
@@ -2452,6 +2469,7 @@ $('cPrevAllBtn').onclick=function(){if(!slots().length){alert('このレイア�
 $('carPrevPrev').onclick=function(){PV.page--;renderPreview();};
 $('carPrevNext').onclick=function(){PV.page++;renderPreview();};
 $('carPrevClose').onclick=function(){$('carPrevOverlay').style.display='none';};
+$('carPrevOverlay').onclick=function(e){if(e.target===this)this.style.display='none';};
 
 /* ================= 出力(PNG画像・印刷でPDF保存) ================= */
 function paperIsMm(){return !(W()>=1000||H()>=1000);}
@@ -2591,6 +2609,13 @@ applyUI();
 
 /* ---------- 起動 ---------- */
 fillSelects();
+[].forEach.call(document.querySelectorAll('a.xlink'),function(a){
+  var base=a.getAttribute('href');
+  a.addEventListener('click',function(){
+    var q=($('carSearch').value||'').trim();
+    a.href=base+(q?('?q='+encodeURIComponent(q)):'');
+  });
+});
 loadSaved().then(function(saved){
   if(saved&&saved.layouts){
     G.layouts=saved.layouts; G.cur=saved.cur||0; if(saved.designs)G.designs=saved.designs; IMGS=saved.images||{};
@@ -2607,6 +2632,7 @@ loadSaved().then(function(saved){
   localLoaded=true; if(window.flyerFB&&window.flyerFB.ready)FB=window.flyerFB;
   syncToolbar(); undoStack=[snap()]; updateUndoBtns(); render();
   tryRemote();
+  if(FLYER_FROM_Q){showView('cars');carSearchSync();}
   if(!saved)toast('「＋ コマ追加」や「コマを格子に並べる」から始めてみましょう');
 });
 })();
