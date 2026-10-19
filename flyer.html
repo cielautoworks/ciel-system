@@ -160,7 +160,7 @@ input[type=number]{width:64px;}
 <body>
 <header>
   <div class="header-row">
-    <h1>チラシ作成 <span style="font-size:12px;font-weight:400;opacity:.75;">v1.32</span></h1>
+    <h1>チラシ作成 <span style="font-size:12px;font-weight:400;opacity:.75;">v1.33</span></h1>
     <div class="hdrBtns">
       <button type="button" class="updateBtn headerRefreshBtn" id="settingsBtn">⚙ 設定</button>
       <a class="updateBtn headerRefreshBtn" href="./index.html">🏠 一覧へ</a>
@@ -257,7 +257,7 @@ input[type=number]{width:64px;}
       <label><input type="checkbox" id="carSelOnly"> 選択済みのみ</label></div>
     <div class="tgroup"><span class="lbl">並び替え</span><select id="carSortSel"><option value="supply">仕入</option><option value="name">車名</option><option value="color">色</option><option value="grade">グレード</option><option value="year">年式</option><option value="mileage">走行距離</option><option value="total">総額</option><option value="ad">広告掲載</option><option value="sel">選択順</option></select><button class="btn" id="carSortDir" title="昇順・降順を切り替え">▲ 昇順</button></div>
     <div class="tgroup"><button class="btn" id="carAllBtn">表示中をすべて選択</button><button class="btn" id="carNoneBtn">選択をすべて解除</button><button class="btn" id="carReload">🔄 在庫を再取得</button></div>
-    <div class="tgroup" style="margin-left:auto;"><button class="btn accent" id="carPreviewBtn">👁 プレビュー</button></div>
+    <div class="tgroup" style="margin-left:auto;"><button class="btn pv" id="carPreviewBtn">👁 プレビュー</button><button class="btn accent" id="carOutBtn">📤 出力</button></div>
   </div>
   <div class="main-area">
     <div class="stageWrap" style="background:var(--bg);"><div id="carTable"></div></div>
@@ -284,6 +284,20 @@ input[type=number]{width:64px;}
     </div>
     <div class="row" style="margin-top:10px;"><button class="btn" id="uiReset">初期値に戻す</button></div>
     <button class="settingsCloseBtn" id="uiClose">閉じる</button>
+  </div>
+</div>
+<div class="settingsOverlay" id="outOverlay" style="display:none;">
+  <div class="settingsPanel wide">
+    <h3>出力</h3>
+    <div class="hint" id="outSummary"></div>
+    <h4>PNG画像で保存(背景透過)</h4>
+    <div class="row"><select id="outQ"></select><button class="btn main" id="outPng">PNGを保存</button><span class="hint" id="outPngNote"></span></div>
+    <div class="hint">ページごとに1枚ずつダウンロードします。複数枚のダウンロードを許可するかブラウザが聞いてきた場合は、許可してください。</div>
+    <h4>印刷してPDFで保存(紙用)</h4>
+    <div class="row"><button class="btn main" id="outPrint">印刷画面を開く</button></div>
+    <div class="hint">印刷画面で、送信先を「PDFに保存」、余白を「なし」、倍率を「100%」にして、「背景のグラフィック」をオンにしてください。用紙サイズはレイアウトの用紙サイズに自動で合います。PDFでは透明な部分は白になります。</div>
+    <div class="hint" id="outStatus" style="margin-top:8px;color:var(--text);"></div>
+    <button class="settingsCloseBtn" id="outClose">閉じる</button>
   </div>
 </div>
 <div class="settingsOverlay" id="aaViewOverlay" style="display:none;">
@@ -316,7 +330,7 @@ input[type=number]{width:64px;}
       <h3 style="margin:0;">プレビュー</h3>
       <button class="btn" id="carPrevPrev">◀ 前のページ</button><button class="btn" id="carPrevNext">次のページ ▶</button>
       <span class="hint" id="carPrevInfo"></span>
-      <button class="btn" id="carPrevClose" style="margin-left:auto;">閉じる</button>
+      <button class="btn accent" id="carPrevOut" style="margin-left:auto;">📤 出力</button><button class="btn" id="carPrevClose">閉じる</button>
     </div>
     <div id="carPrevBody"></div>
   </div>
@@ -1265,7 +1279,7 @@ $('settingsOverlay').onclick=function(e){if(e.target===this)this.style.display='
 /* ---------- ファイル保存/読込(画像込みのJSON) ---------- */
 $('saveFile').onclick=function(){
   var used={}; S.items.forEach(function(i){if(i.imgId&&IMGS[i.imgId])used[i.imgId]=IMGS[i.imgId];});
-  var blob=new Blob([JSON.stringify({app:'ciel-flyer',version:'1.32',state:S,designs:G.designs,images:used})],{type:'application/json'});
+  var blob=new Blob([JSON.stringify({app:'ciel-flyer',version:'1.33',state:S,designs:G.designs,images:used})],{type:'application/json'});
   var a=document.createElement('a'); a.href=URL.createObjectURL(blob);
   var d=new Date(), pad=function(n){return ('0'+n).slice(-2);};
   a.download='flyer-layout-'+d.getFullYear()+pad(d.getMonth()+1)+pad(d.getDate())+'-'+pad(d.getHours())+pad(d.getMinutes())+'.json';
@@ -2436,6 +2450,110 @@ $('cPrevAllBtn').onclick=function(){if(!slots().length){alert('このレイア�
 $('carPrevPrev').onclick=function(){PV.page--;renderPreview();};
 $('carPrevNext').onclick=function(){PV.page++;renderPreview();};
 $('carPrevClose').onclick=function(){$('carPrevOverlay').style.display='none';};
+
+/* ================= 出力(PNG画像・印刷でPDF保存) ================= */
+function paperIsMm(){return !(W()>=1000||H()>=1000);}
+function outInfo(){
+  var n=slots().length, m=S.cars.filter(Boolean).length, pages=n?Math.max(1,Math.ceil(S.cars.length/n)):0;
+  return {n:n,m:m,pages:pages};
+}
+function outOpen(){
+  if(!slots().length){alert('このレイアウトにコマがありません。「① レイアウト」でコマを置いてください。');return;}
+  if(!S.cars.filter(Boolean).length){alert('車両が選ばれていません。');return;}
+  if(!CARS.loaded){alert('在庫データを読み込んでから、もう一度押してください。');return;}
+  var i=outInfo();
+  $('outSummary').textContent='レイアウト「'+(S.name||'')+'」 / 用紙 '+r1(W())+'×'+r1(H())+(paperIsMm()?'mm':'px')+' / コマ'+i.n+'個 / 選択'+i.m+'台 → '+i.pages+'ページ';
+  var q=$('outQ'); q.innerHTML='';
+  var opts=paperIsMm()?[['150','標準(150dpi)'],['300','高画質(300dpi)']]:[['1','標準(1倍)'],['2','高画質(2倍)']];
+  opts.forEach(function(o){var e=document.createElement('option');e.value=o[0];e.textContent=o[1];q.appendChild(e);});
+  $('outStatus').textContent=''; $('outOverlay').style.display='flex'; outPxNote();
+}
+function outPxw(){
+  var v=parseFloat($('outQ').value)||1;
+  return paperIsMm()?Math.round(W()/25.4*v):Math.round(W()*v);
+}
+function outPxNote(){var pw=outPxw(), ph=Math.round(pw*H()/W());$('outPngNote').textContent='1ページ '+pw+'×'+ph+'px(背景は透過)';}
+$('outQ').onchange=outPxNote;
+function outPrepare(){
+  var vins=S.cars.filter(Boolean);
+  return Promise.all(vins.map(function(v){return getCarPhoto(v).then(function(d){return d?analyzePhoto(v,d):null;});}))
+    .then(function(){return S.cars.map(function(v){return v?(CARS.byVin[v]||null):null;});});
+}
+function outHost(cars,page,pxw){
+  var host=document.createElement('div'); host.style.cssText='position:fixed;left:-100000px;top:0;';
+  document.body.appendChild(host);
+  var pg=buildPageEl(S,cars,page,pxw); host.appendChild(pg); pg._fit();
+  return {host:host,pg:pg};
+}
+function outDownload(blob,name){
+  var a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=name; document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(function(){URL.revokeObjectURL(a.href);},4000);
+}
+function outPageToBlob(cars,page,pxw){
+  var hpx=Math.round(pxw*H()/W()), o=outHost(cars,page,pxw);
+  var xml=new XMLSerializer().serializeToString(o.pg); o.host.remove();
+  var svg='<svg xmlns="http://www.w3.org/2000/svg" width="'+pxw+'" height="'+hpx+'"><foreignObject x="0" y="0" width="100%" height="100%">'+xml+'</foreignObject></svg>';
+  return new Promise(function(res,rej){
+    var im=new Image();
+    im.onload=function(){
+      var c=document.createElement('canvas'); c.width=pxw; c.height=hpx; c.getContext('2d').drawImage(im,0,0,pxw,hpx);
+      c.toBlob(function(b){b?res(b):rej(new Error('画像を作れませんでした'));},'image/png');
+    };
+    im.onerror=function(){rej(new Error('描画に失敗しました'));};
+    im.src='data:image/svg+xml;charset=utf-8,'+encodeURIComponent(svg);
+  });
+}
+function safeName(s){return String(s||'flyer').replace(/[\\/:*?"<>|\s]+/g,'_');}
+$('outPng').onclick=function(){
+  var info=outInfo(), pxw=outPxw(), hpx=Math.round(pxw*H()/W());
+  if(pxw*hpx>150000000){alert('画像が大きすぎます。画質を「標準」にしてください。');return;}
+  var btn=this; btn.disabled=true; $('outStatus').textContent='準備中…';
+  outPrepare().then(function(cars){
+    var chain=Promise.resolve();
+    for(var p=0;p<info.pages;p++){(function(p){
+      chain=chain.then(function(){
+        $('outStatus').textContent='ページ '+(p+1)+' / '+info.pages+' を作成中…';
+        return outPageToBlob(cars,p,pxw).then(function(b){
+          outDownload(b,'flyer_'+safeName(S.name)+'_p'+(p+1)+'.png');
+          return new Promise(function(r){setTimeout(r,600);});
+        });
+      });
+    })(p);}
+    return chain;
+  }).then(function(){$('outStatus').textContent='完了しました('+info.pages+'枚。ダウンロードフォルダを確認してください)';toast('PNGを保存しました');})
+    .catch(function(e){console.error(e);$('outStatus').textContent='失敗しました: '+(e&&e.message||e);})
+    .then(function(){btn.disabled=false;});
+};
+$('outPrint').onclick=function(){
+  var info=outInfo(), btn=this; btn.disabled=true; $('outStatus').textContent='準備中…';
+  outPrepare().then(function(cars){
+    var mm=paperIsMm(), pxw=mm?Math.round(W()*96/25.4):Math.round(W()), hpx=Math.round(pxw*H()/W());
+    var root=document.createElement('div'); root.id='printRoot';
+    for(var p=0;p<info.pages;p++){
+      var pgw=document.createElement('div'); pgw.className='pp'; pgw.style.cssText='width:'+pxw+'px;height:'+hpx+'px;position:relative;';
+      root.appendChild(pgw);
+    }
+    document.body.appendChild(root);
+    [].forEach.call(root.children,function(pgw,p){var pg=buildPageEl(S,cars,p,pxw);pgw.appendChild(pg);pg._fit();});
+    var st=document.createElement('style'); st.id='printStyle';
+    st.textContent='@page{size:'+(mm?(r1(W())+'mm '+r1(H())+'mm'):(pxw+'px '+hpx+'px'))+';margin:0;}'+
+      '@media screen{#printRoot{position:fixed;left:-100000px;top:0;}}'+
+      '@media print{html,body{height:auto!important;display:block!important;background:#fff!important;margin:0!important;padding:0!important;}'+
+      'body>*:not(#printRoot):not(#printStyle){display:none!important;}'+
+      '#printRoot{position:static;}#printRoot,#printRoot *{-webkit-print-color-adjust:exact;print-color-adjust:exact;}'+
+      '.pp{overflow:hidden;break-after:page;page-break-after:always;}.pp:last-child{break-after:auto;page-break-after:auto;}}';
+    document.head.appendChild(st);
+    var cleaned=false, clean=function(){if(cleaned)return;cleaned=true;root.remove();st.remove();window.removeEventListener('afterprint',clean);};
+    window.addEventListener('afterprint',clean);
+    $('outStatus').textContent='印刷画面が開きます。送信先を「PDFに保存」、余白を「なし」、倍率を「100%」、「背景のグラフィック」をオンにしてください。';
+    setTimeout(function(){window.print();setTimeout(clean,1500);},200);
+  }).catch(function(e){console.error(e);$('outStatus').textContent='失敗しました: '+(e&&e.message||e);})
+    .then(function(){btn.disabled=false;});
+};
+$('outClose').onclick=function(){$('outOverlay').style.display='none';};
+$('outOverlay').onclick=function(e){if(e.target===this)this.style.display='none';};
+$('carOutBtn').onclick=outOpen;
+$('carPrevOut').onclick=function(){$('carPrevOverlay').style.display='none';outOpen();};
 
 /* ---------- 見た目(この画面の表示だけ。localStorageに保存) ---------- */
 var UI_DEF={fill:'#4aabcf',fillA:18,bc:'#3d8fae',bw:2,tc:'#1e6a86',hc:'#e8760a',paper:'#ffffff',pc:'#ff2d95',dim:true,dimA:40};
