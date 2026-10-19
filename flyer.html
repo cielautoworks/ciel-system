@@ -57,7 +57,7 @@ input[type=number]{width:64px;}
 .main-area{flex:1;display:flex;min-height:0;}
 .stageWrap{flex:1;overflow:auto;background:var(--stage-bg);position:relative;}
 .stageInner{display:inline-block;padding:20px;min-width:100%;min-height:100%;}
-#stage{position:relative;background:#fff;box-shadow:0 2px 14px rgba(0,0,0,.35);margin:0 auto;overflow:hidden;touch-action:none;user-select:none;}
+#stage{position:relative;background:#fff;box-shadow:0 2px 14px rgba(0,0,0,.35);margin:0 auto;overflow:visible;touch-action:none;user-select:none;}
 .it{position:absolute;}
 .it.slot{border:2px dashed #3d8fae;background:rgba(74,171,207,.18);display:flex;align-items:center;justify-content:center;color:#1e6a86;font-weight:800;}
 .it.slot .no{pointer-events:none;line-height:1;}
@@ -105,7 +105,7 @@ input[type=number]{width:64px;}
 .settingsPanel .row{display:flex;gap:6px;align-items:center;flex-wrap:wrap;padding:6px 0;}
 .ci.edit{outline:1px dashed rgba(90,90,90,.45);}
 .ci.missing{background:repeating-linear-gradient(45deg,#d6d6d6,#d6d6d6 6px,#ececec 6px,#ececec 12px);}
-#cWrap .stageInner{padding:70px;}
+#cWrap .stageInner,#stageWrap .stageInner{padding:70px;}
 .handle.n,.handle.s{cursor:ns-resize;}
 .handle.e,.handle.w{cursor:ew-resize;}
 .btn.accent{background:var(--pink);border-color:var(--pink);color:#fff;font-weight:700;font-size:14px;padding:7px 16px;box-shadow:0 0 0 2px rgba(217,122,154,.25);}
@@ -126,7 +126,7 @@ input[type=number]{width:64px;}
 <body>
 <header>
   <div class="header-row">
-    <h1>チラシ作成 <span style="font-size:12px;font-weight:400;opacity:.75;">v1.15</span></h1>
+    <h1>チラシ作成 <span style="font-size:12px;font-weight:400;opacity:.75;">v1.16</span></h1>
     <div class="hdrBtns">
       <button type="button" class="updateBtn headerRefreshBtn" id="settingsBtn">⚙ 設定</button>
       <a class="updateBtn headerRefreshBtn" href="./index.html">🏠 一覧へ</a>
@@ -150,7 +150,13 @@ input[type=number]{width:64px;}
       <span class="hint" id="cloudInfo"></span>
       <span class="hint" id="sizeInfo"></span>
     </div>
+    <div class="tgroup">
+      <button class="btn" id="undoBtn">↶ 元に戻す</button>
+      <button class="btn" id="redoBtn">↷ やり直し</button>
+    </div>
     <div class="tgroup" style="margin-left:auto;"><button class="btn accent" id="lsBtn">⚙ レイアウト設定</button></div>
+  </div>
+  <div class="toolbar">
     <div class="tgroup">
       <button class="btn main" id="addSlot">＋ コマ追加</button>
       <button class="btn" id="addImg">🖼 画像追加</button>
@@ -167,10 +173,6 @@ input[type=number]{width:64px;}
       <button class="btn" id="zoomOut" title="縮小">－</button>
       <select id="zoomSel"></select>
       <button class="btn" id="zoomIn" title="拡大">＋</button>
-    </div>
-    <div class="tgroup">
-      <button class="btn" id="undoBtn">↶ 元に戻す</button>
-      <button class="btn" id="redoBtn">↷ やり直し</button>
     </div>
   </div>
   <div class="toolbar" id="alignBar">
@@ -512,7 +514,7 @@ function zoomBy(f){
 function computeScale(){
   var wrap=$('stageWrap');
   if(zoomMode==='fit'){
-    var aw=wrap.clientWidth-40, ah=wrap.clientHeight-40;
+    var aw=wrap.clientWidth-140, ah=wrap.clientHeight-140;
     scale=Math.max(0.05,Math.min(aw/W(),ah/H()));
   }else scale=zoomMode*pxPerUnit();
 }
@@ -831,8 +833,10 @@ function stagePos(e){
   var r=$('stage').getBoundingClientRect();
   return {x:(e.clientX-r.left)/scale,y:(e.clientY-r.top)/scale};
 }
-$('stage').addEventListener('pointerdown',function(e){
+$('stageWrap').addEventListener('pointerdown',function(e){
   if(e.button!==0)return;
+  var wr=$('stageWrap').getBoundingClientRect();
+  if(e.clientX>wr.left+$('stageWrap').clientWidth||e.clientY>wr.top+$('stageWrap').clientHeight)return;
   var p=stagePos(e), t=e.target;
   var hd=t.closest&&t.closest('.handle');
   if(hd){
@@ -841,11 +845,11 @@ $('stage').addEventListener('pointerdown',function(e){
       var gi=sel.map(byId).filter(function(i){return i&&!i.locked;}), gb=bbox(gi);
       drag={mode:'gresize',corner:c,orig:gi.map(function(i){return {it:i,x:i.x,y:i.y,w:i.w,h:i.h};}),bb:gb,
         ax:(c==='nw'||c==='sw')?gb.x+gb.w:gb.x,ay:(c==='nw'||c==='ne')?gb.y+gb.h:gb.y};
-      $('stage').setPointerCapture(e.pointerId); e.preventDefault(); return;
+      $('stageWrap').setPointerCapture(e.pointerId); e.preventDefault(); return;
     }
     var it=byId(sel[0]); if(!it)return;
     drag={mode:'resize',corner:c,it:it,ax:(c==='nw'||c==='sw')?it.x+it.w:it.x,ay:(c==='nw'||c==='ne')?it.y+it.h:it.y,ratio:it.w/it.h};
-    $('stage').setPointerCapture(e.pointerId); e.preventDefault(); return;
+    $('stageWrap').setPointerCapture(e.pointerId); e.preventDefault(); return;
   }
   var el=t.closest&&t.closest('.it');
   if(el){
@@ -856,14 +860,14 @@ $('stage').addEventListener('pointerdown',function(e){
     var its=sel.map(byId).filter(Boolean);
     if(!its.length)return;
     drag={mode:'move',start:p,orig:its.map(function(i){return {it:i,x:i.x,y:i.y};}),bb:bbox(its),moved:false};
-    $('stage').setPointerCapture(e.pointerId); e.preventDefault(); return;
+    $('stageWrap').setPointerCapture(e.pointerId); e.preventDefault(); return;
   }
   if(!e.shiftKey){sel=[];}
   drag={mode:'marquee',start:p,base:sel.slice()};
   drawOverlay();renderLayers();renderProps();
-  $('stage').setPointerCapture(e.pointerId); e.preventDefault();
+  $('stageWrap').setPointerCapture(e.pointerId); e.preventDefault();
 });
-$('stage').addEventListener('pointermove',function(e){
+$('stageWrap').addEventListener('pointermove',function(e){
   if(!drag)return;
   var p=stagePos(e);
   if(drag.mode==='move'){
@@ -944,8 +948,8 @@ function endDrag(){
   if(d.mode==='move'&&!d.moved)return;
   commit(); render();
 }
-$('stage').addEventListener('pointerup',endDrag);
-$('stage').addEventListener('pointercancel',endDrag);
+$('stageWrap').addEventListener('pointerup',endDrag);
+$('stageWrap').addEventListener('pointercancel',endDrag);
 $('stage').addEventListener('dragover',function(e){e.preventDefault();});
 $('stage').addEventListener('drop',function(e){e.preventDefault();if(e.dataTransfer&&e.dataTransfer.files)addImages(e.dataTransfer.files);});
 
@@ -1087,7 +1091,7 @@ $('settingsOverlay').onclick=function(e){if(e.target===this)this.style.display='
 /* ---------- ファイル保存/読込(画像込みのJSON) ---------- */
 $('saveFile').onclick=function(){
   var used={}; S.items.forEach(function(i){if(i.imgId&&IMGS[i.imgId])used[i.imgId]=IMGS[i.imgId];});
-  var blob=new Blob([JSON.stringify({app:'ciel-flyer',version:'1.15',state:S,designs:G.designs,images:used})],{type:'application/json'});
+  var blob=new Blob([JSON.stringify({app:'ciel-flyer',version:'1.16',state:S,designs:G.designs,images:used})],{type:'application/json'});
   var a=document.createElement('a'); a.href=URL.createObjectURL(blob);
   var d=new Date(), pad=function(n){return ('0'+n).slice(-2);};
   a.download='flyer-layout-'+d.getFullYear()+pad(d.getMonth()+1)+pad(d.getDate())+'-'+pad(d.getHours())+pad(d.getMinutes())+'.json';
