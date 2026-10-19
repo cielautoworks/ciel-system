@@ -123,6 +123,9 @@ html[data-theme="dark"] .cpBtn.none{color:#ffb366;}
 .ctab{width:100%;border-collapse:collapse;font-size:12.5px;background:var(--card);}
 .ctab th,.ctab td{border-bottom:1px solid var(--border);padding:4px 6px;text-align:left;white-space:nowrap;}
 .ctab th{position:sticky;top:0;background:var(--thead-bg);z-index:1;}
+.ctab th.sortable{cursor:pointer;user-select:none;}
+.ctab th.sortable:hover{color:var(--sky);}
+.gcell{display:inline-block;max-width:30em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;vertical-align:bottom;}
 .ctab tbody tr{cursor:pointer;}
 .ctab tbody tr:hover{background:var(--hover-bg);}
 .ctab tbody tr.on{box-shadow:inset 3px 0 0 var(--sky);background:rgba(74,171,207,.12);}
@@ -146,7 +149,7 @@ html[data-theme="dark"] .cpBtn.none{color:#ffb366;}
 <body>
 <header>
   <div class="header-row">
-    <h1>チラシ作成 <span style="font-size:12px;font-weight:400;opacity:.75;">v1.27</span></h1>
+    <h1>チラシ作成 <span style="font-size:12px;font-weight:400;opacity:.75;">v1.28</span></h1>
     <div class="hdrBtns">
       <button type="button" class="updateBtn headerRefreshBtn" id="settingsBtn">⚙ 設定</button>
       <a class="updateBtn headerRefreshBtn" href="./index.html">🏠 一覧へ</a>
@@ -239,6 +242,7 @@ html[data-theme="dark"] .cpBtn.none{color:#ffb366;}
     <div class="tgroup"><span style="position:relative;display:inline-block;"><input type="text" id="carSearch" placeholder="車名・グレード・色・車台番号で検索" style="width:280px;padding-right:26px;"><button type="button" id="carSearchClear" title="検索欄を消す" style="position:absolute;right:2px;top:50%;transform:translateY(-50%);border:none;background:transparent;color:var(--text-sub);cursor:pointer;font-size:15px;line-height:1;padding:2px 6px;display:none;">✕</button></span>
       <label><input type="checkbox" id="carAdOnly" checked> 広告掲載中のみ</label>
       <label><input type="checkbox" id="carSelOnly"> 選択済みのみ</label></div>
+    <div class="tgroup"><span class="lbl">並び替え</span><select id="carSortSel"><option value="name">車名</option><option value="color">色</option><option value="grade">グレード</option><option value="year">年式</option><option value="mileage">走行距離</option><option value="total">総額</option><option value="ad">広告掲載</option><option value="sel">選択順</option></select><button class="btn" id="carSortDir" title="昇順・降順を切り替え">▲ 昇順</button></div>
     <div class="tgroup"><button class="btn" id="carAllBtn">表示中をすべて選択</button><button class="btn" id="carNoneBtn">選択をすべて解除</button><button class="btn" id="carReload">🔄 在庫を再取得</button></div>
     <div class="tgroup" style="margin-left:auto;"><button class="btn accent" id="carPreviewBtn">👁 プレビュー</button></div>
   </div>
@@ -317,6 +321,7 @@ html[data-theme="dark"] .cpBtn.none{color:#ffb366;}
     <div class="tgroup"><span class="lbl">上下位置</span><button class="btn" data-cal="top">上</button><button class="btn" data-cal="vc">中央</button><button class="btn" data-cal="bottom">下</button></div>
     <div class="tgroup"><span class="lbl">表示</span><button class="btn" id="cZoomOut">－</button><button class="btn" id="cZoomFit">全体</button><button class="btn" id="cZoomIn">＋</button></div>
     <div class="tgroup"><button class="btn" id="cUndo">↶ 元に戻す</button><button class="btn" id="cRedo">↷ やり直し</button></div>
+    <div class="tgroup"><span class="lbl" title="価格の数字・.8・万円の位置や大きさ・縦横比を、2桁と3桁で別々に保存します">価格の桁数(編集中)</span><button class="btn layBtn" id="cDg2">2桁</button><button class="btn layBtn" id="cDg3">3桁</button></div>
     <div class="tgroup"><button class="btn main" id="cCloudBtn">💾 保存</button></div>
     <div class="tgroup" style="margin-left:auto;"><button class="btn accent" id="cSetBtn">⚙ コマ設定</button></div>
   </div>
@@ -1229,7 +1234,7 @@ $('settingsOverlay').onclick=function(e){if(e.target===this)this.style.display='
 /* ---------- ファイル保存/読込(画像込みのJSON) ---------- */
 $('saveFile').onclick=function(){
   var used={}; S.items.forEach(function(i){if(i.imgId&&IMGS[i.imgId])used[i.imgId]=IMGS[i.imgId];});
-  var blob=new Blob([JSON.stringify({app:'ciel-flyer',version:'1.27',state:S,designs:G.designs,images:used})],{type:'application/json'});
+  var blob=new Blob([JSON.stringify({app:'ciel-flyer',version:'1.28',state:S,designs:G.designs,images:used})],{type:'application/json'});
   var a=document.createElement('a'); a.href=URL.createObjectURL(blob);
   var d=new Date(), pad=function(n){return ('0'+n).slice(-2);};
   a.download='flyer-layout-'+d.getFullYear()+pad(d.getMonth()+1)+pad(d.getDate())+'-'+pad(d.getHours())+pad(d.getMinutes())+'.json';
@@ -1299,7 +1304,7 @@ var INFO=['name','grade','year','mileage','shaken'];
 var SYNC_PRICE=['color','o1w','o1c','o2w','o2c','font','weight','ls','stretch','skew','rot'];
 var SYNC_INFO=SYNC_PRICE.concat(['size','h']);
 var PRICES={total:['支払総額(価格の大きな数字)','168.8'],body:['車体価格(価格の大きな数字)','159.8']};
-var CE={k:'A',sel:[],undo:[],redo:[],zoom:1,drag:null,scale:1};
+var CE={dg:3,k:'A',sel:[],undo:[],redo:[],zoom:1,drag:null,scale:1};
 function cc(){return G.cells[CE.k];}
 function cdes(){return G.designs[CE.k];}
 function cH(){return 1000*cdes().h/cdes().w;}
@@ -1350,6 +1355,12 @@ function defaultCell(k){
   ].concat(mkPriceSet('total',30,y(960),940,y(260)));
   return {aspect:{w:d.w,h:d.h},items:items,frame:{on:true,color:'#222222',w:6,radius:24,bgOn:true,bg:'#ffffff'},ua:0};
 }
+var GEO_KEYS=['x','y','w','h','size','ls','rot','skew','stretch','autoW'];
+function isPricePart(it){return it.type==='text'&&/^(total|body)(Main|Tail|Unit)$/.test(it.field||'');}
+function pickGeo(it){var g={};GEO_KEYS.forEach(function(k){g[k]=it[k];});return g;}
+function ensureGeo(it){ if(!isPricePart(it))return; if(!it.g2)it.g2=pickGeo(it); if(!it.g3)it.g3=pickGeo(it); }
+function saveLiveGeo(cell){cell.items.forEach(function(it){if(isPricePart(it)){ensureGeo(it);it['g'+CE.dg]=pickGeo(it);}});}
+function loadLiveGeo(cell){cell.items.forEach(function(it){if(isPricePart(it)){ensureGeo(it);var g=it['g'+CE.dg];GEO_KEYS.forEach(function(k){if(g[k]!==undefined)it[k]=g[k];});}});}
 function ensureCells(){
   if(!G.cells)G.cells={};
   ['A','B','C','D'].forEach(function(k){
@@ -1357,6 +1368,7 @@ function ensureCells(){
     var c=G.cells[k]; if(!c.frame)c.frame={on:true,color:'#222222',w:6,radius:24,bgOn:true,bg:'#ffffff'};
     migratePrice(c);
     c.items.forEach(function(i){if(i.type==='text'&&INFO.indexOf(i.field)>=0&&i.autoW===undefined)i.autoW=true;});
+    loadLiveGeo(c);
     if(!c.infoLeftDone){
       var chg=false;
       c.items.forEach(function(i){if(i.type==='text'&&INFO.indexOf(i.field)>=0&&i.align!=='left'){i.align='left';chg=true;}});
@@ -1467,8 +1479,16 @@ function buildCellEl(cell,k,pxw,data,edit,rootEl){
     (f.bgOn?'background:'+f.bg+';':(edit?'background:repeating-conic-gradient(#d9d9d9 0 25%,#f4f4f4 0 50%) 0 0/20px 20px;':'background:transparent;'))+'border-radius:'+((f.radius||0)*pxu)+'px;';
   var dm=valMap(cell.sample,data);
   if(!dm.photo&&edit&&cell.showSample&&cell.samplePhoto&&IMGS[cell.samplePhoto])dm.photo=IMGS[cell.samplePhoto].data;
+  if(edit){['total','body'].forEach(function(b){var m=String(dm[b+'Main']||'');
+    if(CE.dg===2&&m.length>2)m=m.slice(-2); else if(CE.dg===3){while(m.length<3)m='1'+m;} dm[b+'Main']=m;});}
   var els=[];
-  cell.items.forEach(function(it,idx){var el=buildItemEl(it,pxu,dm,edit);el.style.zIndex=idx+1;root.appendChild(el);els.push([el,it]);});
+  cell.items.forEach(function(it,idx){
+    var eff=it;
+    if(!edit&&isPricePart(it)&&it.g2&&it.g3){
+      var base=it.field.replace(/(Main|Tail|Unit)$/,''), dg=String(dm[base+'Main']||'').length;
+      eff=Object.assign({},it,dg<=2?it.g2:it.g3);
+    }
+    var el=buildItemEl(eff,pxu,dm,edit);el.style.zIndex=idx+1;root.appendChild(el);els.push([el,eff]);});
   if(f.on){var fr=document.createElement('div');
     fr.style.cssText='position:absolute;left:0;top:0;right:0;bottom:0;box-sizing:border-box;pointer-events:none;z-index:5000;border:'+(f.w*pxu)+'px solid '+f.color+';border-radius:'+((f.radius||0)*pxu)+'px;';
     root.appendChild(fr);}
@@ -1505,7 +1525,14 @@ function cOverlay(){
       h.style.cssText+='left:'+c[1]*s+'px;top:'+c[2]*s+'px;z-index:'+(z+1);st.appendChild(h);});
   }
 }
+function cDgSet(n){
+  if(n===CE.dg)return;
+  saveLiveGeo(cc()); CE.dg=n; loadLiveGeo(cc()); cRender();
+}
+$('cDg2').onclick=function(){cDgSet(2);};
+$('cDg3').onclick=function(){cDgSet(3);};
 function cSyncBar(){
+  $('cDg2').classList.toggle('active',CE.dg===2); $('cDg3').classList.toggle('active',CE.dg===3);
   [].forEach.call(document.querySelectorAll('input[name=cdesign]'),function(r){r.checked=(r.value===CE.k);});
   var d=cdes(), f=cc().frame;
   $('caw').value=d.w; $('cah').value=d.h;
@@ -1515,6 +1542,7 @@ function cSyncBar(){
 }
 function cSnap(){return JSON.stringify(cc());}
 function cCommit(){
+  saveLiveGeo(cc());
   var c=cc(); c.ua=Date.now(); c.aspect={w:cdes().w,h:cdes().h};
   var s=cSnap(); var u=CE.undo;
   if(u.length&&u[u.length-1]===s)return;
@@ -1522,7 +1550,7 @@ function cCommit(){
   setDirty(true); doSave(); scheduleCellCloud(CE.k); cUndoBtns();
 }
 function cUndoBtns(){$('cUndo').disabled=CE.undo.length<2;$('cRedo').disabled=!CE.redo.length;}
-function cRestore(s){var ua=Date.now();G.cells[CE.k]=JSON.parse(s);G.cells[CE.k].ua=ua;CE.sel=CE.sel.filter(cById);setDirty(true);doSave();scheduleCellCloud(CE.k);cRender();cUndoBtns();}
+function cRestore(s){var ua=Date.now();G.cells[CE.k]=JSON.parse(s);loadLiveGeo(G.cells[CE.k]);G.cells[CE.k].ua=ua;CE.sel=CE.sel.filter(cById);setDirty(true);doSave();scheduleCellCloud(CE.k);cRender();cUndoBtns();}
 $('cUndo').onclick=function(){if(CE.undo.length<2)return;CE.redo.push(CE.undo.pop());cRestore(CE.undo[CE.undo.length-1]);};
 $('cRedo').onclick=function(){if(!CE.redo.length)return;var s=CE.redo.pop();CE.undo.push(s);cRestore(s);};
 var cellT={};
@@ -1536,7 +1564,7 @@ function pushCell(k){
   return FB.saveCell(k,JSON.stringify(c),c.ua||Date.now());
 }
 function cSwitch(k){
-  if(k===CE.k)return; CE.k=k; CE.sel=[]; CE.undo=[cSnap()]; CE.redo=[]; cUndoBtns(); cRender();
+  if(k===CE.k)return; CE.k=k; loadLiveGeo(cc()); CE.sel=[]; CE.undo=[cSnap()]; CE.redo=[]; cUndoBtns(); cRender();
 }
 [].forEach.call(document.querySelectorAll('input[name=cdesign]'),function(r){r.onchange=function(){cSwitch(r.value);};});
 function aspectChanged(){
@@ -1571,7 +1599,7 @@ $('cAddField').onclick=function(){
   var v=$('cFieldSel').value;
   if(v==='photo')cAdd(mkItem('photo','photo'));
   else if(v.indexOf('p:')===0){
-    var set=mkPriceSet(v.slice(2),150,(cH()-200)/2,700,200); set.forEach(function(x){cc().items.push(x);}); CE.sel=set.map(function(x){return x.id;}); cCommit(); cRender();
+    var set=mkPriceSet(v.slice(2),150,(cH()-200)/2,700,200); set.forEach(function(x){ensureGeo(x);cc().items.push(x);}); CE.sel=set.map(function(x){return x.id;}); cCommit(); cRender();
   }
   else cAdd(mkItem('text',v.slice(2),{w:420,h:90}));
 };
@@ -1973,7 +2001,7 @@ function normShaken(s){
   else return {label:s};
   return {label:'R'+(year-2018)+'/'+('0'+month).slice(-2)};
 }
-var CARS={loaded:false,loading:false,rows:[],byVin:{},err:'',photoIdx:{},photos:{},page:0};
+var CARS={sortKey:'name',sortDir:1,loaded:false,loading:false,rows:[],byVin:{},err:'',photoIdx:{},photos:{},page:0};
 function buildCarRows(stock,cs,goo,msf,pricing){
   var list=[];
   Object.keys(stock||{}).forEach(function(id){
@@ -2058,14 +2086,27 @@ function renderCars(){
       var hay=(r.vin+' '+r.name+' '+r.grade+' '+r.color).toLowerCase();
       return q.every(function(t){return hay.indexOf(t)>=0;});
     });
+    var sk=CARS.sortKey, sd=CARS.sortDir;
+    var val=function(r){
+      if(sk==='name')return r.name; if(sk==='color')return r.color; if(sk==='grade')return r.grade;
+      if(sk==='year'){var y=String(r.year||''),m;if((m=y.match(/(\d{4})/)))return parseInt(m[1]);if((m=y.match(/R\s*(\d+)/)))return 2018+parseInt(m[1]);if((m=y.match(/H\s*(\d+)/)))return 1988+parseInt(m[1]);if((m=y.match(/S\s*(\d+)/)))return 1925+parseInt(m[1]);return 0;}
+      if(sk==='mileage')return parseFloat(r.mileage)||0; if(sk==='total')return parseFloat(r.total)||0;
+      if(sk==='ad')return r.isAdListed?1:0;
+      if(sk==='sel'){var ix=S.cars.indexOf(r.vin);return ix<0?1e9:ix;}
+      return '';
+    };
+    rows=rows.slice().sort(function(a,b){var x=val(a),y=val(b),c=(typeof x==='number'&&typeof y==='number')?(x-y):String(x).localeCompare(String(y),'ja'); if(c===0)c=(a.name+a.vin).localeCompare(b.name+b.vin,'ja'); return c*sd;});
     CARS.shown=rows;
-    var h='<table class="ctab"><thead><tr><th></th><th>順</th><th>車名</th><th>グレード</th><th>年式</th><th>走行</th><th>車検</th><th>色</th><th>総額</th><th>広告</th><th>画像</th><th>車台番号</th></tr></thead><tbody>';
+    var arrow=function(k){return CARS.sortKey===k?(CARS.sortDir>0?' ▲':' ▼'):'';};
+    var th=function(k,l){return '<th class="sortable" data-sort="'+k+'" title="クリックで並び替え">'+l+arrow(k)+'</th>';};
+    var h='<table class="ctab"><thead><tr><th></th>'+th('sel','順')+th('name','車名')+th('color','色')+th('grade','グレード')+th('year','年式')+th('mileage','走行')+'<th>車検</th>'+th('total','総額')+th('ad','広告')+'<th>画像</th><th>車台番号</th></tr></thead><tbody>';
     rows.forEach(function(r){
       var idx=S.cars.indexOf(r.vin);
-      h+='<tr data-vin="'+esc(r.vin)+'"'+(idx>=0?' class="on"':'')+'><td><input type="checkbox" '+(idx>=0?'checked':'')+'></td><td>'+(idx>=0?idx+1:'')+'</td><td>'+esc(r.name)+'</td><td>'+esc(r.grade)+'</td><td>'+esc(r.year)+'</td><td>'+esc(r.mileage)+'</td><td>'+esc(r.shaken)+'</td><td>'+esc(r.color)+'</td><td>'+esc(r.total)+'</td><td>'+(r.isAdListed?'掲載':'')+'</td><td><button class="btn cpBtn '+(CARS.photoIdx[r.vin]?'has':'none')+'" data-vin="'+esc(r.vin)+'">'+(CARS.photoIdx[r.vin]?'📷 登録済':'📷 未登録')+'</button></td><td style="font-family:monospace;font-size:11px">'+esc(r.vin)+'</td></tr>';
+      h+='<tr data-vin="'+esc(r.vin)+'"'+(idx>=0?' class="on"':'')+'><td><input type="checkbox" '+(idx>=0?'checked':'')+'></td><td>'+(idx>=0?idx+1:'')+'</td><td>'+esc(r.name)+'</td><td>'+esc(r.color)+'</td><td><span class="gcell" title="'+esc(r.grade)+'">'+esc(r.grade)+'</span></td><td>'+esc(r.year)+'</td><td>'+esc(r.mileage)+'</td><td>'+esc(r.shaken)+'</td><td>'+esc(r.total)+'</td><td>'+(r.isAdListed?'掲載':'')+'</td><td><button class="btn cpBtn '+(CARS.photoIdx[r.vin]?'has':'none')+'" data-vin="'+esc(r.vin)+'">'+(CARS.photoIdx[r.vin]?'📷 登録済':'📷 未登録')+'</button></td><td style="font-family:monospace;font-size:11px">'+esc(r.vin)+'</td></tr>';
     });
     h+='</tbody></table>'+(rows.length?'':'<div class="hint" style="padding:12px">条件に合う車両がありません。</div>');
     box.innerHTML=h;
+    [].forEach.call(box.querySelectorAll('th[data-sort]'),function(t){t.onclick=function(){var k=t.dataset.sort; if(CARS.sortKey===k)CARS.sortDir*=-1; else{CARS.sortKey=k;CARS.sortDir=1;} syncSortUI(); renderCars();};});
     [].forEach.call(box.querySelectorAll('tbody tr'),function(tr){
       var cb=tr.querySelector('input'), vin=tr.dataset.vin;
       cb.onchange=function(){carToggle(vin,cb.checked);};
@@ -2212,6 +2253,9 @@ $('cpDel').onclick=function(){
 $('cpClose').onclick=function(){$('carPhotoOverlay').style.display='none';};
 $('carPhotoOverlay').onclick=function(e){if(e.target===this)this.style.display='none';};
 $('carLaySel').onchange=function(){CARS.page=0;switchLayout(parseInt(this.value));renderCars();};
+function syncSortUI(){$('carSortSel').value=CARS.sortKey;$('carSortDir').textContent=CARS.sortDir>0?'▲ 昇順':'▼ 降順';}
+$('carSortSel').onchange=function(){CARS.sortKey=this.value;CARS.sortDir=1;syncSortUI();renderCars();};
+$('carSortDir').onclick=function(){CARS.sortDir*=-1;syncSortUI();renderCars();};
 function carSearchSync(){$('carSearchClear').style.display=$('carSearch').value?'':'none';}
 $('carSearch').oninput=function(){carSearchSync();renderCars();};
 $('carSearchClear').onclick=function(){$('carSearch').value='';carSearchSync();renderCars();$('carSearch').focus();};
