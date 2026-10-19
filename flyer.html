@@ -110,9 +110,13 @@ input[type=number]{width:64px;}
 .handle.e,.handle.w{cursor:ew-resize;}
 .btn.img{background:#e8760a;border-color:#e8760a;color:#fff;font-weight:700;font-size:14px;padding:7px 16px;box-shadow:0 0 0 2px rgba(232,118,10,.25);}
 .handle.rot{border-radius:50%;background:var(--hc,var(--sel));cursor:grab;}
-.cpBtn.has{background:#2c9a4a;border-color:#2c9a4a;color:#fff;font-weight:700;}
-.cpBtn.none{background:rgba(232,118,10,.15);border-color:#e8760a;color:#e8760a;font-weight:700;}
-html[data-theme="dark"] .cpBtn.none{color:#ffb366;}
+.cpBtn{font-size:15px;padding:3px 10px;min-width:44px;}
+.cpBtn.has{background:#ffd21f;border-color:#e0a800;color:#222;font-weight:700;box-shadow:0 0 8px rgba(255,210,31,.9);}
+.cpBtn.none{background:transparent;border:2px dashed var(--border);color:var(--text-muted);opacity:.7;}
+.aaB{font-size:11.5px;font-weight:600;padding:4px 8px;border:2px solid var(--sky);border-radius:6px;background:transparent;color:var(--sky);cursor:pointer;white-space:nowrap;}
+.aaB.has0{opacity:.35;}
+.aaB.has1,.aaB.has2{background:var(--sky);color:#fff;}
+.aaB:hover{background:rgba(74,171,207,0.25);}
 .ctab tbody tr.dropfile{outline:2px solid var(--sky);outline-offset:-2px;background:rgba(74,171,207,.2);}
 #cpBox.dropfile{outline:3px dashed var(--sky);}
 .slotCard{border:2px dashed var(--border);border-radius:8px;padding:6px 8px;min-height:62px;background:var(--card);position:relative;font-size:12px;}
@@ -149,7 +153,7 @@ html[data-theme="dark"] .cpBtn.none{color:#ffb366;}
 <body>
 <header>
   <div class="header-row">
-    <h1>チラシ作成 <span style="font-size:12px;font-weight:400;opacity:.75;">v1.28</span></h1>
+    <h1>チラシ作成 <span style="font-size:12px;font-weight:400;opacity:.75;">v1.29</span></h1>
     <div class="hdrBtns">
       <button type="button" class="updateBtn headerRefreshBtn" id="settingsBtn">⚙ 設定</button>
       <a class="updateBtn headerRefreshBtn" href="./index.html">🏠 一覧へ</a>
@@ -273,6 +277,14 @@ html[data-theme="dark"] .cpBtn.none{color:#ffb366;}
     <button class="settingsCloseBtn" id="uiClose">閉じる</button>
   </div>
 </div>
+<div class="settingsOverlay" id="aaViewOverlay" style="display:none;">
+  <div class="settingsPanel" style="width:min(1000px,96vw);max-height:94vh;overflow:auto;">
+    <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px;"><h3 style="margin:0;">AA出品票(閲覧のみ)</h3><span class="hint" id="aaViewLabel"></span><button class="btn" id="aaViewClose" style="margin-left:auto;">閉じる</button></div>
+    <div id="aaViewBody" style="display:flex;gap:8px;flex-wrap:wrap;"></div>
+    <div class="hint" style="margin-top:6px;">画像をクリックで拡大します。AA画像の登録・変更は ads.html / pricetag.html / pricing.html で行います。</div>
+  </div>
+</div>
+<div class="settingsOverlay" id="aaZoomOverlay2" style="display:none;overflow:auto;"><img id="aaZoomImg2" style="max-width:none;margin:auto;cursor:zoom-out;"></div>
 <div class="settingsOverlay" id="carPhotoOverlay" style="display:none;">
   <div class="settingsPanel" style="width:min(640px,96vw);">
     <h3 id="cpTitle">車両画像</h3>
@@ -1234,7 +1246,7 @@ $('settingsOverlay').onclick=function(e){if(e.target===this)this.style.display='
 /* ---------- ファイル保存/読込(画像込みのJSON) ---------- */
 $('saveFile').onclick=function(){
   var used={}; S.items.forEach(function(i){if(i.imgId&&IMGS[i.imgId])used[i.imgId]=IMGS[i.imgId];});
-  var blob=new Blob([JSON.stringify({app:'ciel-flyer',version:'1.28',state:S,designs:G.designs,images:used})],{type:'application/json'});
+  var blob=new Blob([JSON.stringify({app:'ciel-flyer',version:'1.29',state:S,designs:G.designs,images:used})],{type:'application/json'});
   var a=document.createElement('a'); a.href=URL.createObjectURL(blob);
   var d=new Date(), pad=function(n){return ('0'+n).slice(-2);};
   a.download='flyer-layout-'+d.getFullYear()+pad(d.getMonth()+1)+pad(d.getDate())+'-'+pad(d.getHours())+pad(d.getMinutes())+'.json';
@@ -2001,7 +2013,7 @@ function normShaken(s){
   else return {label:s};
   return {label:'R'+(year-2018)+'/'+('0'+month).slice(-2)};
 }
-var CARS={sortKey:'name',sortDir:1,loaded:false,loading:false,rows:[],byVin:{},err:'',photoIdx:{},photos:{},page:0};
+var CARS={aaCounts:{},sortKey:'name',sortDir:1,loaded:false,loading:false,rows:[],byVin:{},err:'',photoIdx:{},photos:{},page:0};
 function buildCarRows(stock,cs,goo,msf,pricing){
   var list=[];
   Object.keys(stock||{}).forEach(function(id){
@@ -2034,6 +2046,7 @@ function loadCars(force){
   if(!FB){CARS.err='Firebaseに接続できていません。しばらく待ってから「在庫を再取得」を押してください。';renderCars();return;}
   CARS.loading=true; CARS.err=''; renderCars();
   FB.readStock().then(function(r){
+    CARS.aaCounts=r.aaCounts||{};
     CARS.rows=buildCarRows(r.stock,r.carsensor,r.goonet,r.manualShufuku,r.pricing);
     CARS.byVin={}; CARS.rows.forEach(function(x){CARS.byVin[x.vin]=x;}); CARS.loaded=true;
     return FB.readPhotoIndex().then(function(ix){CARS.photoIdx=ix||{};}).catch(function(){CARS.photoIdx={};});
@@ -2099,10 +2112,10 @@ function renderCars(){
     CARS.shown=rows;
     var arrow=function(k){return CARS.sortKey===k?(CARS.sortDir>0?' ▲':' ▼'):'';};
     var th=function(k,l){return '<th class="sortable" data-sort="'+k+'" title="クリックで並び替え">'+l+arrow(k)+'</th>';};
-    var h='<table class="ctab"><thead><tr><th></th>'+th('sel','順')+th('name','車名')+th('color','色')+th('grade','グレード')+th('year','年式')+th('mileage','走行')+'<th>車検</th>'+th('total','総額')+th('ad','広告')+'<th>画像</th><th>車台番号</th></tr></thead><tbody>';
+    var h='<table class="ctab"><thead><tr><th></th>'+th('sel','順')+th('name','車名')+th('color','色')+'<th>AA</th><th>画像</th>'+th('grade','グレード')+th('year','年式')+th('mileage','走行')+'<th>車検</th>'+th('total','総額')+th('ad','広告')+'<th>車台番号</th></tr></thead><tbody>';
     rows.forEach(function(r){
       var idx=S.cars.indexOf(r.vin);
-      h+='<tr data-vin="'+esc(r.vin)+'"'+(idx>=0?' class="on"':'')+'><td><input type="checkbox" '+(idx>=0?'checked':'')+'></td><td>'+(idx>=0?idx+1:'')+'</td><td>'+esc(r.name)+'</td><td>'+esc(r.color)+'</td><td><span class="gcell" title="'+esc(r.grade)+'">'+esc(r.grade)+'</span></td><td>'+esc(r.year)+'</td><td>'+esc(r.mileage)+'</td><td>'+esc(r.shaken)+'</td><td>'+esc(r.total)+'</td><td>'+(r.isAdListed?'掲載':'')+'</td><td><button class="btn cpBtn '+(CARS.photoIdx[r.vin]?'has':'none')+'" data-vin="'+esc(r.vin)+'">'+(CARS.photoIdx[r.vin]?'📷 登録済':'📷 未登録')+'</button></td><td style="font-family:monospace;font-size:11px">'+esc(r.vin)+'</td></tr>';
+      h+='<tr data-vin="'+esc(r.vin)+'"'+(idx>=0?' class="on"':'')+'><td><input type="checkbox" '+(idx>=0?'checked':'')+'></td><td>'+(idx>=0?idx+1:'')+'</td><td>'+esc(r.name)+'</td><td>'+esc(r.color)+'</td><td><button class="aaB has'+Math.min(2,CARS.aaCounts[r.vin]||0)+'" data-vin="'+esc(r.vin)+'" title="AA出品票を見る">🖼 AA</button></td><td><button class="btn cpBtn '+(CARS.photoIdx[r.vin]?'has':'none')+'" data-vin="'+esc(r.vin)+'" title="'+(CARS.photoIdx[r.vin]?'チラシ用の車両画像あり(クリックで確認・変更)':'チラシ用の車両画像は未登録(クリックまたは画像をドロップ)')+'">📷</button></td><td><span class="gcell" title="'+esc(r.grade)+'">'+esc(r.grade)+'</span></td><td>'+esc(r.year)+'</td><td>'+esc(r.mileage)+'</td><td>'+esc(r.shaken)+'</td><td>'+esc(r.total)+'</td><td>'+(r.isAdListed?'掲載':'')+'</td><td style="font-family:monospace;font-size:11px">'+esc(r.vin)+'</td></tr>';
     });
     h+='</tbody></table>'+(rows.length?'':'<div class="hint" style="padding:12px">条件に合う車両がありません。</div>');
     box.innerHTML=h;
@@ -2111,8 +2124,9 @@ function renderCars(){
       var cb=tr.querySelector('input'), vin=tr.dataset.vin;
       cb.onchange=function(){carToggle(vin,cb.checked);};
       tr.draggable=true; tr.ondragstart=function(e){e.dataTransfer.setData('text/x-carvin',vin);e.dataTransfer.effectAllowed='copyMove';};
-      tr.onclick=function(e){if(e.target===cb||(e.target.closest&&e.target.closest('.cpBtn')))return;cb.checked=!cb.checked;carToggle(vin,cb.checked);};
+      tr.onclick=function(e){if(e.target===cb||(e.target.closest&&e.target.closest('.cpBtn,.aaB')))return;cb.checked=!cb.checked;carToggle(vin,cb.checked);};
       tr.querySelector('.cpBtn').onclick=function(e){e.stopPropagation();openPhoto(vin);};
+      tr.querySelector('.aaB').onclick=function(e){e.stopPropagation();openAaView(vin);};
       tr.addEventListener('dragover',function(e){if(!hasFiles(e))return;e.preventDefault();tr.classList.add('dropfile');});
       tr.addEventListener('dragleave',function(){tr.classList.remove('dropfile');});
       tr.addEventListener('drop',function(e){if(!hasFiles(e))return;e.preventDefault();tr.classList.remove('dropfile');
@@ -2156,6 +2170,21 @@ function renderCars(){
   sl.appendChild(grid);
 }
 $('carCompact').onclick=function(){S.cars=S.cars.filter(Boolean);commit();renderCars();};
+/* ---- AA出品票(閲覧のみ。aaPhotos/{normVin}を読み取り専用で表示) ---- */
+function openAaView(vin){
+  var r=CARS.byVin[vin]; $('aaViewLabel').textContent=(r?r.name+' / ':'')+vin;
+  var b=$('aaViewBody'); b.innerHTML='<div class="hint">読み込み中…</div>'; $('aaViewOverlay').style.display='flex';
+  if(!FB){b.innerHTML='<div class="hint">Firebaseに接続できていません</div>';return;}
+  FB.getAa(vin).then(function(d){
+    d=d||{}; var srcs=['img1','img2'].map(function(k){return d[k];}).filter(Boolean);
+    b.innerHTML=srcs.length?'':'<div class="hint">AA画像は登録されていません。</div>';
+    srcs.forEach(function(src){var im=document.createElement('img');im.src=src;im.style.cssText='max-width:48%;max-height:80vh;cursor:zoom-in;border:1px solid var(--border);border-radius:6px;';
+      im.onclick=function(){$('aaZoomImg2').src=src;$('aaZoomOverlay2').style.display='flex';};b.appendChild(im);});
+  }).catch(function(e){b.innerHTML='<div class="hint">読み込みエラー: '+esc(e.message||e)+'</div>';});
+}
+$('aaViewClose').onclick=function(){$('aaViewOverlay').style.display='none';};
+$('aaViewOverlay').onclick=function(e){if(e.target===this)this.style.display='none';};
+$('aaZoomOverlay2').onclick=function(){this.style.display='none';};
 /* ---- 車両画像(背景透過)の表示・保存 ---- */
 var CP={vin:'',pending:null};
 function getCarPhoto(vin){
@@ -2389,7 +2418,8 @@ onAuthStateChanged(auth, async function(user){
       deleteLayout:(id,ua)=>set(ref(db,'flyerLayouts/'+id),{deleted:true,ua:ua}),
       saveCell:(k,json,ua)=>set(ref(db,'flyerCells/'+k),{json:json,ua:ua}),
       getCells:()=>get(ref(db,'flyerCells')).then(s=>s.val()),
-      readStock:()=>Promise.all([get(ref(db,'stock')),get(ref(db,'adsData/carsensor')),get(ref(db,'adsData/goonet')),get(ref(db,'adsData/manualShufuku')),get(ref(db,'pricingData'))]).then(r=>({stock:r[0].val(),carsensor:r[1].val(),goonet:r[2].val(),manualShufuku:r[3].val(),pricing:r[4].val()})),
+      readStock:()=>Promise.all([get(ref(db,'stock')),get(ref(db,'adsData/carsensor')),get(ref(db,'adsData/goonet')),get(ref(db,'adsData/manualShufuku')),get(ref(db,'pricingData')),get(ref(db,'adsData/aaPhotoCounts'))]).then(r=>({aaCounts:r[5].val(),stock:r[0].val(),carsensor:r[1].val(),goonet:r[2].val(),manualShufuku:r[3].val(),pricing:r[4].val()})),
+      getAa:(vin)=>get(ref(db,'aaPhotos/'+vin)).then(s=>s.val()),
       readPhotoIndex:()=>get(ref(db,'flyerCarPhotoIndex')).then(s=>s.val()),
       getPhoto:(vin)=>get(ref(db,'flyerCarPhotos/'+vin)).then(s=>s.val()),
       savePhoto:(vin,o)=>Promise.all([set(ref(db,'flyerCarPhotos/'+vin),o),set(ref(db,'flyerCarPhotoIndex/'+vin),{ua:o.ua})]),
