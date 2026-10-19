@@ -108,7 +108,7 @@ input[type=number]{width:64px;}
 <body>
 <header>
   <div class="header-row">
-    <h1>チラシ作成 <span style="font-size:12px;font-weight:400;opacity:.75;">v1.02</span></h1>
+    <h1>チラシ作成 <span style="font-size:12px;font-weight:400;opacity:.75;">v1.03</span></h1>
     <div class="hdrBtns">
       <button type="button" class="updateBtn headerRefreshBtn" id="settingsBtn">⚙ 設定</button>
       <a class="updateBtn headerRefreshBtn" href="./index.html">🏠 一覧へ</a>
@@ -116,17 +116,17 @@ input[type=number]{width:64px;}
   </div>
 </header>
 <div class="tabs">
-  <div class="tab active" data-tab="layout">① 骨組み</div>
+  <div class="tab active" data-tab="layout">① レイアウト</div>
   <div class="tab disabled" title="次の段階で作成します">② コマテンプレ編集</div>
   <div class="tab disabled" title="次の段階で作成します">③ 掲載車両の選択</div>
 </div>
 
 <div id="layoutView" style="flex:1;display:flex;flex-direction:column;min-height:0;">
   <div class="toolbar" id="layoutBar">
-    <div class="tgroup"><span class="lbl">骨組み</span><span id="layBtns" class="tgroup"></span>
+    <div class="tgroup"><span class="lbl">レイアウト</span><span id="layBtns" class="tgroup"></span>
       <input type="text" id="layName" placeholder="名前" style="width:130px">
       <span class="lbl">コピー先</span><select id="copyTo"></select>
-      <button class="btn" id="copyBtn">この骨組みをコピー</button>
+      <button class="btn" id="copyBtn">このレイアウトをコピー</button>
       <span class="hint" id="sizeInfo"></span>
     </div>
   </div>
@@ -241,7 +241,7 @@ function norm(o){
   var d=newState(); Object.keys(d).forEach(function(k){if(o[k]==null)o[k]=d[k];});
   delete o.aspect; return o;
 }
-S=newState('骨組み1'); G.layouts[0]=S;
+S=newState('レイアウト1'); G.layouts[0]=S;
 
 function toast(m){var t=$('toast');t.textContent=m;t.style.display='block';clearTimeout(toast._t);toast._t=setTimeout(function(){t.style.display='none';},2200);}
 function uid(){return 'i'+Math.random().toString(36).slice(2,9);}
@@ -358,7 +358,7 @@ function render(){
 function updateSizeInfo(){
   var seen={},tot=0;
   S.items.forEach(function(i){if(i.imgId&&!seen[i.imgId]){seen[i.imgId]=1;var d=IMGS[i.imgId];if(d)tot+=d.data.length*0.75;}});
-  $('sizeInfo').textContent='この骨組みの画像容量: '+(tot/1048576).toFixed(1)+'MB';
+  $('sizeInfo').textContent='このレイアウトの画像容量: '+(tot/1048576).toFixed(1)+'MB';
 }
 function clearOverlay(){
   [].slice.call($('stage').querySelectorAll('.selbox,.groupbox,.handle,.marquee,.guide')).forEach(function(e){e.remove();});
@@ -774,7 +774,7 @@ function syncToolbar(){
 function switchLayout(n){
   if(n===G.cur)return;
   G.layouts[G.cur]=S; G.cur=n;
-  S=G.layouts[n]||newState('骨組み'+(n+1)); G.layouts[n]=S;
+  S=G.layouts[n]||newState('レイアウト'+(n+1)); G.layouts[n]=S;
   sel=[]; undoStack=[snap()]; redoStack=[]; updateUndoBtns();
   Object.keys(els).forEach(function(id){els[id].remove();delete els[id];});
   syncToolbar(); render(); scheduleSave();
@@ -783,9 +783,9 @@ $('layName').onchange=function(){S.name=this.value;commit();syncToolbar();};
 $('copyBtn').onclick=function(){
   var t=parseInt($('copyTo').value); if(isNaN(t))return;
   var tg=G.layouts[t];
-  if(tg&&tg.items.length&&!confirm('骨組み'+(t+1)+'の内容は上書きされます。よろしいですか?'))return;
-  var c=JSON.parse(JSON.stringify(S)); c.name=(S.name||'骨組み')+'のコピー';
-  G.layouts[t]=c; scheduleSave(); syncToolbar(); toast('骨組み'+(t+1)+'にコピーしました');
+  if(tg&&tg.items.length&&!confirm('レイアウト'+(t+1)+'の内容は上書きされます。よろしいですか?'))return;
+  var c=JSON.parse(JSON.stringify(S)); c.name=(S.name||'レイアウト')+'のコピー';
+  G.layouts[t]=c; scheduleSave(); syncToolbar(); toast('レイアウト'+(t+1)+'にコピーしました');
 };
 function cloneItems(a){return JSON.parse(JSON.stringify(a));}
 function setPaper(k,w,h){
@@ -879,7 +879,7 @@ loadSaved().then(function(saved){
     G.layouts=saved.layouts; G.cur=saved.cur||0; if(saved.designs)G.designs=saved.designs; IMGS=saved.images||{};
   }else if(saved&&saved.state){G.layouts=[saved.state,null,null,null];G.cur=0;IMGS=saved.images||{};}
   for(var li=0;li<4;li++){ if(G.layouts[li])norm(G.layouts[li]); }
-  if(!G.layouts[G.cur])G.layouts[G.cur]=newState('骨組み'+(G.cur+1));
+  if(!G.layouts[G.cur])G.layouts[G.cur]=newState('レイアウト'+(G.cur+1));
   S=G.layouts[G.cur];
   syncToolbar(); undoStack=[snap()]; updateUndoBtns(); render();
   if(!saved)toast('「＋ コマ追加」や「コマを格子に並べる」から始めてみましょう');
