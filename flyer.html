@@ -96,13 +96,19 @@ input[type=number]{width:64px;}
 .settingsRow{display:flex;justify-content:space-between;align-items:center;padding:12px 0;border-bottom:1px solid var(--border);}
 .settingsRow span{font-size:13px;color:var(--text);}
 .settingsCloseBtn{margin-top:16px;width:100%;padding:8px;background:transparent;border:2px solid var(--sky);color:var(--sky);border-radius:8px;font-size:13px;cursor:pointer;font-weight:600;}
+.lockBtn{border:1px solid var(--border);background:transparent;color:var(--text-muted);border-radius:10px;padding:1px 7px;font-size:11px;cursor:pointer;white-space:nowrap;font-family:inherit;}
+.lockBtn.on{background:var(--sel);border-color:var(--sel);color:#000;font-weight:700;}
+.layer.dragover-top{box-shadow:0 -3px 0 0 var(--sky);}
+.layer.dragover-bot{box-shadow:0 3px 0 0 var(--sky);}
+.layBtn.active{background:var(--sky);border-color:var(--sky);color:#fff;font-weight:700;}
+.dsgn label{margin-right:6px;cursor:pointer;}
 #toast{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);background:#222;color:#fff;padding:8px 16px;border-radius:8px;font-size:13px;display:none;z-index:50;}
 </style>
 </head>
 <body>
 <header>
   <div class="header-row">
-    <h1>チラシ作成 <span style="font-size:12px;font-weight:400;opacity:.75;">v1.01</span></h1>
+    <h1>チラシ作成 <span style="font-size:12px;font-weight:400;opacity:.75;">v1.02</span></h1>
     <div class="hdrBtns">
       <button type="button" class="updateBtn headerRefreshBtn" id="settingsBtn">⚙ 設定</button>
       <a class="updateBtn headerRefreshBtn" href="./index.html">🏠 一覧へ</a>
@@ -116,14 +122,23 @@ input[type=number]{width:64px;}
 </div>
 
 <div id="layoutView" style="flex:1;display:flex;flex-direction:column;min-height:0;">
+  <div class="toolbar" id="layoutBar">
+    <div class="tgroup"><span class="lbl">骨組み</span><span id="layBtns" class="tgroup"></span>
+      <input type="text" id="layName" placeholder="名前" style="width:130px">
+      <span class="lbl">コピー先</span><select id="copyTo"></select>
+      <button class="btn" id="copyBtn">この骨組みをコピー</button>
+      <span class="hint" id="sizeInfo"></span>
+    </div>
+  </div>
   <div class="toolbar">
     <div class="tgroup"><span class="lbl">用紙</span>
       <select id="paperSel"></select>
       <input type="number" id="pw" min="10" step="1"> × <input type="number" id="ph" min="10" step="1">
       <button class="btn" id="rotBtn" title="縦横を入れ替え">⟳ 縦横</button>
     </div>
-    <div class="tgroup"><span class="lbl">コマの縦横比</span>
-      <input type="number" id="asw" min="1" step="1" style="width:50px"> : <input type="number" id="ash" min="1" step="1" style="width:50px">
+    <div class="tgroup dsgn"><span class="lbl">コマデザイン</span>
+      <label><input type="radio" name="design" value="A">A</label><label><input type="radio" name="design" value="B">B</label><label><input type="radio" name="design" value="C">C</label><label><input type="radio" name="design" value="D">D</label>
+      <span class="hint" id="dsgnInfo"></span>
     </div>
     <div class="tgroup">
       <button class="btn main" id="addSlot">＋ コマ追加</button>
@@ -138,7 +153,9 @@ input[type=number]{width:64px;}
       <button class="btn" id="gridBtn">コマを格子に並べる</button>
     </div>
     <div class="tgroup"><span class="lbl">表示</span>
+      <button class="btn" id="zoomOut" title="縮小">－</button>
       <select id="zoomSel"></select>
+      <button class="btn" id="zoomIn" title="拡大">＋</button>
     </div>
     <div class="tgroup">
       <button class="btn" id="undoBtn">↶ 元に戻す</button>
@@ -151,21 +168,22 @@ input[type=number]{width:64px;}
     </div>
   </div>
   <div class="toolbar" id="alignBar">
-    <div class="tgroup"><span class="lbl">揃える</span>
-      <button class="btn" data-al="left" title="左端を揃える">⇤ 左</button>
-      <button class="btn" data-al="hc" title="左右の中央を揃える">↔ 中央</button>
-      <button class="btn" data-al="right" title="右端を揃える">右 ⇥</button>
-      <button class="btn" data-al="top" title="上端を揃える">⤒ 上</button>
-      <button class="btn" data-al="vc" title="上下の中央を揃える">↕ 中央</button>
-      <button class="btn" data-al="bottom" title="下端を揃える">下 ⤓</button>
+    <div class="tgroup"><span class="lbl">左右位置</span>
+      <button class="btn" data-al="left" title="左端を揃える">左</button>
+      <button class="btn" data-al="hc" title="左右の中央を揃える">中央</button>
+      <button class="btn" data-al="right" title="右端を揃える">右</button>
+    </div>
+    <div class="tgroup"><span class="lbl">上下位置</span>
+      <button class="btn" data-al="top" title="上端を揃える">上</button>
+      <button class="btn" data-al="vc" title="上下の中央を揃える">中央</button>
+      <button class="btn" data-al="bottom" title="下端を揃える">下</button>
     </div>
     <div class="tgroup"><span class="lbl">等間隔</span>
       <button class="btn" data-al="dh">横に等間隔</button>
       <button class="btn" data-al="dv">縦に等間隔</button>
     </div>
     <div class="tgroup"><span class="lbl">サイズ</span>
-      <button class="btn" data-al="sw" title="最初に選んだものの幅に揃える">幅を揃える</button>
-      <button class="btn" data-al="sh" title="最初に選んだものの高さに揃える">高さを揃える</button>
+      <button class="btn" data-al="sw" title="最初に選んだものの大きさに揃えます(縦横比は保ちます)">サイズを揃える</button>
     </div>
     <div class="tgroup"><span class="lbl">コマ番号</span>
       <button class="btn" id="renumBtn" title="上から下、左から右の順に1から振り直す">位置順に振り直す</button>
@@ -217,15 +235,20 @@ var S, IMGS={}, sel=[], scale=1, zoomMode='fit';
 var undoStack=[], redoStack=[];
 var els={}; // id -> element
 
-function newState(){ return {paper:{k:'a4p',w:210,h:297}, aspect:{w:3,h:4}, items:[], seq:1}; }
-S=newState();
+var G={layouts:[null,null,null,null],cur:0,designs:{A:{w:3,h:4},B:{w:4,h:3},C:{w:1,h:1},D:{w:2,h:3}}};
+function newState(n){ return {name:n||'',paper:{k:'a4p',w:210,h:297}, design:'A', items:[], seq:1, alt:{}}; }
+function norm(o){
+  var d=newState(); Object.keys(d).forEach(function(k){if(o[k]==null)o[k]=d[k];});
+  delete o.aspect; return o;
+}
+S=newState('骨組み1'); G.layouts[0]=S;
 
 function toast(m){var t=$('toast');t.textContent=m;t.style.display='block';clearTimeout(toast._t);toast._t=setTimeout(function(){t.style.display='none';},2200);}
 function uid(){return 'i'+Math.random().toString(36).slice(2,9);}
 function byId(id){for(var i=0;i<S.items.length;i++)if(S.items[i].id===id)return S.items[i];return null;}
 function slots(){return S.items.filter(function(i){return i.type==='slot';});}
 function r1(v){return Math.round(v*10)/10;}
-function ar(){return S.aspect.h/S.aspect.w;}
+function ar(){var d=G.designs[S.design]||{w:3,h:4};return d.h/d.w;}
 
 /* ---------- 履歴 ---------- */
 function snap(){return JSON.stringify(S);}
@@ -235,7 +258,7 @@ function commit(){
   undoStack.push(s); if(undoStack.length>100)undoStack.shift();
   redoStack=[]; scheduleSave(); updateUndoBtns();
 }
-function restore(s){S=JSON.parse(s);sel=sel.filter(function(id){return byId(id);});syncToolbar();render();}
+function restore(s){S=JSON.parse(s);G.layouts[G.cur]=S;sel=sel.filter(function(id){return byId(id);});syncToolbar();render();}
 function undo(){ if(undoStack.length<2)return; redoStack.push(undoStack.pop()); restore(undoStack[undoStack.length-1]); scheduleSave(); updateUndoBtns(); }
 function redo(){ if(!redoStack.length)return; var s=redoStack.pop(); undoStack.push(s); restore(s); scheduleSave(); updateUndoBtns(); }
 function updateUndoBtns(){$('undoBtn').disabled=undoStack.length<2;$('redoBtn').disabled=!redoStack.length;}
@@ -259,7 +282,11 @@ function scheduleSave(){clearTimeout(saveT);saveT=setTimeout(doSave,500);}
 function doSave(){
   idb().then(function(db){
     var tx=db.transaction('kv','readwrite');
-    tx.objectStore('kv').put({state:S,images:IMGS},'current');
+    G.layouts[G.cur]=S;
+    var used={}; G.layouts.forEach(function(l){if(l)l.items.forEach(function(i){if(i.imgId)used[i.imgId]=1;});
+      if(l)Object.keys(l.alt||{}).forEach(function(k){l.alt[k].items.forEach(function(i){if(i.imgId)used[i.imgId]=1;});});});
+    Object.keys(IMGS).forEach(function(k){if(!used[k])delete IMGS[k];});
+    tx.objectStore('kv').put({layouts:G.layouts,cur:G.cur,designs:G.designs,images:IMGS},'current');
   }).catch(function(e){console.warn('autosave failed',e);});
 }
 function loadSaved(){
@@ -274,6 +301,10 @@ function loadSaved(){
 
 /* ---------- 座標 ---------- */
 function W(){return S.paper.w;} function H(){return S.paper.h;}
+function zoomBy(f){
+  var cur=scale/pxPerUnit(), n=Math.min(4,Math.max(0.1,cur*f));
+  zoomMode=n; render();
+}
 function computeScale(){
   var wrap=$('stageWrap');
   if(zoomMode==='fit'){
@@ -319,6 +350,15 @@ function render(){
   drawOverlay();
   renderLayers();
   renderProps();
+  var zs=$('zoomSel'), pc=Math.round(scale/pxPerUnit()*100);
+  var zc=$('zoomCustom'); if(zoomMode==='fit'){zs.value='fit';if(zc)zc.remove();}
+  else{ if(!zc){zc=document.createElement('option');zc.id='zoomCustom';zc.value='custom';zs.appendChild(zc);} zc.textContent=pc+'%'; zs.value='custom'; }
+  updateSizeInfo();
+}
+function updateSizeInfo(){
+  var seen={},tot=0;
+  S.items.forEach(function(i){if(i.imgId&&!seen[i.imgId]){seen[i.imgId]=1;var d=IMGS[i.imgId];if(d)tot+=d.data.length*0.75;}});
+  $('sizeInfo').textContent='この骨組みの画像容量: '+(tot/1048576).toFixed(1)+'MB';
 }
 function clearOverlay(){
   [].slice.call($('stage').querySelectorAll('.selbox,.groupbox,.handle,.marquee,.guide')).forEach(function(e){e.remove();});
@@ -337,8 +377,11 @@ function drawOverlay(){
     g.style.cssText+='left:'+px(bb.x)+'px;top:'+px(bb.y)+'px;width:'+px(bb.w)+'px;height:'+px(bb.h)+'px;z-index:'+z;
     st.appendChild(g);
   }
-  if(its.length===1&&!its[0].locked){
-    var it=its[0];
+  var hb=null;
+  if(its.length===1&&!its[0].locked)hb=its[0];
+  else if(its.length>1&&its.some(function(i){return !i.locked;}))hb=bbox(its);
+  if(hb){
+    var it=hb;
     [['nw',it.x,it.y],['ne',it.x+it.w,it.y],['sw',it.x,it.y+it.h],['se',it.x+it.w,it.y+it.h]].forEach(function(c){
       var h=document.createElement('div'); h.className='handle '+c[0]; h.dataset.corner=c[0];
       h.style.cssText+='left:'+px(c[1])+'px;top:'+px(c[2])+'px;z-index:'+(z+1);
@@ -368,7 +411,25 @@ function renderLayers(){
       d.appendChild(nm);
       function mini(t,title,fn){var b=document.createElement('button');b.className='mini';b.textContent=t;b.title=title;b.onclick=function(e){e.stopPropagation();fn();};d.appendChild(b);}
       mini(it.hidden?'🚫':'👁','表示/非表示',function(){it.hidden=!it.hidden;commit();render();});
-      mini(it.locked?'🔒':'🔓','固定(画面上で動かなくなります)',function(){it.locked=!it.locked;commit();render();});
+      var lb=document.createElement('button'); lb.className='lockBtn'+(it.locked?' on':'');
+      lb.textContent=it.locked?'🔒固定中':'固定する'; lb.title='固定すると画面上で選択・移動できなくなります(背景などに便利)';
+      lb.onclick=function(e){e.stopPropagation();it.locked=!it.locked;commit();render();}; d.appendChild(lb);
+      d.draggable=true;
+      d.ondragstart=function(e){e.dataTransfer.setData('text/x-layer',it.id);e.dataTransfer.effectAllowed='move';};
+      d.ondragover=function(e){
+        if(e.dataTransfer.types.indexOf('text/x-layer')<0)return;
+        e.preventDefault(); var r=d.getBoundingClientRect(), top=(e.clientY-r.top)<r.height/2;
+        d.classList.toggle('dragover-top',top); d.classList.toggle('dragover-bot',!top);
+      };
+      d.ondragleave=function(){d.classList.remove('dragover-top','dragover-bot');};
+      d.ondrop=function(e){
+        e.preventDefault(); e.stopPropagation(); var r=d.getBoundingClientRect(), top=(e.clientY-r.top)<r.height/2;
+        d.classList.remove('dragover-top','dragover-bot');
+        var did=e.dataTransfer.getData('text/x-layer'), mv=byId(did); if(!mv||mv===it)return;
+        S.items=S.items.filter(function(x){return x!==mv;});
+        var ti=S.items.indexOf(it); S.items.splice(top?ti+1:ti,0,mv);
+        commit();render();
+      };
       d.onclick=function(e){
         if(e.shiftKey){var k=sel.indexOf(it.id);if(k>=0)sel.splice(k,1);else sel.push(it.id);}
         else sel=[it.id];
@@ -533,16 +594,15 @@ function align(mode){
     var gap=((hz?bb.w:bb.h)-total)/(s.length-1), pos=hz?bb.x:bb.y;
     s.forEach(function(i){i[key]=pos;pos+=i[sz]+gap;});
   }
-  else if(mode==='sw'||mode==='sh'){
+  else if(mode==='sw'){
     if(its.length<2){toast('2つ以上選んでください');return;}
     var ref=byId(sel[0])||its[0];
     its.forEach(function(i){
       if(i===ref)return;
       if(i.type==='slot'){
-        var nw=mode==='sw'?ref.w:ref.h/ar();
-        if($('linkSize').checked)slots().forEach(function(x){x.w=nw;x.h=nw*ar();});
-        else{i.w=nw;i.h=nw*ar();}
-      }else if(mode==='sw')i.w=ref.w; else i.h=ref.h;
+        if($('linkSize').checked)slots().forEach(function(x){x.w=ref.w;x.h=ref.w*ar();});
+        else{i.w=ref.w;i.h=ref.w*ar();}
+      }else{ i.h=i.h*ref.w/i.w; i.w=ref.w; }
     });
   }
   commit(); render();
@@ -559,8 +619,14 @@ $('stage').addEventListener('pointerdown',function(e){
   var p=stagePos(e), t=e.target;
   var hd=t.closest&&t.closest('.handle');
   if(hd){
-    var it=byId(sel[0]); if(!it)return;
     var c=hd.dataset.corner;
+    if(sel.length>1){
+      var gi=sel.map(byId).filter(function(i){return i&&!i.locked;}), gb=bbox(gi);
+      drag={mode:'gresize',corner:c,orig:gi.map(function(i){return {it:i,x:i.x,y:i.y,w:i.w,h:i.h};}),bb:gb,
+        ax:(c==='nw'||c==='sw')?gb.x+gb.w:gb.x,ay:(c==='nw'||c==='ne')?gb.y+gb.h:gb.y};
+      $('stage').setPointerCapture(e.pointerId); e.preventDefault(); return;
+    }
+    var it=byId(sel[0]); if(!it)return;
     drag={mode:'resize',corner:c,it:it,ax:(c==='nw'||c==='sw')?it.x+it.w:it.x,ay:(c==='nw'||c==='ne')?it.y+it.h:it.y,ratio:it.w/it.h};
     $('stage').setPointerCapture(e.pointerId); e.preventDefault(); return;
   }
@@ -609,6 +675,12 @@ $('stage').addEventListener('pointermove',function(e){
       slots().forEach(function(s){if(s!==it){s.w=nw;s.h=nh;}});
     }
     it.x=nx;it.y=ny;it.w=nw;it.h=nh;
+    refreshGeom(); drawOverlay();
+  }else if(drag.mode==='gresize'){
+    var f=Math.max(Math.abs(p.x-drag.ax)/drag.bb.w,Math.abs(p.y-drag.ay)/drag.bb.h,0.05);
+    drag.orig.forEach(function(o){
+      o.it.x=drag.ax+(o.x-drag.ax)*f; o.it.y=drag.ay+(o.y-drag.ay)*f; o.it.w=o.w*f; o.it.h=o.h*f;
+    });
     refreshGeom(); drawOverlay();
   }else if(drag.mode==='marquee'){
     var x1=Math.min(drag.start.x,p.x),y1=Math.min(drag.start.y,p.y),x2=Math.max(drag.start.x,p.x),y2=Math.max(drag.start.y,p.y);
@@ -686,12 +758,51 @@ function fillSelects(){
 }
 function syncToolbar(){
   $('paperSel').value=S.paper.k; $('pw').value=r1(S.paper.w); $('ph').value=r1(S.paper.h);
-  $('asw').value=S.aspect.w; $('ash').value=S.aspect.h;
+  [].forEach.call(document.querySelectorAll('input[name=design]'),function(r){r.checked=(r.value===S.design);});
+  var d=G.designs[S.design]; $('dsgnInfo').textContent='縦横比 '+d.w+' : '+d.h+'(コマテンプレ編集で決まります)';
+  $('layName').value=S.name||'';
+  var lb=$('layBtns'); lb.innerHTML='';
+  for(var i=0;i<4;i++){(function(i){
+    var b=document.createElement('button'); b.className='btn layBtn'+(i===G.cur?' active':'');
+    var l=G.layouts[i]; b.textContent=(i+1)+(l&&l.name?' '+l.name.slice(0,6):''); b.title=l?(l.name||'(名前なし)'):'(空き)';
+    b.onclick=function(){switchLayout(i);}; lb.appendChild(b);
+  })(i);}
+  var ct=$('copyTo'); ct.innerHTML='';
+  for(var j=0;j<4;j++){ if(j===G.cur)continue; var o=document.createElement('option'); o.value=j; var l2=G.layouts[j];
+    o.textContent=(j+1)+(l2?(l2.name?' '+l2.name:'')+(l2.items.length?'(上書き)':''):'(空き)'); ct.appendChild(o); }
 }
+function switchLayout(n){
+  if(n===G.cur)return;
+  G.layouts[G.cur]=S; G.cur=n;
+  S=G.layouts[n]||newState('骨組み'+(n+1)); G.layouts[n]=S;
+  sel=[]; undoStack=[snap()]; redoStack=[]; updateUndoBtns();
+  Object.keys(els).forEach(function(id){els[id].remove();delete els[id];});
+  syncToolbar(); render(); scheduleSave();
+}
+$('layName').onchange=function(){S.name=this.value;commit();syncToolbar();};
+$('copyBtn').onclick=function(){
+  var t=parseInt($('copyTo').value); if(isNaN(t))return;
+  var tg=G.layouts[t];
+  if(tg&&tg.items.length&&!confirm('骨組み'+(t+1)+'の内容は上書きされます。よろしいですか?'))return;
+  var c=JSON.parse(JSON.stringify(S)); c.name=(S.name||'骨組み')+'のコピー';
+  G.layouts[t]=c; scheduleSave(); syncToolbar(); toast('骨組み'+(t+1)+'にコピーしました');
+};
+function cloneItems(a){return JSON.parse(JSON.stringify(a));}
 function setPaper(k,w,h){
-  S.paper={k:k,w:w,h:h};
-  // 用紙に収まるよう、はみ出した部品は用紙内へ戻す
-  S.items.forEach(function(i){i.x=Math.max(Math.min(i.x,W()-i.w),Math.min(0,W()-i.w));i.y=Math.max(Math.min(i.y,H()-i.h),Math.min(0,H()-i.h));});
+  var ow=S.paper.w, oh=S.paper.h, ok=ow+'x'+oh, nk=w+'x'+h;
+  if(ok!==nk){
+    // 今のサイズの配置を記憶してから切り替える。以前そのサイズで作った配置があれば復元する
+    S.alt[ok]={items:cloneItems(S.items),seq:S.seq};
+    S.paper={k:k,w:w,h:h};
+    if(S.alt[nk]){
+      S.items=cloneItems(S.alt[nk].items); S.seq=S.alt[nk].seq;
+      slots().forEach(function(x){x.h=x.w*ar();});
+    }else{
+      var f=Math.min(w/ow,h/oh), ox=(w-ow*f)/2, oy=(h-oh*f)/2;
+      S.items.forEach(function(i){i.x=i.x*f+ox;i.y=i.y*f+oy;i.w*=f;i.h*=f;});
+    }
+    sel=[];
+  }else S.paper={k:k,w:w,h:h};
   syncToolbar();commit();render();
 }
 $('paperSel').onchange=function(){
@@ -709,19 +820,18 @@ $('rotBtn').onclick=function(){
   var w=S.paper.w,h=S.paper.h, m=PAPERS.filter(function(x){return x.w===h&&x.h===w;})[0];
   setPaper(m?m.k:'custom',h,w);
 };
-$('asw').onchange=$('ash').onchange=function(){
-  var a=parseFloat($('asw').value), b=parseFloat($('ash').value);
-  if(!(a>0&&b>0)){syncToolbar();return;}
-  S.aspect={w:a,h:b}; slots().forEach(function(s){s.h=s.w*ar();});
-  commit();render();
-};
+[].forEach.call(document.querySelectorAll('input[name=design]'),function(r){
+  r.onchange=function(){ S.design=r.value; slots().forEach(function(x){x.h=x.w*ar();}); syncToolbar(); commit(); render(); };
+});
+$('zoomIn').onclick=function(){zoomBy(1.25);};
+$('zoomOut').onclick=function(){zoomBy(0.8);};
 $('addSlot').onclick=addSlot;
 $('addImg').onclick=function(){$('imgFile').click();};
 $('imgFile').onchange=function(){addImages(this.files);this.value='';};
 $('gridBtn').onclick=gridArrange;
 $('renumBtn').onclick=renumber;
 $('undoBtn').onclick=undo; $('redoBtn').onclick=redo;
-$('zoomSel').onchange=function(){var v=$('zoomSel').value;zoomMode=v==='fit'?'fit':parseInt(v)/100;render();};
+$('zoomSel').onchange=function(){var v=$('zoomSel').value;if(v==='custom')return;zoomMode=v==='fit'?'fit':parseInt(v)/100;render();};
 [].forEach.call(document.querySelectorAll('#alignBar [data-al]'),function(b){b.onclick=function(){align(b.dataset.al);};});
 window.addEventListener('resize',function(){if(zoomMode==='fit')render();});
 function applyTheme(t){
@@ -737,7 +847,7 @@ $('settingsOverlay').onclick=function(e){if(e.target===this)this.style.display='
 /* ---------- ファイル保存/読込(画像込みのJSON) ---------- */
 $('saveFile').onclick=function(){
   var used={}; S.items.forEach(function(i){if(i.imgId&&IMGS[i.imgId])used[i.imgId]=IMGS[i.imgId];});
-  var blob=new Blob([JSON.stringify({app:'ciel-flyer',version:'1.00',state:S,images:used})],{type:'application/json'});
+  var blob=new Blob([JSON.stringify({app:'ciel-flyer',version:'1.02',state:S,designs:G.designs,images:used})],{type:'application/json'});
   var a=document.createElement('a'); a.href=URL.createObjectURL(blob);
   var d=new Date(), pad=function(n){return ('0'+n).slice(-2);};
   a.download='flyer-layout-'+d.getFullYear()+pad(d.getMonth()+1)+pad(d.getDate())+'-'+pad(d.getHours())+pad(d.getMinutes())+'.json';
@@ -754,7 +864,7 @@ $('loadFile').onchange=function(){
       var o=JSON.parse(fr.result);
       if(o.app!=='ciel-flyer'||!o.state)throw new Error('形式が違います');
       if(!confirm('いま編集中の内容は置き換えられます。よろしいですか?'))return;
-      S=o.state; IMGS=o.images||{}; sel=[]; zoomMode='fit'; $('zoomSel').value='fit';
+      S=norm(o.state); G.layouts[G.cur]=S; Object.keys(o.images||{}).forEach(function(k){IMGS[k]=o.images[k];}); sel=[]; zoomMode='fit'; $('zoomSel').value='fit';
       Object.keys(els).forEach(function(id){els[id].remove();delete els[id];});
       syncToolbar(); commit(); render(); toast('開きました');
     }catch(err){alert('ファイルを開けませんでした: '+err.message);}
@@ -765,7 +875,12 @@ $('loadFile').onchange=function(){
 /* ---------- 起動 ---------- */
 fillSelects();
 loadSaved().then(function(saved){
-  if(saved&&saved.state){S=saved.state;IMGS=saved.images||{};}
+  if(saved&&saved.layouts){
+    G.layouts=saved.layouts; G.cur=saved.cur||0; if(saved.designs)G.designs=saved.designs; IMGS=saved.images||{};
+  }else if(saved&&saved.state){G.layouts=[saved.state,null,null,null];G.cur=0;IMGS=saved.images||{};}
+  for(var li=0;li<4;li++){ if(G.layouts[li])norm(G.layouts[li]); }
+  if(!G.layouts[G.cur])G.layouts[G.cur]=newState('骨組み'+(G.cur+1));
+  S=G.layouts[G.cur];
   syncToolbar(); undoStack=[snap()]; updateUndoBtns(); render();
   if(!saved)toast('「＋ コマ追加」や「コマを格子に並べる」から始めてみましょう');
 });
