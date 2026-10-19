@@ -83,7 +83,8 @@ function normVin(v){ return (v||'').replace(/\s+/g,'').toUpperCase(); }
 - 各ツールは別ファイルのまま、ヘッダーのボタンでURL遷移する方式(1ファイルへの統合はしない方針。理由: ID・変数名の重複が多く書き換え範囲が大きいため。2026-09-28決定)。
 - 検索ボックスの入力中文字列は、リンクをタップした瞬間にURLの`?q=`パラメータへ反映される。遷移先のページは読み込み時にこのパラメータを見て検索欄に自動入力し、絞り込みも自動実行する。
 - 実装済みのリンク: ads.html⇔pricing.html(相互)、ads.html⇔pricetag.html(相互)、pricing.html⇔pricetag.html(相互)。ciel-systemハブ→各ツール(「🏠 一覧へ」で戻るリンクは各ツール側に維持。car-appのみ外部URLで新しいタブを開く)。
-- `?q=` の対応状況(2026-10-16調査): ads.html・pricing.html・pricetag.html(v1.28〜)は受け取りと送り出しの両方に対応。ju-history.html・ハブ・car-appは `?q=` を使わない。
+- `?q=` の対応状況(2026-10-20更新): ads.html・pricing.html・pricetag.html(v1.28〜)は受け取りと送り出しの両方に対応。flyer.html(v1.35〜)は受け取り(③画面の検索欄に入れて絞り込み)と、ads・pricing・pricetagへの送り出しに対応。ju-history.html・ハブ・car-appは `?q=` を使わない。
+- flyer.html のヘッダーに ads.html / pricing.html / pricetag.html へのリンクがある(クリック時に検索欄の文字を `?q=` で渡す)。逆方向(ads・pricing・pricetag → flyer.html)のリンクは未実装(追加する場合は各担当で。flyer側は `?q=` を受け取れる)。
 - **新しいツール間リンクを追加する場合、または`?q=`以外の新しいクエリパラメータを導入する場合は、両端のツールに影響するため、どちらか片方のセッションだけで進めず、両方を確認してから実装すること。**
 
 ## 5. 新しいツールを作る/既存ノードを参照する時の原則
@@ -91,6 +92,7 @@ function normVin(v){ return (v||'').replace(/\s+/g,'').toUpperCase(); }
 - 既存ノード(`stock`, `stockArchive`, `cars`, `juHistory`, `adsData`等)は基本「読み取り専用」として参照し、自分専用の新しいノード(例: `pricingData`, `priceTagData`)にだけ書き込む。
 - 新しいツールを作る場合、ads.html・ju-history.htmlと同じ見た目・設計(ダークモード対応、カード/テーブルのCSSパターン、Firebase共有)を踏襲する。
 - バージョン表記は修正のたびに+0.01する(新規ツールはv1.00開始)。
+- 仕入先名(`stock.sup`)を画面に表示するときは `displaySupplier()` で変換する(表示だけの変換で、保存値は変えない): 「新潟県中古車販売商工組合」を含む→`JU新潟`、「トヨタユーゼック」または「TAA東北」を含む→`TAA東北`、それ以外はそのまま。実装済み: pricing.html・pricetag.html・flyer.html。car-appは未対応(2026-10-20依頼)。ハブ・ads・ju-historyは仕入先名を表示しない。
 
 ## 6. アプリ↔GitHubリポジトリ対応表
 
