@@ -108,6 +108,11 @@ input[type=number]{width:64px;}
 #cWrap .stageInner,#stageWrap .stageInner{padding:70px;}
 .handle.n,.handle.s{cursor:ns-resize;}
 .handle.e,.handle.w{cursor:ew-resize;}
+.cpBtn.has{background:#2c9a4a;border-color:#2c9a4a;color:#fff;font-weight:700;}
+.cpBtn.none{background:rgba(232,118,10,.15);border-color:#e8760a;color:#e8760a;font-weight:700;}
+html[data-theme="dark"] .cpBtn.none{color:#ffb366;}
+.ctab tbody tr.dropfile{outline:2px solid var(--sky);outline-offset:-2px;background:rgba(74,171,207,.2);}
+#cpBox.dropfile{outline:3px dashed var(--sky);}
 .slotCard{border:2px dashed var(--border);border-radius:8px;padding:6px 8px;min-height:62px;background:var(--card);position:relative;font-size:12px;}
 .slotCard.filled{border-style:solid;border-color:var(--sky);cursor:grab;}
 .slotCard.over{box-shadow:0 0 0 3px var(--sky);}
@@ -139,7 +144,7 @@ input[type=number]{width:64px;}
 <body>
 <header>
   <div class="header-row">
-    <h1>チラシ作成 <span style="font-size:12px;font-weight:400;opacity:.75;">v1.25</span></h1>
+    <h1>チラシ作成 <span style="font-size:12px;font-weight:400;opacity:.75;">v1.26</span></h1>
     <div class="hdrBtns">
       <button type="button" class="updateBtn headerRefreshBtn" id="settingsBtn">⚙ 設定</button>
       <a class="updateBtn headerRefreshBtn" href="./index.html">🏠 一覧へ</a>
@@ -229,7 +234,7 @@ input[type=number]{width:64px;}
 <div id="carView" style="display:none;flex:1;flex-direction:column;min-height:0;">
   <div class="toolbar">
     <div class="tgroup"><span class="lbl">レイアウト</span><select id="carLaySel" style="max-width:240px"></select><span class="hint" id="carInfo"></span></div>
-    <div class="tgroup"><input type="text" id="carSearch" placeholder="車名・グレード・色・車台番号で検索" style="width:260px">
+    <div class="tgroup"><span style="position:relative;display:inline-block;"><input type="text" id="carSearch" placeholder="車名・グレード・色・車台番号で検索" style="width:280px;padding-right:26px;"><button type="button" id="carSearchClear" title="検索欄を消す" style="position:absolute;right:2px;top:50%;transform:translateY(-50%);border:none;background:transparent;color:var(--text-sub);cursor:pointer;font-size:15px;line-height:1;padding:2px 6px;display:none;">✕</button></span>
       <label><input type="checkbox" id="carAdOnly" checked> 広告掲載中のみ</label>
       <label><input type="checkbox" id="carSelOnly"> 選択済みのみ</label></div>
     <div class="tgroup"><button class="btn" id="carAllBtn">表示中をすべて選択</button><button class="btn" id="carNoneBtn">選択をすべて解除</button><button class="btn" id="carReload">🔄 在庫を再取得</button></div>
@@ -1170,7 +1175,7 @@ $('settingsOverlay').onclick=function(e){if(e.target===this)this.style.display='
 /* ---------- ファイル保存/読込(画像込みのJSON) ---------- */
 $('saveFile').onclick=function(){
   var used={}; S.items.forEach(function(i){if(i.imgId&&IMGS[i.imgId])used[i.imgId]=IMGS[i.imgId];});
-  var blob=new Blob([JSON.stringify({app:'ciel-flyer',version:'1.25',state:S,designs:G.designs,images:used})],{type:'application/json'});
+  var blob=new Blob([JSON.stringify({app:'ciel-flyer',version:'1.26',state:S,designs:G.designs,images:used})],{type:'application/json'});
   var a=document.createElement('a'); a.href=URL.createObjectURL(blob);
   var d=new Date(), pad=function(n){return ('0'+n).slice(-2);};
   a.download='flyer-layout-'+d.getFullYear()+pad(d.getMonth()+1)+pad(d.getDate())+'-'+pad(d.getHours())+pad(d.getMinutes())+'.json';
@@ -2003,7 +2008,7 @@ function renderCars(){
     var h='<table class="ctab"><thead><tr><th></th><th>順</th><th>車名</th><th>グレード</th><th>年式</th><th>走行</th><th>車検</th><th>色</th><th>総額</th><th>広告</th><th>画像</th><th>車台番号</th></tr></thead><tbody>';
     rows.forEach(function(r){
       var idx=S.cars.indexOf(r.vin);
-      h+='<tr data-vin="'+esc(r.vin)+'"'+(idx>=0?' class="on"':'')+'><td><input type="checkbox" '+(idx>=0?'checked':'')+'></td><td>'+(idx>=0?idx+1:'')+'</td><td>'+esc(r.name)+'</td><td>'+esc(r.grade)+'</td><td>'+esc(r.year)+'</td><td>'+esc(r.mileage)+'</td><td>'+esc(r.shaken)+'</td><td>'+esc(r.color)+'</td><td>'+esc(r.total)+'</td><td>'+(r.isAdListed?'掲載':'')+'</td><td><button class="btn cpBtn" data-vin="'+esc(r.vin)+'">'+(CARS.photoIdx[r.vin]?'📷 あり':'📷 登録')+'</button></td><td style="font-family:monospace;font-size:11px">'+esc(r.vin)+'</td></tr>';
+      h+='<tr data-vin="'+esc(r.vin)+'"'+(idx>=0?' class="on"':'')+'><td><input type="checkbox" '+(idx>=0?'checked':'')+'></td><td>'+(idx>=0?idx+1:'')+'</td><td>'+esc(r.name)+'</td><td>'+esc(r.grade)+'</td><td>'+esc(r.year)+'</td><td>'+esc(r.mileage)+'</td><td>'+esc(r.shaken)+'</td><td>'+esc(r.color)+'</td><td>'+esc(r.total)+'</td><td>'+(r.isAdListed?'掲載':'')+'</td><td><button class="btn cpBtn '+(CARS.photoIdx[r.vin]?'has':'none')+'" data-vin="'+esc(r.vin)+'">'+(CARS.photoIdx[r.vin]?'📷 登録済':'📷 未登録')+'</button></td><td style="font-family:monospace;font-size:11px">'+esc(r.vin)+'</td></tr>';
     });
     h+='</tbody></table>'+(rows.length?'':'<div class="hint" style="padding:12px">条件に合う車両がありません。</div>');
     box.innerHTML=h;
@@ -2013,6 +2018,11 @@ function renderCars(){
       tr.draggable=true; tr.ondragstart=function(e){e.dataTransfer.setData('text/x-carvin',vin);e.dataTransfer.effectAllowed='copyMove';};
       tr.onclick=function(e){if(e.target===cb||(e.target.closest&&e.target.closest('.cpBtn')))return;cb.checked=!cb.checked;carToggle(vin,cb.checked);};
       tr.querySelector('.cpBtn').onclick=function(e){e.stopPropagation();openPhoto(vin);};
+      tr.addEventListener('dragover',function(e){if(!hasFiles(e))return;e.preventDefault();tr.classList.add('dropfile');});
+      tr.addEventListener('dragleave',function(){tr.classList.remove('dropfile');});
+      tr.addEventListener('drop',function(e){if(!hasFiles(e))return;e.preventDefault();tr.classList.remove('dropfile');
+        var r0=CARS.byVin[vin]; if(CARS.photoIdx[vin]&&!confirm('「'+(r0?r0.name:vin)+'」の車両画像を上書きします。よろしいですか?'))return;
+        CP.vin=vin; registerPhotoFile(vin,e.dataTransfer.files[0],false);});
     });
   }
   // 掲載予定:コマの数だけ枠を表示
@@ -2102,20 +2112,29 @@ function savePhotoNow(vin,name,data,msg,thenClose){
   var o={name:name||'',data:data,ua:Date.now()};
   return FB.savePhoto(vin,o).then(function(){
     CARS.photos[vin]=o.data; CARS.photoIdx[vin]={ua:o.ua}; $('cpDel').disabled=false; $('cpAdj').style.display='flex';
+    var onModal=($('carPhotoOverlay').style.display!=='none');
     toast(msg||'車両画像を保存しました'); renderCars();
-    if(thenClose)$('carPhotoOverlay').style.display='none'; else {cpResetShift();cpShow(o.data,'保存しました 約'+Math.round(o.data.length*0.75/1024)+'KB');}
+    if(thenClose)$('carPhotoOverlay').style.display='none'; else if(onModal){cpResetShift();cpShow(o.data,'保存しました 約'+Math.round(o.data.length*0.75/1024)+'KB');}
   }).catch(function(e){console.error(e);toast('保存できませんでした');});
 }
 function cpResetShift(){$('cpShift').value=0;$('cpShiftV').textContent='0%';var im=$('cpImg');if(im)im.style.transform='';}
 $('cpPick').onclick=function(){$('cpFile').click();};
-$('cpFile').onchange=function(){
-  var f=this.files[0]; this.value=''; if(!f||!/^image\//.test(f.type))return;
-  var vin=CP.vin, fr=new FileReader();
+function registerPhotoFile(vin,f,thenClose){
+  if(!f||!/^image\//.test(f.type)){toast('画像ファイルを選んでください');return;}
+  var fr=new FileReader();
   fr.onload=function(){var im=new Image();im.onload=function(){
-    savePhotoNow(vin,f.name,autoCenterPhoto(im),'車両画像を保存しました(左右を自動で中央に揃えました)',true);};
+    savePhotoNow(vin,f.name,autoCenterPhoto(im),'車両画像を保存しました(左右を自動で中央に揃えました)',thenClose);};
     im.src=fr.result;};
   fr.readAsDataURL(f);
-};
+}
+$('cpFile').onchange=function(){var f=this.files[0];this.value='';registerPhotoFile(CP.vin,f,true);};
+function hasFiles(e){return e.dataTransfer&&[].indexOf.call(e.dataTransfer.types,'Files')>=0;}
+document.addEventListener('dragover',function(e){if(hasFiles(e))e.preventDefault();});
+document.addEventListener('drop',function(e){if(hasFiles(e))e.preventDefault();});
+var cpBox=$('cpBox');
+cpBox.addEventListener('dragover',function(e){if(!hasFiles(e))return;e.preventDefault();cpBox.classList.add('dropfile');});
+cpBox.addEventListener('dragleave',function(){cpBox.classList.remove('dropfile');});
+cpBox.addEventListener('drop',function(e){if(!hasFiles(e))return;e.preventDefault();cpBox.classList.remove('dropfile');registerPhotoFile(CP.vin,e.dataTransfer.files[0],true);});
 function cpSetShift(v){v=Math.max(-30,Math.min(30,v));$('cpShift').value=v;$('cpShiftV').textContent=(v>0?'+':'')+v+'%';$('cpImg').style.transform='translateX('+v+'%)';}
 $('cpShift').oninput=function(){cpSetShift(parseFloat(this.value));};
 $('cpL').onclick=function(){cpSetShift(parseFloat($('cpShift').value)-0.5);};
@@ -2139,7 +2158,9 @@ $('cpDel').onclick=function(){
 $('cpClose').onclick=function(){$('carPhotoOverlay').style.display='none';};
 $('carPhotoOverlay').onclick=function(e){if(e.target===this)this.style.display='none';};
 $('carLaySel').onchange=function(){CARS.page=0;switchLayout(parseInt(this.value));renderCars();};
-$('carSearch').oninput=function(){renderCars();};
+function carSearchSync(){$('carSearchClear').style.display=$('carSearch').value?'':'none';}
+$('carSearch').oninput=function(){carSearchSync();renderCars();};
+$('carSearchClear').onclick=function(){$('carSearch').value='';carSearchSync();renderCars();$('carSearch').focus();};
 $('carAdOnly').onchange=renderCars; $('carSelOnly').onchange=renderCars;
 $('carReload').onclick=function(){loadCars(true);};
 $('carAllBtn').onclick=function(){(CARS.shown||[]).forEach(function(r){carAdd(r.vin);});commit();renderCars();};
