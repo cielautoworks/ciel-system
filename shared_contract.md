@@ -1,6 +1,6 @@
 # ciel-system 共通仕様書（アプリ間の「契約」部分のみ）
 
-最終更新: 2026-10-17
+最終更新: 2026-10-20
 
 ## この文書の位置づけ
 
@@ -51,6 +51,8 @@ const firebaseConfig = {
 | `pricingData/{normVin}` | pricing.html | ハブ(`manualCost`) | ads.html(`retailTarget`のみ。v1.33〜)、pricetag.html(`body`)、ハブ | 車体価格(`body`)・`extraCost, as, marginTotal, marginWholesale, retailTarget, manualCost, manualRecycle, updatedAt` |
 | `priceTagTemplates/{templateId}` | pricetag.html | - | - | 価格表テンプレート設定 |
 | `priceTagData/{vin}/manual/{field}`, `printTarget`, `templateId`, `lastPrintedAt`, `lastPrintedPrice` | pricetag.html | - | - | 一覧の個別編集値・印刷対象・使用テンプレート・最終印刷日時と価格 |
+| `flyerLayouts/{1〜4}` | flyer.html | - | - | チラシのレイアウト(配置・サイズ・番号・コマデザイン等の小さなJSON。画像なし)。変更の0.5秒後に自動保存 |
+| `flyerImages/{imgId}` | flyer.html | - | - | チラシのレイアウトに置く画像(WebP/Base64、長辺縮小済み)。「保存」ボタンを押した時だけ書き込む |
 | `newsLog` | car-app | ハブ・pricing.html(新規登録の通知) | - | 変更履歴(car-appが3ヶ月より古いものを自動削除) |
 | `inspections`, `inspectionPhotos`, `loanHistories` | car-app | - | - | car-app専用(点検シート・貸出履歴) |
 | `listings`, `listingPhotos` | (廃止) | - | car-app(読取・削除のみ) | v1.90で廃止した旧方式の残り |
@@ -97,6 +99,7 @@ function normVin(v){ return (v||'').replace(/\s+/g,'').toUpperCase(); }
 | `ju-history.html` | `cielautoworks/ciel-system` | `ju-history.html` |
 | `pricing.html` | `cielautoworks/ciel-system` | `pricing.html` |
 | `pricetag.html` | `cielautoworks/ciel-system` | `pricetag.html`(2026-10-16にGitHub上の存在を確認済み) |
+| `flyer.html` | `cielautoworks/ciel-system` | `flyer.html`(チラシ作成。2026-10-20新規。ハブにリンクあり) |
 
 既知の未対応事項: `ciel-system`リポジトリ内に、正しい`ju-history.html`とは別にハイフンなしの`juhistory.html`という重複ファイルが存在する(過去のリネームミスの残骸)。削除は破壊的操作のため未実施。
 
