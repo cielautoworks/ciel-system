@@ -126,7 +126,7 @@ input[type=number]{width:64px;}
 <body>
 <header>
   <div class="header-row">
-    <h1>チラシ作成 <span style="font-size:12px;font-weight:400;opacity:.75;">v1.16</span></h1>
+    <h1>チラシ作成 <span style="font-size:12px;font-weight:400;opacity:.75;">v1.17</span></h1>
     <div class="hdrBtns">
       <button type="button" class="updateBtn headerRefreshBtn" id="settingsBtn">⚙ 設定</button>
       <a class="updateBtn headerRefreshBtn" href="./index.html">🏠 一覧へ</a>
@@ -223,6 +223,7 @@ input[type=number]{width:64px;}
       <label><input type="checkbox" id="cbgOn">背景色(外すと透過)</label><input type="color" id="cbg"></div>
     <div class="tgroup"><span class="lbl">一括フォント</span><select id="cBulkFont"></select><button class="btn" id="cBulkBtn">全ての文字に適用</button>
       <label style="margin-left:8px;"><input type="checkbox" id="cSyncInfo"> 文字情報のスタイルを同期</label>
+      <button class="btn" id="cUnifyInfo" title="車名・グレード・年式・走行距離・車検の文字の大きさを、選択中(なければ車名)のものに揃えます">文字情報のサイズを統一</button>
       <label><input type="checkbox" id="cSyncPrice"> 価格・.8・万円のスタイルを同期</label></div>
   </div>
   <div class="toolbar">
@@ -1091,7 +1092,7 @@ $('settingsOverlay').onclick=function(e){if(e.target===this)this.style.display='
 /* ---------- ファイル保存/読込(画像込みのJSON) ---------- */
 $('saveFile').onclick=function(){
   var used={}; S.items.forEach(function(i){if(i.imgId&&IMGS[i.imgId])used[i.imgId]=IMGS[i.imgId];});
-  var blob=new Blob([JSON.stringify({app:'ciel-flyer',version:'1.16',state:S,designs:G.designs,images:used})],{type:'application/json'});
+  var blob=new Blob([JSON.stringify({app:'ciel-flyer',version:'1.17',state:S,designs:G.designs,images:used})],{type:'application/json'});
   var a=document.createElement('a'); a.href=URL.createObjectURL(blob);
   var d=new Date(), pad=function(n){return ('0'+n).slice(-2);};
   a.download='flyer-layout-'+d.getFullYear()+pad(d.getMonth()+1)+pad(d.getDate())+'-'+pad(d.getHours())+pad(d.getMinutes())+'.json';
@@ -1476,6 +1477,14 @@ function syncAdoptAll(kind){ // スイッチをONにした時、見た目をそ�
     });
   }
 }
+$('cUnifyInfo').onclick=function(){
+  var mem=cc().items.filter(function(x){return x.type==='text'&&INFO.indexOf(x.field)>=0;});
+  if(mem.length<2){toast('文字情報の項目が2つ以上ありません');return;}
+  var src=null; CE.sel.map(cById).forEach(function(x){if(x&&mem.indexOf(x)>=0&&!src)src=x;});
+  if(!src)src=mem.filter(function(x){return x.field==='name';})[0]||mem[0];
+  mem.forEach(function(m){if(m!==src){m.size=src.size;m.h=src.h;}});
+  cCommit(); cRender(); toast('「'+itemLabel(src)+'」の大きさに揃えました');
+};
 $('cSyncInfo').onchange=function(){cc().syncInfo=this.checked;if(this.checked)syncAdoptAll('info');cCommit();cRender();};
 $('cSyncPrice').onchange=function(){cc().syncPrice=this.checked;if(this.checked)syncAdoptAll('price');cCommit();cRender();};
 var COLOR_HIST=[];
