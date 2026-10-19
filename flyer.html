@@ -126,7 +126,7 @@ input[type=number]{width:64px;}
 <body>
 <header>
   <div class="header-row">
-    <h1>チラシ作成 <span style="font-size:12px;font-weight:400;opacity:.75;">v1.14</span></h1>
+    <h1>チラシ作成 <span style="font-size:12px;font-weight:400;opacity:.75;">v1.15</span></h1>
     <div class="hdrBtns">
       <button type="button" class="updateBtn headerRefreshBtn" id="settingsBtn">⚙ 設定</button>
       <a class="updateBtn headerRefreshBtn" href="./index.html">🏠 一覧へ</a>
@@ -144,13 +144,13 @@ input[type=number]{width:64px;}
     <div class="tgroup"><span class="lbl">レイアウト</span>
       <select id="laySel" style="max-width:240px"></select>
       <span class="hint" id="infoLine"></span>
-      <button class="btn accent" id="lsBtn">⚙ レイアウト設定</button>
     </div>
     <div class="tgroup">
       <button class="btn main" id="cloudBtn" title="背景などの画像も含めて、いまのレイアウトをFirebaseに保存します">💾 保存</button>
       <span class="hint" id="cloudInfo"></span>
       <span class="hint" id="sizeInfo"></span>
     </div>
+    <div class="tgroup" style="margin-left:auto;"><button class="btn accent" id="lsBtn">⚙ レイアウト設定</button></div>
     <div class="tgroup">
       <button class="btn main" id="addSlot">＋ コマ追加</button>
       <button class="btn" id="addImg">🖼 画像追加</button>
@@ -224,7 +224,6 @@ input[type=number]{width:64px;}
       <label><input type="checkbox" id="cSyncPrice"> 価格・.8・万円のスタイルを同期</label></div>
   </div>
   <div class="toolbar">
-    <div class="tgroup"><button class="btn accent" id="cSetBtn">⚙ コマ設定</button></div>
     <div class="tgroup"><span class="lbl">項目を追加</span><select id="cFieldSel"></select><button class="btn main" id="cAddField">＋ 追加</button>
       <button class="btn" id="cAddLabel">＋ 自由文字</button><button class="btn" id="cAddImg">🖼 飾り画像</button><input type="file" id="cImgFile" accept="image/*" multiple style="display:none"></div>
     <div class="tgroup"><span class="lbl">左右位置</span><button class="btn" data-cal="left">左</button><button class="btn" data-cal="hc">中央</button><button class="btn" data-cal="right">右</button></div>
@@ -232,6 +231,7 @@ input[type=number]{width:64px;}
     <div class="tgroup"><span class="lbl">表示</span><button class="btn" id="cZoomOut">－</button><button class="btn" id="cZoomFit">全体</button><button class="btn" id="cZoomIn">＋</button></div>
     <div class="tgroup"><button class="btn" id="cUndo">↶ 元に戻す</button><button class="btn" id="cRedo">↷ やり直し</button></div>
     <div class="tgroup"><button class="btn main" id="cCloudBtn">💾 保存</button></div>
+    <div class="tgroup" style="margin-left:auto;"><button class="btn accent" id="cSetBtn">⚙ コマ設定</button></div>
   </div>
   <div class="main-area">
     <div class="stageWrap" id="cWrap"><div class="stageInner"><div id="cStage"></div></div></div>
@@ -1087,7 +1087,7 @@ $('settingsOverlay').onclick=function(e){if(e.target===this)this.style.display='
 /* ---------- ファイル保存/読込(画像込みのJSON) ---------- */
 $('saveFile').onclick=function(){
   var used={}; S.items.forEach(function(i){if(i.imgId&&IMGS[i.imgId])used[i.imgId]=IMGS[i.imgId];});
-  var blob=new Blob([JSON.stringify({app:'ciel-flyer',version:'1.14',state:S,designs:G.designs,images:used})],{type:'application/json'});
+  var blob=new Blob([JSON.stringify({app:'ciel-flyer',version:'1.15',state:S,designs:G.designs,images:used})],{type:'application/json'});
   var a=document.createElement('a'); a.href=URL.createObjectURL(blob);
   var d=new Date(), pad=function(n){return ('0'+n).slice(-2);};
   a.download='flyer-layout-'+d.getFullYear()+pad(d.getMonth()+1)+pad(d.getDate())+'-'+pad(d.getHours())+pad(d.getMinutes())+'.json';
