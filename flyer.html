@@ -108,7 +108,9 @@ input[type=number]{width:64px;}
 #cWrap .stageInner,#stageWrap .stageInner{padding:70px;}
 .handle.n,.handle.s{cursor:ns-resize;}
 .handle.e,.handle.w{cursor:ew-resize;}
-.btn.img{background:#e8760a;border-color:#e8760a;color:#fff;font-weight:700;font-size:14px;padding:7px 16px;box-shadow:0 0 0 2px rgba(232,118,10,.25);}
+.imgDrop{border:2px dashed var(--border);border-radius:8px;padding:14px 8px;text-align:center;color:var(--text-sub);font-size:12.5px;cursor:pointer;margin-bottom:10px;}
+.imgDrop:hover,.imgDrop.over{border-color:#e8760a;background:rgba(232,118,10,.12);color:var(--text);}
+.btn.img{background:#e8760a;border-color:#e8760a;color:#fff;font-weight:600;}
 .handle.rot{border-radius:50%;background:var(--hc,var(--sel));cursor:grab;}
 .cpBtn{font-size:15px;padding:3px 10px;min-width:44px;}
 .cpBtn.has{background:#ffd21f;border-color:#e0a800;color:#222;font-weight:700;box-shadow:0 0 8px rgba(255,210,31,.9);}
@@ -129,7 +131,8 @@ input[type=number]{width:64px;}
 .ctab th{position:sticky;top:0;background:var(--thead-bg);z-index:1;}
 .ctab th.sortable{cursor:pointer;user-select:none;}
 .ctab th.sortable:hover{color:var(--sky);}
-.gcell{display:inline-block;max-width:30em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;vertical-align:bottom;}
+.ncell{display:inline-block;max-width:11em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;vertical-align:bottom;}
+.gcell{display:inline-block;max-width:20em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;vertical-align:bottom;}
 .ctab tbody tr{cursor:pointer;}
 .ctab tbody tr:hover{background:var(--hover-bg);}
 .ctab tbody tr.on{box-shadow:inset 3px 0 0 var(--sky);background:rgba(74,171,207,.12);}
@@ -153,7 +156,7 @@ input[type=number]{width:64px;}
 <body>
 <header>
   <div class="header-row">
-    <h1>チラシ作成 <span style="font-size:12px;font-weight:400;opacity:.75;">v1.29</span></h1>
+    <h1>チラシ作成 <span style="font-size:12px;font-weight:400;opacity:.75;">v1.30</span></h1>
     <div class="hdrBtns">
       <button type="button" class="updateBtn headerRefreshBtn" id="settingsBtn">⚙ 設定</button>
       <a class="updateBtn headerRefreshBtn" href="./index.html">🏠 一覧へ</a>
@@ -232,6 +235,7 @@ input[type=number]{width:64px;}
   <div class="main-area">
     <div class="stageWrap" id="stageWrap"><div class="stageInner"><div id="stage"></div></div></div>
     <div class="side">
+      <div class="imgDrop" id="imgDrop">🖼 画像をここへドラッグ&ドロップ<br><span class="hint">(クリックで選択。画面のどこへ落としても追加できます)</span></div>
       <h3>選択中のもの</h3>
       <div id="props" class="hint">何も選ばれていません</div>
       <h3>重ね順(上が手前)</h3>
@@ -246,7 +250,7 @@ input[type=number]{width:64px;}
     <div class="tgroup"><span style="position:relative;display:inline-block;"><input type="text" id="carSearch" placeholder="車名・グレード・色・車台番号で検索" style="width:280px;padding-right:26px;"><button type="button" id="carSearchClear" title="検索欄を消す" style="position:absolute;right:2px;top:50%;transform:translateY(-50%);border:none;background:transparent;color:var(--text-sub);cursor:pointer;font-size:15px;line-height:1;padding:2px 6px;display:none;">✕</button></span>
       <label><input type="checkbox" id="carAdOnly" checked> 広告掲載中のみ</label>
       <label><input type="checkbox" id="carSelOnly"> 選択済みのみ</label></div>
-    <div class="tgroup"><span class="lbl">並び替え</span><select id="carSortSel"><option value="name">車名</option><option value="color">色</option><option value="grade">グレード</option><option value="year">年式</option><option value="mileage">走行距離</option><option value="total">総額</option><option value="ad">広告掲載</option><option value="sel">選択順</option></select><button class="btn" id="carSortDir" title="昇順・降順を切り替え">▲ 昇順</button></div>
+    <div class="tgroup"><span class="lbl">並び替え</span><select id="carSortSel"><option value="supply">仕入</option><option value="name">車名</option><option value="color">色</option><option value="grade">グレード</option><option value="year">年式</option><option value="mileage">走行距離</option><option value="total">総額</option><option value="ad">広告掲載</option><option value="sel">選択順</option></select><button class="btn" id="carSortDir" title="昇順・降順を切り替え">▲ 昇順</button></div>
     <div class="tgroup"><button class="btn" id="carAllBtn">表示中をすべて選択</button><button class="btn" id="carNoneBtn">選択をすべて解除</button><button class="btn" id="carReload">🔄 在庫を再取得</button></div>
     <div class="tgroup" style="margin-left:auto;"><button class="btn accent" id="carPreviewBtn">👁 プレビュー</button></div>
   </div>
@@ -297,7 +301,7 @@ input[type=number]{width:64px;}
     </div>
     <div class="row" id="cpAdj" style="display:none;"><span>左右の微調整</span>
       <button class="btn" id="cpL">◀</button><input type="range" id="cpShift" min="-30" max="30" step="0.5" value="0" style="width:200px"><button class="btn" id="cpR">▶</button>
-      <span class="hint" id="cpShiftV">0%</span><button class="btn main" id="cpApply">この位置で保存</button><button class="btn" id="cpAuto">自動で左右中央に揃え直す</button></div>
+      <span class="hint" id="cpShiftV">0%</span><button class="btn main" id="cpApply">この位置で保存</button><button class="btn" id="cpAuto">余白を自動トリミングして揃え直す</button></div>
     <div class="hint">チラシのコマの「車両画像の枠」に入る、背景透過の車両画像です(1台に1枚。保存すると他のパソコンでも使えます)。</div>
   </div>
 </div>
@@ -1105,8 +1109,16 @@ function endDrag(){
 }
 $('stageWrap').addEventListener('pointerup',endDrag);
 $('stageWrap').addEventListener('pointercancel',endDrag);
-$('stage').addEventListener('dragover',function(e){e.preventDefault();});
-$('stage').addEventListener('drop',function(e){e.preventDefault();if(e.dataTransfer&&e.dataTransfer.files)addImages(e.dataTransfer.files);});
+(function(){
+  var dz=$('imgDrop'), wrap=$('stageWrap');
+  function isFiles(e){return e.dataTransfer&&[].indexOf.call(e.dataTransfer.types,'Files')>=0;}
+  [dz,wrap].forEach(function(t){
+    t.addEventListener('dragover',function(e){if(!isFiles(e))return;e.preventDefault();dz.classList.add('over');});
+    t.addEventListener('dragleave',function(){dz.classList.remove('over');});
+    t.addEventListener('drop',function(e){if(!isFiles(e))return;e.preventDefault();dz.classList.remove('over');addImages(e.dataTransfer.files);});
+  });
+  dz.onclick=function(){$('imgFile').click();};
+})();
 
 document.addEventListener('keydown',function(e){
   if(view!=='layout')return;
@@ -1246,7 +1258,7 @@ $('settingsOverlay').onclick=function(e){if(e.target===this)this.style.display='
 /* ---------- ファイル保存/読込(画像込みのJSON) ---------- */
 $('saveFile').onclick=function(){
   var used={}; S.items.forEach(function(i){if(i.imgId&&IMGS[i.imgId])used[i.imgId]=IMGS[i.imgId];});
-  var blob=new Blob([JSON.stringify({app:'ciel-flyer',version:'1.29',state:S,designs:G.designs,images:used})],{type:'application/json'});
+  var blob=new Blob([JSON.stringify({app:'ciel-flyer',version:'1.30',state:S,designs:G.designs,images:used})],{type:'application/json'});
   var a=document.createElement('a'); a.href=URL.createObjectURL(blob);
   var d=new Date(), pad=function(n){return ('0'+n).slice(-2);};
   a.download='flyer-layout-'+d.getFullYear()+pad(d.getMonth()+1)+pad(d.getDate())+'-'+pad(d.getHours())+pad(d.getMinutes())+'.json';
@@ -1428,7 +1440,7 @@ function buildItemEl(it,pxu,data,edit){
   }
   if(it.type==='photo'){
     el.style.justifyContent='center'; el.style.alignItems='center';
-    if(data&&data.photo){var p=document.createElement('img');p.src=data.photo;p.style.cssText='width:100%;height:100%;object-fit:contain;object-position:center center;pointer-events:none;-webkit-user-drag:none;';el.appendChild(p);}
+    if(data&&data.photo){var p=document.createElement('img');p.src=data.photo;p.style.cssText='width:100%;height:100%;object-fit:contain;object-position:'+(data.photoAnchor==='bottom'?'center bottom':'center center')+';pointer-events:none;-webkit-user-drag:none;';el.appendChild(p);}
     else{el.style.background='repeating-linear-gradient(45deg,#e4e7ea,#e4e7ea 12px,#f1f3f5 12px,#f1f3f5 24px)';el.style.color='#667';el.style.fontSize=Math.max(10,Math.min(it.h,it.w*0.5)*pxu*0.5)+'px';el.textContent='🚗';}
     if(edit){ // 画像の中心が分かる十字
       var hx=document.createElement('div');hx.className='xhair';hx.style.cssText='left:0;right:0;top:50%;height:1px;';
@@ -1489,7 +1501,7 @@ function buildCellEl(cell,k,pxw,data,edit,rootEl){
   var root=rootEl||document.createElement('div'); root.innerHTML='';
   root.style.cssText='position:relative;isolation:isolate;width:'+pxw+'px;height:'+hpx+'px;overflow:'+(edit?'visible':'hidden')+';box-sizing:border-box;'+(edit?'outline:1px dashed #999;':'')+
     (f.bgOn?'background:'+f.bg+';':(edit?'background:repeating-conic-gradient(#d9d9d9 0 25%,#f4f4f4 0 50%) 0 0/20px 20px;':'background:transparent;'))+'border-radius:'+((f.radius||0)*pxu)+'px;';
-  var dm=valMap(cell.sample,data);
+  var dm=valMap(cell.sample,data); dm.photoAnchor=cell.photoAnchor||'center';
   if(!dm.photo&&edit&&cell.showSample&&cell.samplePhoto&&IMGS[cell.samplePhoto])dm.photo=IMGS[cell.samplePhoto].data;
   if(edit){['total','body'].forEach(function(b){var m=String(dm[b+'Main']||'');
     if(CE.dg===2&&m.length>2)m=m.slice(-2); else if(CE.dg===3){while(m.length<3)m='1'+m;} dm[b+'Main']=m;});}
@@ -1756,6 +1768,7 @@ function openCellSettings(){
   h+='</div><h4>車両画像の枠</h4><div class="row"><label><input type="checkbox" id="cShowPhoto" '+(c.showSample?'checked':'')+'> 車両サンプル画像を表示する</label>'+
     '<button class="btn" id="cPickPhoto">サンプル画像を選択</button><span class="hint" id="cPhotoName">'+esc(c.samplePhoto&&IMGS[c.samplePhoto]?IMGS[c.samplePhoto].name:'(未選択)')+'</span>'+
     '<input type="file" id="cPhotoFile" accept="image/*" style="display:none"></div>'+
+    '<div class="row"><span>画像の位置</span><select id="cPhotoAnchor"><option value="center"'+((c.photoAnchor||'center')==='center'?' selected':'')+'>枠の中央</option><option value="bottom"'+(c.photoAnchor==='bottom'?' selected':'')+'>下に揃える(車の接地面の高さをそろえる)</option></select></div>'+
     '<h4>コマデザインのコピー</h4><div class="row"><span>このコマデザイン('+CE.k+')を</span><select id="cpyTo">'+['A','B','C','D'].filter(function(x){return x!==CE.k;}).map(function(x){return '<option value="'+x+'">コマデザイン'+x+'</option>';}).join('')+'</select><button class="btn" id="cpyBtn">上書きコピー</button></div><div class="hint">項目の配置・外枠・サンプル・縦横比をすべてコピーします(コピー先の内容は置き換わります)</div>'+
     '<h4>取り込む画像の大きさ</h4><div class="row"><select id="maxPx2"><option value="1200">1200px</option><option value="1600">1600px</option><option value="2000">2000px</option><option value="3000">3000px</option><option value="0">縮小しない</option></select><span class="hint">長辺の最大ピクセル。小さいほど保存容量が減ります</span></div>';
   b.innerHTML=h; $('maxPx2').value=$('maxPx').value;
@@ -1764,6 +1777,7 @@ function openCellSettings(){
   [].forEach.call(b.querySelectorAll('[data-hid]'),function(cb){cb.onchange=function(){var it=cById(cb.dataset.hid);if(it){it.hidden=!cb.checked;cCommit();cRender();}};});
   [].forEach.call(b.querySelectorAll('[data-sk]'),function(inp){inp.onchange=function(){
     if(!c.sample)c.sample={}; var k=inp.dataset.sk; if(inp.value===SAMPLES[k])delete c.sample[k]; else c.sample[k]=inp.value; cCommit(); cRender();};});
+  $('cPhotoAnchor').onchange=function(){c.photoAnchor=this.value;cCommit();cRender();};
   $('cShowPhoto').onchange=function(){c.showSample=this.checked;cCommit();cRender();};
   $('cPickPhoto').onclick=function(){$('cPhotoFile').click();};
   $('cPhotoFile').onchange=function(){
@@ -2014,6 +2028,12 @@ function normShaken(s){
   return {label:'R'+(year-2018)+'/'+('0'+month).slice(-2)};
 }
 var CARS={aaCounts:{},sortKey:'name',sortDir:1,loaded:false,loading:false,rows:[],byVin:{},err:'',photoIdx:{},photos:{},page:0};
+function displaySupplier(sup){
+  if(!sup)return '';
+  if(sup.indexOf('新潟県中古車販売商工組合')>=0)return 'JU新潟';
+  if(sup.indexOf('トヨタユーゼック')>=0||sup.indexOf('TAA東北')>=0)return 'TAA東北';
+  return sup;
+}
 function buildCarRows(stock,cs,goo,msf,pricing){
   var list=[];
   Object.keys(stock||{}).forEach(function(id){
@@ -2031,7 +2051,7 @@ function buildCarRows(stock,cs,goo,msf,pricing){
     var repairHas=hasMan?!!msf[vin]:(g?!!g.shufuku:false);
     var body=pd.body!=null?pd.body:null;
     list.push({
-      vin:vin, maker:maker, carName:carName,
+      vin:vin, maker:maker, carName:carName, supply:((displaySupplier(sv.sup||'')+' '+(sv.date||'')).trim()),
       name:(maker&&carName.indexOf(maker)!==0?maker+' ':'')+carName, grade:grade, year:year,
       mileage:mkm!=null?((mkm/10000).toFixed(1)+'万km'):'', shaken:shText, repairHas:repairHas, color:sv.color||'',
       total:body!=null?(((body+TOTAL_ADD)/10000).toFixed(1)):'', body:body!=null?((body/10000).toFixed(1)):'',
@@ -2101,7 +2121,7 @@ function renderCars(){
     });
     var sk=CARS.sortKey, sd=CARS.sortDir;
     var val=function(r){
-      if(sk==='name')return r.name; if(sk==='color')return r.color; if(sk==='grade')return r.grade;
+      if(sk==='supply')return r.supply; if(sk==='name')return r.name; if(sk==='color')return r.color; if(sk==='grade')return r.grade;
       if(sk==='year'){var y=String(r.year||''),m;if((m=y.match(/(\d{4})/)))return parseInt(m[1]);if((m=y.match(/R\s*(\d+)/)))return 2018+parseInt(m[1]);if((m=y.match(/H\s*(\d+)/)))return 1988+parseInt(m[1]);if((m=y.match(/S\s*(\d+)/)))return 1925+parseInt(m[1]);return 0;}
       if(sk==='mileage')return parseFloat(r.mileage)||0; if(sk==='total')return parseFloat(r.total)||0;
       if(sk==='ad')return r.isAdListed?1:0;
@@ -2112,10 +2132,10 @@ function renderCars(){
     CARS.shown=rows;
     var arrow=function(k){return CARS.sortKey===k?(CARS.sortDir>0?' ▲':' ▼'):'';};
     var th=function(k,l){return '<th class="sortable" data-sort="'+k+'" title="クリックで並び替え">'+l+arrow(k)+'</th>';};
-    var h='<table class="ctab"><thead><tr><th></th>'+th('sel','順')+th('name','車名')+th('color','色')+'<th>AA</th><th>画像</th>'+th('grade','グレード')+th('year','年式')+th('mileage','走行')+'<th>車検</th>'+th('total','総額')+th('ad','広告')+'<th>車台番号</th></tr></thead><tbody>';
+    var h='<table class="ctab"><thead><tr><th></th>'+th('sel','順')+th('supply','仕入')+th('name','車名')+th('color','色')+'<th>AA</th><th>画像</th>'+th('grade','グレード')+th('year','年式')+th('mileage','走行')+'<th>車検</th>'+th('total','総額')+th('ad','広告')+'<th>車台番号</th></tr></thead><tbody>';
     rows.forEach(function(r){
       var idx=S.cars.indexOf(r.vin);
-      h+='<tr data-vin="'+esc(r.vin)+'"'+(idx>=0?' class="on"':'')+'><td><input type="checkbox" '+(idx>=0?'checked':'')+'></td><td>'+(idx>=0?idx+1:'')+'</td><td>'+esc(r.name)+'</td><td>'+esc(r.color)+'</td><td><button class="aaB has'+Math.min(2,CARS.aaCounts[r.vin]||0)+'" data-vin="'+esc(r.vin)+'" title="AA出品票を見る">🖼 AA</button></td><td><button class="btn cpBtn '+(CARS.photoIdx[r.vin]?'has':'none')+'" data-vin="'+esc(r.vin)+'" title="'+(CARS.photoIdx[r.vin]?'チラシ用の車両画像あり(クリックで確認・変更)':'チラシ用の車両画像は未登録(クリックまたは画像をドロップ)')+'">📷</button></td><td><span class="gcell" title="'+esc(r.grade)+'">'+esc(r.grade)+'</span></td><td>'+esc(r.year)+'</td><td>'+esc(r.mileage)+'</td><td>'+esc(r.shaken)+'</td><td>'+esc(r.total)+'</td><td>'+(r.isAdListed?'掲載':'')+'</td><td style="font-family:monospace;font-size:11px">'+esc(r.vin)+'</td></tr>';
+      h+='<tr data-vin="'+esc(r.vin)+'"'+(idx>=0?' class="on"':'')+'><td><input type="checkbox" '+(idx>=0?'checked':'')+'></td><td>'+(idx>=0?idx+1:'')+'</td><td>'+esc(r.supply)+'</td><td><span class="ncell" title="'+esc(r.name)+'">'+esc(r.name)+'</span></td><td>'+esc(r.color)+'</td><td><button class="aaB has'+Math.min(2,CARS.aaCounts[r.vin]||0)+'" data-vin="'+esc(r.vin)+'" title="AA出品票を見る">🖼 AA</button></td><td><button class="btn cpBtn '+(CARS.photoIdx[r.vin]?'has':'none')+'" data-vin="'+esc(r.vin)+'" title="'+(CARS.photoIdx[r.vin]?'チラシ用の車両画像あり(クリックで確認・変更)':'チラシ用の車両画像は未登録(クリックまたは画像をドロップ)')+'">📷</button></td><td><span class="gcell" title="'+esc(r.grade)+'">'+esc(r.grade)+'</span></td><td>'+esc(r.year)+'</td><td>'+esc(r.mileage)+'</td><td>'+esc(r.shaken)+'</td><td>'+esc(r.total)+'</td><td>'+(r.isAdListed?'掲載':'')+'</td><td style="font-family:monospace;font-size:11px">'+esc(r.vin)+'</td></tr>';
     });
     h+='</tbody></table>'+(rows.length?'':'<div class="hint" style="padding:12px">条件に合う車両がありません。</div>');
     box.innerHTML=h;
@@ -2205,21 +2225,22 @@ function openPhoto(vin){
   if(CARS.photoIdx[vin]){cpShow('','読み込み中…');getCarPhoto(vin).then(function(d){if(CP.vin===vin&&!CP.pending)cpShow(d,d?('保存済み 約'+Math.round(d.length*0.75/1024)+'KB'):'');});}
 }
 /* 背景透過PNGの左右中央を自動で揃える(透明でない部分の左右の余白が同じになるよう、広い側の余白を切り落とす) */
-function autoCenterPhoto(im){
+function autoCenterPhoto(im){ // 透明な余白を上下左右ともトリミングする(車の中心が画像の中心になり、大きさ・位置の個体差が減る)
   var L=parseInt($('maxPx').value), nw=im.naturalWidth, nh=im.naturalHeight;
   var sc=L>0?Math.min(1,L/Math.max(nw,nh)):1, w=Math.max(1,Math.round(nw*sc)), h=Math.max(1,Math.round(nh*sc));
   var c=document.createElement('canvas'); c.width=w; c.height=h;
   var x=c.getContext('2d'); x.drawImage(im,0,0,w,h);
-  var d, x0=w, x1=-1;
+  var d, x0=w, x1=-1, y0=h, y1=-1;
   try{
     d=x.getImageData(0,0,w,h).data;
     for(var yy=0;yy<h;yy++){var row=yy*w*4;
-      for(var xx=0;xx<w;xx++){ if(d[row+xx*4+3]>40){ if(xx<x0)x0=xx; if(xx>x1)x1=xx; } } }
+      for(var xx=0;xx<w;xx++){ if(d[row+xx*4+3]>40){ if(xx<x0)x0=xx; if(xx>x1)x1=xx; if(yy<y0)y0=yy; if(yy>y1)y1=yy; } } }
   }catch(e){x1=-1;}
   var out=c;
   if(x1>=0){
-    var m=Math.min(x0,w-1-x1), cx=x0-m, cw=(x1+m)-(x0-m)+1;
-    if(cw<w){out=document.createElement('canvas');out.width=cw;out.height=h;out.getContext('2d').drawImage(c,cx,0,cw,h,0,0,cw,h);}
+    var pad=Math.round(Math.max(x1-x0,y1-y0)*0.015), cx0=Math.max(0,x0-pad), cy0=Math.max(0,y0-pad), cx1=Math.min(w-1,x1+pad), cy1=Math.min(h-1,y1+pad);
+    var cw=cx1-cx0+1, ch=cy1-cy0+1;
+    if(cw<w||ch<h){out=document.createElement('canvas');out.width=cw;out.height=ch;out.getContext('2d').drawImage(c,cx0,cy0,cw,ch,0,0,cw,ch);}
   }
   var url=out.toDataURL('image/webp',0.85);
   return url.indexOf('data:image/webp')===0?url:out.toDataURL('image/png');
@@ -2247,7 +2268,7 @@ function registerPhotoFile(vin,f,thenClose){
   if(!f||!/^image\//.test(f.type)){toast('画像ファイルを選んでください');return;}
   var fr=new FileReader();
   fr.onload=function(){var im=new Image();im.onload=function(){
-    savePhotoNow(vin,f.name,autoCenterPhoto(im),'車両画像を保存しました(左右を自動で中央に揃えました)',thenClose);};
+    savePhotoNow(vin,f.name,autoCenterPhoto(im),'車両画像を保存しました(余白を自動でトリミングしました)',thenClose);};
     im.src=fr.result;};
   fr.readAsDataURL(f);
 }
@@ -2269,7 +2290,7 @@ $('cpApply').onclick=function(){
 };
 $('cpAuto').onclick=function(){
   var vin=CP.vin;
-  getCarPhoto(vin).then(function(d){ if(!d)return; var im=new Image(); im.onload=function(){savePhotoNow(vin,'',autoCenterPhoto(im),'左右を自動で中央に揃え直しました',false);}; im.src=d; });
+  getCarPhoto(vin).then(function(d){ if(!d)return; var im=new Image(); im.onload=function(){savePhotoNow(vin,'',autoCenterPhoto(im),'余白を自動でトリミングして揃え直しました',false);}; im.src=d; });
 };
 $('cpDel').onclick=function(){
   var vin=CP.vin, r=CARS.byVin[vin]; if(!FB||!CARS.photoIdx[vin])return;
