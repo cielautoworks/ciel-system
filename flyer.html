@@ -139,7 +139,7 @@ input[type=number]{width:64px;}
 <body>
 <header>
   <div class="header-row">
-    <h1>チラシ作成 <span style="font-size:12px;font-weight:400;opacity:.75;">v1.24</span></h1>
+    <h1>チラシ作成 <span style="font-size:12px;font-weight:400;opacity:.75;">v1.25</span></h1>
     <div class="hdrBtns">
       <button type="button" class="updateBtn headerRefreshBtn" id="settingsBtn">⚙ 設定</button>
       <a class="updateBtn headerRefreshBtn" href="./index.html">🏠 一覧へ</a>
@@ -269,10 +269,12 @@ input[type=number]{width:64px;}
     <div class="hint" id="cpInfo" style="margin-top:6px;"></div>
     <div class="row" style="margin-top:8px;">
       <button class="btn" id="cpPick">画像を選択</button><input type="file" id="cpFile" accept="image/*" style="display:none">
-      <button class="btn main" id="cpSave" disabled>この画像を保存</button>
       <button class="btn danger" id="cpDel" disabled>保存済みの画像を削除</button>
       <button class="btn" id="cpClose" style="margin-left:auto;">閉じる</button>
     </div>
+    <div class="row" id="cpAdj" style="display:none;"><span>左右の微調整</span>
+      <button class="btn" id="cpL">◀</button><input type="range" id="cpShift" min="-30" max="30" step="0.5" value="0" style="width:200px"><button class="btn" id="cpR">▶</button>
+      <span class="hint" id="cpShiftV">0%</span><button class="btn main" id="cpApply">この位置で保存</button><button class="btn" id="cpAuto">自動で左右中央に揃え直す</button></div>
     <div class="hint">チラシのコマの「車両画像の枠」に入る、背景透過の車両画像です(1台に1枚。保存すると他のパソコンでも使えます)。</div>
   </div>
 </div>
@@ -1168,7 +1170,7 @@ $('settingsOverlay').onclick=function(e){if(e.target===this)this.style.display='
 /* ---------- ファイル保存/読込(画像込みのJSON) ---------- */
 $('saveFile').onclick=function(){
   var used={}; S.items.forEach(function(i){if(i.imgId&&IMGS[i.imgId])used[i.imgId]=IMGS[i.imgId];});
-  var blob=new Blob([JSON.stringify({app:'ciel-flyer',version:'1.24',state:S,designs:G.designs,images:used})],{type:'application/json'});
+  var blob=new Blob([JSON.stringify({app:'ciel-flyer',version:'1.25',state:S,designs:G.designs,images:used})],{type:'application/json'});
   var a=document.createElement('a'); a.href=URL.createObjectURL(blob);
   var d=new Date(), pad=function(n){return ('0'+n).slice(-2);};
   a.download='flyer-layout-'+d.getFullYear()+pad(d.getMonth()+1)+pad(d.getDate())+'-'+pad(d.getHours())+pad(d.getMinutes())+'.json';
@@ -2062,36 +2064,75 @@ function cpShow(data,info){
   $('cpInfo').textContent=info||'';
 }
 function openPhoto(vin){
-  var r=CARS.byVin[vin]; CP.vin=vin; CP.pending=null;
+  var r=CARS.byVin[vin]; CP.vin=vin; CP.pending=null; cpResetShift();
   $('cpTitle').textContent='車両画像: '+(r?r.name:vin);
-  $('cpSave').disabled=true; $('cpDel').disabled=!CARS.photoIdx[vin];
+  $('cpDel').disabled=!CARS.photoIdx[vin]; $('cpAdj').style.display=CARS.photoIdx[vin]?'flex':'none';
   cpShow('',''); $('carPhotoOverlay').style.display='flex';
   if(CARS.photoIdx[vin]){cpShow('','読み込み中…');getCarPhoto(vin).then(function(d){if(CP.vin===vin&&!CP.pending)cpShow(d,d?('保存済み 約'+Math.round(d.length*0.75/1024)+'KB'):'');});}
 }
+/* 背景透過PNGの左右中央を自動で揃える(透明でない部分の左右の余白が同じになるよう、広い側の余白を切り落とす) */
+function autoCenterPhoto(im){
+  var L=parseInt($('maxPx').value), nw=im.naturalWidth, nh=im.naturalHeight;
+  var sc=L>0?Math.min(1,L/Math.max(nw,nh)):1, w=Math.max(1,Math.round(nw*sc)), h=Math.max(1,Math.round(nh*sc));
+  var c=document.createElement('canvas'); c.width=w; c.height=h;
+  var x=c.getContext('2d'); x.drawImage(im,0,0,w,h);
+  var d, x0=w, x1=-1;
+  try{
+    d=x.getImageData(0,0,w,h).data;
+    for(var yy=0;yy<h;yy++){var row=yy*w*4;
+      for(var xx=0;xx<w;xx++){ if(d[row+xx*4+3]>40){ if(xx<x0)x0=xx; if(xx>x1)x1=xx; } } }
+  }catch(e){x1=-1;}
+  var out=c;
+  if(x1>=0){
+    var m=Math.min(x0,w-1-x1), cx=x0-m, cw=(x1+m)-(x0-m)+1;
+    if(cw<w){out=document.createElement('canvas');out.width=cw;out.height=h;out.getContext('2d').drawImage(c,cx,0,cw,h,0,0,cw,h);}
+  }
+  var url=out.toDataURL('image/webp',0.85);
+  return url.indexOf('data:image/webp')===0?url:out.toDataURL('image/png');
+}
+function shiftPhoto(dataUrl,pct,cb){ // 左右にpct%ずらして焼き込む(はみ出した分は切れ、空いた所は透明)
+  var im=new Image(); im.onload=function(){
+    var c=document.createElement('canvas'); c.width=im.naturalWidth; c.height=im.naturalHeight;
+    c.getContext('2d').drawImage(im,Math.round(im.naturalWidth*pct/100),0);
+    var url=c.toDataURL('image/webp',0.9); cb(url.indexOf('data:image/webp')===0?url:c.toDataURL('image/png'));
+  }; im.src=dataUrl;
+}
+function savePhotoNow(vin,name,data,msg,thenClose){
+  if(!FB){toast('Firebaseに接続できていません');return Promise.resolve();}
+  var o={name:name||'',data:data,ua:Date.now()};
+  return FB.savePhoto(vin,o).then(function(){
+    CARS.photos[vin]=o.data; CARS.photoIdx[vin]={ua:o.ua}; $('cpDel').disabled=false; $('cpAdj').style.display='flex';
+    toast(msg||'車両画像を保存しました'); renderCars();
+    if(thenClose)$('carPhotoOverlay').style.display='none'; else {cpResetShift();cpShow(o.data,'保存しました 約'+Math.round(o.data.length*0.75/1024)+'KB');}
+  }).catch(function(e){console.error(e);toast('保存できませんでした');});
+}
+function cpResetShift(){$('cpShift').value=0;$('cpShiftV').textContent='0%';var im=$('cpImg');if(im)im.style.transform='';}
 $('cpPick').onclick=function(){$('cpFile').click();};
 $('cpFile').onchange=function(){
   var f=this.files[0]; this.value=''; if(!f||!/^image\//.test(f.type))return;
-  var fr=new FileReader();
+  var vin=CP.vin, fr=new FileReader();
   fr.onload=function(){var im=new Image();im.onload=function(){
-    var d=shrink(im,fr.result); CP.pending={name:f.name,data:d};
-    cpShow(d,'未保存: 約'+Math.round(d.length*0.75/1024)+'KB('+im.naturalWidth+'×'+im.naturalHeight+' → 縮小後)'); $('cpSave').disabled=false;};
+    savePhotoNow(vin,f.name,autoCenterPhoto(im),'車両画像を保存しました(左右を自動で中央に揃えました)',true);};
     im.src=fr.result;};
   fr.readAsDataURL(f);
 };
-$('cpSave').onclick=function(){
-  if(!CP.pending||!FB)return; var vin=CP.vin, r=CARS.byVin[vin];
-  if(!confirm('「'+(r?r.name:vin)+'」の車両画像を保存します'+(CARS.photoIdx[vin]?'(いまの画像は上書きされます)':'')+'。よろしいですか?'))return;
-  var o={name:CP.pending.name,data:CP.pending.data,ua:Date.now()};
-  FB.savePhoto(vin,o).then(function(){
-    CARS.photos[vin]=o.data; CARS.photoIdx[vin]={ua:o.ua}; CP.pending=null; $('cpSave').disabled=true; $('cpDel').disabled=false;
-    cpShow(o.data,'保存しました'); toast('車両画像を保存しました'); renderCars();
-  }).catch(function(e){console.error(e);toast('保存できませんでした');});
+function cpSetShift(v){v=Math.max(-30,Math.min(30,v));$('cpShift').value=v;$('cpShiftV').textContent=(v>0?'+':'')+v+'%';$('cpImg').style.transform='translateX('+v+'%)';}
+$('cpShift').oninput=function(){cpSetShift(parseFloat(this.value));};
+$('cpL').onclick=function(){cpSetShift(parseFloat($('cpShift').value)-0.5);};
+$('cpR').onclick=function(){cpSetShift(parseFloat($('cpShift').value)+0.5);};
+$('cpApply').onclick=function(){
+  var vin=CP.vin, v=parseFloat($('cpShift').value)||0; if(!v){toast('位置が動いていません');return;}
+  getCarPhoto(vin).then(function(d){ if(!d)return; shiftPhoto(d,v,function(u){savePhotoNow(vin,'',u,'左右の位置を保存しました',false);}); });
+};
+$('cpAuto').onclick=function(){
+  var vin=CP.vin;
+  getCarPhoto(vin).then(function(d){ if(!d)return; var im=new Image(); im.onload=function(){savePhotoNow(vin,'',autoCenterPhoto(im),'左右を自動で中央に揃え直しました',false);}; im.src=d; });
 };
 $('cpDel').onclick=function(){
   var vin=CP.vin, r=CARS.byVin[vin]; if(!FB||!CARS.photoIdx[vin])return;
   if(!confirm('「'+(r?r.name:vin)+'」の保存済み車両画像を削除します。元に戻せません。よろしいですか?'))return;
   FB.deletePhoto(vin).then(function(){
-    delete CARS.photoIdx[vin]; delete CARS.photos[vin]; CP.pending=null; $('cpSave').disabled=true; $('cpDel').disabled=true;
+    delete CARS.photoIdx[vin]; delete CARS.photos[vin]; CP.pending=null; $('cpDel').disabled=true; $('cpAdj').style.display='none';
     cpShow('','削除しました'); toast('削除しました'); renderCars();
   }).catch(function(e){console.error(e);toast('削除できませんでした');});
 };
