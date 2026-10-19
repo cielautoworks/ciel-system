@@ -51,7 +51,8 @@ const firebaseConfig = {
 | `pricingData/{normVin}` | pricing.html | ハブ(`manualCost`) | ads.html(`retailTarget`のみ。v1.33〜)、pricetag.html(`body`)、ハブ | 車体価格(`body`)・`extraCost, as, marginTotal, marginWholesale, retailTarget, manualCost, manualRecycle, updatedAt` |
 | `priceTagTemplates/{templateId}` | pricetag.html | - | - | 価格表テンプレート設定 |
 | `priceTagData/{vin}/manual/{field}`, `printTarget`, `templateId`, `lastPrintedAt`, `lastPrintedPrice` | pricetag.html | - | - | 一覧の個別編集値・印刷対象・使用テンプレート・最終印刷日時と価格 |
-| `flyerLayouts/{1〜4}` | flyer.html | - | - | チラシのレイアウト(配置・サイズ・番号・コマデザイン等の小さなJSON。画像なし)。変更の0.5秒後に自動保存 |
+| `flyerLayouts/{layoutId}` | flyer.html | - | - | チラシのレイアウト(配置・サイズ・番号・コマデザイン等の小さなJSON。画像なし)。キーは各レイアウトのID(英数字)で、数は可変。削除したレイアウトは `{deleted:true, ua}` の目印を残す(他のパソコンへ削除を伝えるため)。変更の0.5秒後に自動保存 |
+| `flyerCells/{A\|B\|C\|D}` | flyer.html | - | - | コマテンプレ(コマデザインA〜D)。`{json:文字列, ua:更新時刻}`。jsonに縦横比・項目配置・外枠設定・飾り画像のIDを含む(画像本体は `flyerImages`)。変更の1.5秒後に自動保存 |
 | `flyerImages/{imgId}` | flyer.html | - | - | チラシのレイアウトに置く画像(WebP/Base64、長辺縮小済み)。「保存」ボタンを押した時だけ書き込む |
 | `newsLog` | car-app | ハブ・pricing.html(新規登録の通知) | - | 変更履歴(car-appが3ヶ月より古いものを自動削除) |
 | `inspections`, `inspectionPhotos`, `loanHistories` | car-app | - | - | car-app専用(点検シート・貸出履歴) |
