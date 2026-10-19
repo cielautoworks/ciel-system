@@ -110,6 +110,10 @@ input[type=number]{width:64px;}
 .handle.e,.handle.w{cursor:ew-resize;}
 .imgDrop{border:2px dashed var(--border);border-radius:8px;padding:14px 8px;text-align:center;color:var(--text-sub);font-size:12.5px;cursor:pointer;margin-bottom:10px;}
 .imgDrop:hover,.imgDrop.over{border-color:#e8760a;background:rgba(232,118,10,.12);color:var(--text);}
+.btn.pv{background:#1fa38f;border-color:#1fa38f;color:#fff;font-weight:700;}
+.btn.del{background:#d93a3a;border-color:#d93a3a;color:#fff;font-weight:600;}
+.cellGuide{position:absolute;left:0;top:0;right:0;bottom:0;border:2px dashed var(--pc,#ff2d95);pointer-events:none;z-index:5500;box-sizing:border-box;}
+#cStage.dimOut .cellGuide{box-shadow:0 0 0 9999px rgba(0,0,0,var(--dim,.4));}
 .btn.img{background:#e8760a;border-color:#e8760a;color:#fff;font-weight:600;}
 .handle.rot{border-radius:50%;background:var(--hc,var(--sel));cursor:grab;}
 .cpBtn{font-size:15px;padding:3px 10px;min-width:44px;}
@@ -156,7 +160,7 @@ input[type=number]{width:64px;}
 <body>
 <header>
   <div class="header-row">
-    <h1>チラシ作成 <span style="font-size:12px;font-weight:400;opacity:.75;">v1.31</span></h1>
+    <h1>チラシ作成 <span style="font-size:12px;font-weight:400;opacity:.75;">v1.32</span></h1>
     <div class="hdrBtns">
       <button type="button" class="updateBtn headerRefreshBtn" id="settingsBtn">⚙ 設定</button>
       <a class="updateBtn headerRefreshBtn" href="./index.html">🏠 一覧へ</a>
@@ -184,13 +188,13 @@ input[type=number]{width:64px;}
       <button class="btn" id="undoBtn">↶ 元に戻す</button>
       <button class="btn" id="redoBtn">↷ やり直し</button>
     </div>
-    <div class="tgroup"><button class="btn" id="lPrevBtn" title="サンプルの車両(または選んだ車両)でチラシの仕上がりを確認します">👁 プレビュー</button></div>
-    <div class="tgroup" style="margin-left:auto;"><button class="btn accent" id="lsBtn">⚙ レイアウト設定</button></div>
+    <div class="tgroup" style="margin-left:auto;"><button class="btn pv" id="lPrevBtn" title="サンプルの車両(または選んだ車両)でチラシの仕上がりを確認します">👁 プレビュー</button><button class="btn accent" id="lsBtn">⚙ レイアウト設定</button></div>
   </div>
   <div class="toolbar">
     <div class="tgroup">
       <button class="btn main" id="addSlot">＋ コマ追加</button>
       <button class="btn img" id="addImg">🖼 画像追加</button>
+      <button class="btn del" id="delSelBtn" title="選んでいる部品(コマ・画像)を削除します">🗑 選択削除</button>
       <input type="file" id="imgFile" accept="image/*" multiple style="display:none">
     </div>
     <div class="tgroup"><span class="lbl">格子配置</span>
@@ -283,9 +287,9 @@ input[type=number]{width:64px;}
   </div>
 </div>
 <div class="settingsOverlay" id="aaViewOverlay" style="display:none;">
-  <div class="settingsPanel" style="width:min(1000px,96vw);max-height:94vh;overflow:auto;">
+  <div class="settingsPanel" style="width:min(1880px,98vw);max-height:96vh;overflow:auto;">
     <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px;"><h3 style="margin:0;">AA出品票(閲覧のみ)</h3><span class="hint" id="aaViewLabel"></span><button class="btn" id="aaViewClose" style="margin-left:auto;">閉じる</button></div>
-    <div id="aaViewBody" style="display:flex;gap:8px;flex-wrap:wrap;"></div>
+    <div id="aaViewBody" style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-start;justify-content:center;"></div>
     <div class="hint" style="margin-top:6px;">画像をクリックで拡大します。AA画像の登録・変更は ads.html / pricetag.html / pricing.html で行います。</div>
   </div>
 </div>
@@ -340,9 +344,8 @@ input[type=number]{width:64px;}
     <div class="tgroup"><span class="lbl">表示</span><button class="btn" id="cZoomOut">－</button><button class="btn" id="cZoomFit">全体</button><button class="btn" id="cZoomIn">＋</button></div>
     <div class="tgroup"><button class="btn" id="cUndo">↶ 元に戻す</button><button class="btn" id="cRedo">↷ やり直し</button></div>
     <div class="tgroup"><span class="lbl" title="価格の数字・.8・万円の位置や大きさ・縦横比を、2桁と3桁で別々に保存します">価格の桁数(編集中)</span><button class="btn layBtn" id="cDg2">2桁</button><button class="btn layBtn" id="cDg3">3桁</button></div>
-    <div class="tgroup"><button class="btn" id="cPrevBtn" title="サンプルの内容で、3桁と2桁の仕上がりを確認します">👁 プレビュー</button></div>
     <div class="tgroup"><button class="btn main" id="cCloudBtn">💾 保存</button></div>
-    <div class="tgroup" style="margin-left:auto;"><button class="btn accent" id="cSetBtn">⚙ コマ設定</button></div>
+    <div class="tgroup" style="margin-left:auto;"><button class="btn pv" id="cPrevBtn" title="このコマだけを、価格の3桁・2桁で確認します">👁 コマプレビュー</button><button class="btn pv" id="cPrevAllBtn" title="このコマデザインで、レイアウト全体の仕上がりを確認します">👁 全体プレビュー</button><button class="btn accent" id="cSetBtn">⚙ コマ設定</button></div>
   </div>
   <div class="main-area">
     <div class="stageWrap" id="cWrap"><div class="stageInner"><div id="cStage"></div></div></div>
@@ -1235,6 +1238,7 @@ $('rotBtn').onclick=function(){
 $('zoomIn').onclick=function(){zoomBy(1.25);};
 $('zoomOut').onclick=function(){zoomBy(0.8);};
 $('addSlot').onclick=addSlot;
+$('delSelBtn').onclick=function(){if(!sel.length){toast('削除する部品が選ばれていません');return;}delSel();};
 $('addImg').onclick=function(){$('imgFile').click();};
 $('imgFile').onchange=function(){addImages(this.files);this.value='';};
 $('gridBtn').onclick=gridArrange;
@@ -1261,7 +1265,7 @@ $('settingsOverlay').onclick=function(e){if(e.target===this)this.style.display='
 /* ---------- ファイル保存/読込(画像込みのJSON) ---------- */
 $('saveFile').onclick=function(){
   var used={}; S.items.forEach(function(i){if(i.imgId&&IMGS[i.imgId])used[i.imgId]=IMGS[i.imgId];});
-  var blob=new Blob([JSON.stringify({app:'ciel-flyer',version:'1.31',state:S,designs:G.designs,images:used})],{type:'application/json'});
+  var blob=new Blob([JSON.stringify({app:'ciel-flyer',version:'1.32',state:S,designs:G.designs,images:used})],{type:'application/json'});
   var a=document.createElement('a'); a.href=URL.createObjectURL(blob);
   var d=new Date(), pad=function(n){return ('0'+n).slice(-2);};
   a.download='flyer-layout-'+d.getFullYear()+pad(d.getMonth()+1)+pad(d.getDate())+'-'+pad(d.getHours())+pad(d.getMinutes())+'.json';
@@ -1434,7 +1438,7 @@ function esc2(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;');}
 function buildItemEl(it,pxu,data,edit){
   var el=document.createElement('div'); el.className='ci'+(edit?' edit':''); el.dataset.id=it.id;
   el.style.cssText='position:absolute;left:'+it.x*pxu+'px;top:'+it.y*pxu+'px;width:'+it.w*pxu+'px;height:'+it.h*pxu+'px;display:flex;align-items:center;justify-content:'+(it.align==='left'?'flex-start':it.align==='right'?'flex-end':'center')+';'+
-    'transform:rotate('+(it.rot||0)+'deg) skewX('+(it.skew||0)+'deg);transform-origin:center;'+(it.hidden?'display:none;':'')+(edit&&it.locked?'pointer-events:none;':'');
+    'transform:rotate('+(it.rot||0)+'deg) skewX('+(it.skew||0)+'deg);transform-origin:center;'+(((edit&&it.hidden)||(!edit&&it.off))?'display:none;':'')+(edit&&it.off?'opacity:.3;':'')+(edit&&it.locked?'pointer-events:none;':'');
   if(it.type==='image'){
     var im=document.createElement('img'); var d=IMGS[it.imgId];
     im.style.cssText='width:100%;height:100%;display:block;pointer-events:none;-webkit-user-drag:none;opacity:'+(it.opacity==null?1:it.opacity);
@@ -1541,6 +1545,7 @@ function cRender(){
   var wrap=$('cWrap'), H=cH(), aw=wrap.clientWidth-140, ah=wrap.clientHeight-140;
   CE.scale=Math.max(0.05,Math.min(aw/1000,ah/H))*CE.zoom;
   var st=$('cStage'); buildCellEl(cc(),CE.k,1000*CE.scale,null,true,st); st._fit();
+  var cg=document.createElement('div'); cg.className='cellGuide'; st.appendChild(cg);
   st.style.margin='0 auto'; st.style.boxShadow='0 2px 14px rgba(0,0,0,.35)'; st.style.touchAction='none'; st.style.userSelect='none';
   cOverlay(); cLayers(); cProps(); cSyncBar();
 }
@@ -1774,8 +1779,8 @@ function cpCopyInit(){
 }
 function openCellSettings(){
   $('cSetName').textContent=CE.k;
-  var c=cc(), b=$('cSetBody'), h='<h4>表示する項目(チェックを外すと表示も出力もされません)</h4><div style="display:grid;grid-template-columns:1fr 1fr;gap:2px 12px;">';
-  c.items.slice().reverse().forEach(function(it){h+='<label style="font-size:12.5px;"><input type="checkbox" data-hid="'+it.id+'" '+(it.hidden?'':'checked')+'> '+esc(itemLabel(it))+'</label>';});
+  var c=cc(), b=$('cSetBody'), h='<h4>出力に表示する項目(チェックを外すと、プレビュー・出力に出ません。編集中は薄く表示されます)</h4><div style="display:grid;grid-template-columns:1fr 1fr;gap:2px 12px;">';
+  c.items.slice().reverse().forEach(function(it){h+='<label style="font-size:12.5px;"><input type="checkbox" data-hid="'+it.id+'" '+(it.off?'':'checked')+'> '+esc(itemLabel(it))+'</label>';});
   h+='</div><h4>サンプル文字列(編集中の見た目の確認用。実際の出力では車両データに置き換わります)</h4><div class="prop" style="grid-template-columns:150px 1fr;">';
   h+='<span></span><span class="hint">価格は「168.8」のように入れると、数字・.8・万円に自動で分かれます</span>';
   Object.keys(SAMPLE_LABELS).forEach(function(k){
@@ -1791,7 +1796,7 @@ function openCellSettings(){
   b.innerHTML=h; $('maxPx2').value=$('maxPx').value;
   cpCopyInit();
   $('maxPx2').onchange=function(){$('maxPx').value=this.value;$('maxPx').onchange();};
-  [].forEach.call(b.querySelectorAll('[data-hid]'),function(cb){cb.onchange=function(){var it=cById(cb.dataset.hid);if(it){it.hidden=!cb.checked;cCommit();cRender();}};});
+  [].forEach.call(b.querySelectorAll('[data-hid]'),function(cb){cb.onchange=function(){var it=cById(cb.dataset.hid);if(it){it.off=!cb.checked;cCommit();cRender();}};});
   [].forEach.call(b.querySelectorAll('[data-sk]'),function(inp){inp.onchange=function(){
     if(!c.sample)c.sample={}; var k=inp.dataset.sk; if(inp.value===SAMPLES[k])delete c.sample[k]; else c.sample[k]=inp.value; cCommit(); cRender();};});
   $('cPhotoAnchor').onchange=function(){c.photoAnchor=this.value;cCommit();cRender();};
@@ -2234,7 +2239,7 @@ function openAaView(vin){
   FB.getAa(vin).then(function(d){
     d=d||{}; var srcs=['img1','img2'].map(function(k){return d[k];}).filter(Boolean);
     b.innerHTML=srcs.length?'':'<div class="hint">AA画像は登録されていません。</div>';
-    srcs.forEach(function(src){var im=document.createElement('img');im.src=src;im.style.cssText='max-width:48%;max-height:80vh;cursor:zoom-in;border:1px solid var(--border);border-radius:6px;';
+    srcs.forEach(function(src){var im=document.createElement('img');im.src=src;im.style.cssText='max-width:49%;max-height:88vh;width:auto;height:auto;object-fit:contain;cursor:zoom-in;border:1px solid var(--border);border-radius:6px;';
       im.onclick=function(){$('aaZoomImg2').src=src;$('aaZoomOverlay2').style.display='flex';};b.appendChild(im);});
   }).catch(function(e){b.innerHTML='<div class="hint">読み込みエラー: '+esc(e.message||e)+'</div>';});
 }
@@ -2358,7 +2363,6 @@ function buildPageEl(layout,cars,page,pxw){
   var ss=layout.items.filter(function(i){return i.type==='slot';}).sort(function(a,b){return a.no-b.no;});
   var per=ss.length, cellRoots=[];
   layout.items.forEach(function(it,idx){
-    if(it.hidden)return;
     if(it.type==='image'){
       var d=IMGS[it.imgId]; if(!d)return;
       var im=document.createElement('img'); im.src=d.data;
@@ -2375,8 +2379,8 @@ function buildPageEl(layout,cars,page,pxw){
   return root;
 }
 var PV={page:0,mode:'cars'};
-function sampleRows(n){
-  var cell=G.cells[S.design], m=valMap(cell.sample,null), sp=cell.samplePhoto, photo=(sp&&IMGS[sp])?IMGS[sp].data:'', rows=[];
+function sampleRows(n,dk){
+  var cell=G.cells[dk||S.design], m=valMap(cell.sample,null), sp=cell.samplePhoto, photo=(sp&&IMGS[sp])?IMGS[sp].data:'', rows=[];
   for(var i=0;i<n;i++)rows.push({vin:'__s'+i,name:m.name,grade:m.grade,year:m.year,mileage:m.mileage,shaken:m.shaken,repairHas:/あり/.test(m.repair||''),color:m.color,total:m.total,body:m.body,photoData:photo,photoInfoKey:sp?('s:'+sp):''});
   return rows;
 }
@@ -2396,22 +2400,23 @@ function renderCellPreview(c){
 }
 function renderPreview(){
   var c=$('carPrevBody'); c.innerHTML='';
-  $('carPrevPrev').style.display=$('carPrevNext').style.display=(PV.mode==='cell')?'none':'';
+  $('carPrevPrev').style.display=$('carPrevNext').style.display=(PV.mode==='cell'||PV.mode==='cellAll'||PV.mode==='sample')?'none':'';
   if(PV.mode==='cell'){renderCellPreview(c);return;}
   var cars, pages;
-  if(PV.mode==='sample'){cars=sampleRows(slots().length);pages=1;}
+  var L=S; if(PV.mode==='cellAll')L=Object.assign({},S,{design:CE.k});
+  if(PV.mode==='sample'||PV.mode==='cellAll'){cars=sampleRows(slots().length,L.design);pages=1;}
   else{cars=S.cars.map(function(v){return v?(CARS.byVin[v]||null):null;});pages=Math.max(1,carPages());}
   if(PV.page>=pages)PV.page=pages-1; if(PV.page<0)PV.page=0;
   var maxW=Math.min(900,innerWidth-80), maxH=innerHeight-190, pxw=Math.max(200,Math.min(maxW,maxH*S.paper.w/S.paper.h));
   var wrap=document.createElement('div'); wrap.style.cssText='margin:0 auto;width:'+pxw+'px;background:repeating-conic-gradient(#d9d9d9 0 25%,#f4f4f4 0 50%) 0 0/20px 20px;box-shadow:0 2px 14px rgba(0,0,0,.35);';
-  var pg=buildPageEl(S,cars,PV.page,pxw); wrap.appendChild(pg); c.appendChild(wrap); pg._fit();
-  $('carPrevInfo').textContent=(PV.mode==='sample'?'サンプルの内容で表示(車両は選ばれていません) ':'')+'ページ '+(PV.page+1)+' / '+pages+'(背景の市松模様は「透過」を表します)';
+  var pg=buildPageEl(L,cars,PV.page,pxw); wrap.appendChild(pg); c.appendChild(wrap); pg._fit();
+  $('carPrevInfo').textContent=(PV.mode==='cellAll'?'コマデザイン'+CE.k+'を使った全体イメージ(サンプルの内容) ':(PV.mode==='sample'?'サンプルの内容で表示(車両は選ばれていません) ':''))+'ページ '+(PV.page+1)+' / '+pages+'(背景の市松模様は「透過」を表します)';
 }
 function openPreview(mode){
   PV.mode=mode; PV.page=0; $('carPrevOverlay').style.display='flex';
   $('carPrevBody').innerHTML='<div class="hint">読み込み中…</div>';
   var jobs=[];
-  var cell=G.cells[mode==='cell'?CE.k:S.design], sp=cell&&cell.samplePhoto;
+  var cell=G.cells[(mode==='cell'||mode==='cellAll')?CE.k:S.design], sp=cell&&cell.samplePhoto;
   if(mode==='cars'){
     S.cars.filter(Boolean).forEach(function(v){jobs.push(getCarPhoto(v).then(function(d){return d?analyzePhoto(v,d):null;}));});
   }else if(sp&&IMGS[sp]&&cell.photoAutoFit){jobs.push(analyzePhoto('s:'+sp,IMGS[sp].data));}
@@ -2427,6 +2432,7 @@ $('lPrevBtn').onclick=function(){
   openPreview((S.cars.filter(Boolean).length&&CARS.loaded)?'cars':'sample');
 };
 $('cPrevBtn').onclick=function(){openPreview('cell');};
+$('cPrevAllBtn').onclick=function(){if(!slots().length){alert('このレイアウトにコマがありません。「① レイアウト」でコマを置いてから押してください。');return;}openPreview('cellAll');};
 $('carPrevPrev').onclick=function(){PV.page--;renderPreview();};
 $('carPrevNext').onclick=function(){PV.page++;renderPreview();};
 $('carPrevClose').onclick=function(){$('carPrevOverlay').style.display='none';};
@@ -2441,7 +2447,7 @@ function applyUI(){
   var r=document.documentElement.style;
   r.setProperty('--slotBg',hex2rgba(UI.fill,UI.fillA/100)); r.setProperty('--slotBc',UI.bc); r.setProperty('--slotBw',UI.bw+'px');
   r.setProperty('--slotTc',UI.tc); r.setProperty('--hc',UI.hc); r.setProperty('--paperBg',UI.paper); r.setProperty('--pc',UI.pc); r.setProperty('--dim',UI.dimA/100);
-  $('stage').classList.toggle('dimOut',!!UI.dim);
+  $('stage').classList.toggle('dimOut',!!UI.dim); $('cStage').classList.toggle('dimOut',!!UI.dim);
 }
 function saveUI(){try{localStorage.setItem('flyerUI',JSON.stringify(UI));}catch(e){}}
 function syncUIForm(){
