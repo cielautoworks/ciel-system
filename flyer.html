@@ -114,7 +114,7 @@ input[type=number]{width:64px;}
 <body>
 <header>
   <div class="header-row">
-    <h1>チラシ作成 <span style="font-size:12px;font-weight:400;opacity:.75;">v1.05</span></h1>
+    <h1>チラシ作成 <span style="font-size:12px;font-weight:400;opacity:.75;">v1.06</span></h1>
     <div class="hdrBtns">
       <button type="button" class="updateBtn headerRefreshBtn" id="settingsBtn">⚙ 設定</button>
       <a class="updateBtn headerRefreshBtn" href="./index.html">🏠 一覧へ</a>
@@ -182,7 +182,7 @@ input[type=number]{width:64px;}
       <button class="btn" id="renumBtn" title="上から下、左から右の順に1から振り直す">位置順に振り直す</button>
     </div>
     <div class="tgroup">
-      <label><input type="checkbox" id="linkSize" checked> コマのサイズを全て連動</label>
+      <label><input type="checkbox" id="linkSize"> コマのサイズを全て連動</label>
     </div>
     <span class="hint">2つ以上選ぶと選んだもの同士、1つだけ選ぶと用紙に対して揃います。Shift+クリックで複数選択、空きをドラッグで範囲選択、Altで吸着オフ。</span>
   </div>
@@ -232,6 +232,17 @@ input[type=number]{width:64px;}
     <button class="settingsCloseBtn" id="settingsCloseBtn">閉じる</button>
   </div>
 </div>
+<div class="settingsOverlay" id="leaveOverlay" style="display:none;">
+  <div class="settingsPanel">
+    <h3>保存していない変更があります</h3>
+    <p style="font-size:13px;margin:0 0 14px;">「💾 保存」を押した後に変更があります。保存してから移動しますか?<br><span class="hint">(位置やサイズは自動で保存されています。画像などを含めて保存するかどうかの確認です)</span></p>
+    <div style="display:flex;flex-direction:column;gap:8px;">
+      <button class="btn main" id="leaveSave">保存して移動</button>
+      <button class="btn" id="leaveNo">保存しないで移動</button>
+      <button class="btn" id="leaveCancel">キャンセル(このページに残る)</button>
+    </div>
+  </div>
+</div>
 <div id="toast"></div>
 
 <script>
@@ -274,11 +285,11 @@ function commit(){
   var s=snap();
   if(undoStack.length&&undoStack[undoStack.length-1]===s)return;
   undoStack.push(s); if(undoStack.length>100)undoStack.shift();
-  redoStack=[]; scheduleSave(); updateUndoBtns();
+  redoStack=[]; setDirty(true); scheduleSave(); updateUndoBtns();
 }
 function restore(s){var ua=S.ua;S=JSON.parse(s);S.ua=Date.now();G.layouts[G.cur]=S;sel=sel.filter(function(id){return byId(id);});syncToolbar();render();}
-function undo(){ if(undoStack.length<2)return; redoStack.push(undoStack.pop()); restore(undoStack[undoStack.length-1]); scheduleSave(); updateUndoBtns(); }
-function redo(){ if(!redoStack.length)return; var s=redoStack.pop(); undoStack.push(s); restore(s); scheduleSave(); updateUndoBtns(); }
+function undo(){ if(undoStack.length<2)return; setDirty(true); redoStack.push(undoStack.pop()); restore(undoStack[undoStack.length-1]); scheduleSave(); updateUndoBtns(); }
+function redo(){ if(!redoStack.length)return; setDirty(true); var s=redoStack.pop(); undoStack.push(s); restore(s); scheduleSave(); updateUndoBtns(); }
 function updateUndoBtns(){$('undoBtn').disabled=undoStack.length<2;$('redoBtn').disabled=!redoStack.length;}
 
 /* ---------- 自動保存(このブラウザ内 IndexedDB) ---------- */
@@ -323,18 +334,40 @@ function updateCloudBtn(){
   var n=unsavedImgs().length, b=$('cloudBtn'); if(!b)return;
   b.textContent='💾 保存'+(n?'(画像 '+n+'枚が未保存)':''); b.disabled=!FB;
 }
-$('cloudBtn').onclick=function(){
-  if(!FB)return;
+var dirty=false;
+function setDirty(v){dirty=v;}
+function cloudSave(skipConfirm){
+  if(!FB)return Promise.reject();
   var ids=unsavedImgs();
-  if(!confirm('「'+(S.name||'レイアウト')+'」を上書き保存しますか?\n(配置データと、画像 '+ids.length+'枚をFirebaseに保存します)'))return; cloudStatus('☁ 保存中…');
+  if(!skipConfirm&&!confirm('「'+(S.name||'レイアウト')+'」を上書き保存しますか?\n(配置データと、画像 '+ids.length+'枚をFirebaseに保存します)'))return Promise.resolve(false); cloudStatus('☁ 保存中…');
   var chain=Promise.resolve(), done=0;
   ids.forEach(function(id){chain=chain.then(function(){
     return FB.saveImage(id,{name:IMGS[id].name||'',data:IMGS[id].data,ua:Date.now()}).then(function(){IMGS[id].saved=true;done++;updateCloudBtn();});
   });});
-  chain.then(function(){return pushLayout(S);})
-    .then(function(){doSave();cloudStatus('☁ 保存済み');toast('保存しました(画像 '+done+'枚)');updateCloudBtn();})
-    .catch(function(e){console.error(e);cloudStatus('☁ 保存できませんでした');toast('保存できませんでした');});
-};
+  return chain.then(function(){return pushLayout(S);})
+    .then(function(){setDirty(false);doSave();cloudStatus('☁ 保存済み');toast('保存しました(画像 '+done+'枚)');updateCloudBtn();return true;})
+    .catch(function(e){console.error(e);cloudStatus('☁ 保存できませんでした');toast('保存できませんでした');return false;});
+}
+$('cloudBtn').onclick=function(){cloudSave(false).catch(function(){});};
+/* 他の画面へ移る前の確認(保存ボタンを押した後に変更がある場合) */
+function guardLeave(go){
+  if(!dirty){go();return;}
+  $('leaveOverlay').style.display='flex';
+  $('leaveSave').style.display=FB?'':'none';
+  $('leaveSave').onclick=function(){
+    $('leaveOverlay').style.display='none';
+    cloudSave(true).then(function(ok){if(ok)go();}).catch(function(){});
+  };
+  $('leaveNo').onclick=function(){$('leaveOverlay').style.display='none';setDirty(false);go();};
+  $('leaveCancel').onclick=function(){$('leaveOverlay').style.display='none';};
+}
+window.flyerGuardLeave=guardLeave;
+window.addEventListener('beforeunload',function(e){if(dirty){e.preventDefault();e.returnValue='';}});
+document.addEventListener('click',function(e){
+  var a=e.target.closest&&e.target.closest('a[href]');
+  if(!a||!dirty||e.ctrlKey||e.metaKey||e.shiftKey||a.target==='_blank')return;
+  e.preventDefault(); var h=a.href; guardLeave(function(){location.href=h;});
+});
 function tryRemote(){ if(FB&&localLoaded&&!remoteDone){remoteDone=true;remoteSync();} }
 window.addEventListener('flyerfb',function(){FB=window.flyerFB;tryRemote();updateCloudBtn();});
 function remoteSync(){
@@ -969,7 +1002,7 @@ $('settingsOverlay').onclick=function(e){if(e.target===this)this.style.display='
 /* ---------- ファイル保存/読込(画像込みのJSON) ---------- */
 $('saveFile').onclick=function(){
   var used={}; S.items.forEach(function(i){if(i.imgId&&IMGS[i.imgId])used[i.imgId]=IMGS[i.imgId];});
-  var blob=new Blob([JSON.stringify({app:'ciel-flyer',version:'1.05',state:S,designs:G.designs,images:used})],{type:'application/json'});
+  var blob=new Blob([JSON.stringify({app:'ciel-flyer',version:'1.06',state:S,designs:G.designs,images:used})],{type:'application/json'});
   var a=document.createElement('a'); a.href=URL.createObjectURL(blob);
   var d=new Date(), pad=function(n){return ('0'+n).slice(-2);};
   a.download='flyer-layout-'+d.getFullYear()+pad(d.getMonth()+1)+pad(d.getDate())+'-'+pad(d.getHours())+pad(d.getMinutes())+'.json';
