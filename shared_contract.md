@@ -39,21 +39,23 @@ const firebaseConfig = {
 
 | ノード | 主な書き込み元 | その他の書き込み(実態) | 読取専用で参照するツール | 内容 |
 |---|---|---|---|---|
-| `stock/{id}` | car-app | ハブ・pricing.html(棚卸CSVで未登録車のみ新規登録) | ads.html(在庫一覧。v1.33〜)、ju-history.html、pricetag.html | 在庫車両。フィールド例: `id, vin, name, color, year, shaken, sup, date, price, total, regNo, status1, status2, memo`。car-appはこのほか `cleaned, photographed, maintained, needsParts, isLoaner, addedAt, displayNote, deliveryClean, deliveryMaint, docDone` も持つ |
+| `stock/{id}` | car-app | ハブ・pricing.html(棚卸CSVで未登録車のみ新規登録) | ads.html(在庫一覧。v1.33〜)、ju-history.html、pricetag.html、flyer.html(掲載車両の選択) | 在庫車両。フィールド例: `id, vin, name, color, year, shaken, sup, date, price, total, regNo, status1, status2, memo`。car-appはこのほか `cleaned, photographed, maintained, needsParts, isLoaner, addedAt, displayNote, deliveryClean, deliveryMaint, docDone` も持つ |
 | `stockArchive/{id}` | car-app | - | ハブ、ju-history.html、pricing.html | 納車済みアーカイブ(stockと同形式＋`archivedAt`) |
 | `cars/{id}` | car-app | - | - | 代車・レンタカー。`stockId`経由でstockを都度参照(vin・colorは持たない) |
 | `juHistory/{normVin}/{source_kai_shuppinNo}` | ju-history.html | pricing.html(精算書CSV取込) | ハブ、pricing.html | オークション出品・落札履歴。フィールド例: `source, kai, date, shuppinNo, carName, grade, nendo, category('shuppin'|'rakusatsu'), status, pref, sharyDai, recycle, shuppinRyo, seiyakuRyo, rakusatsuRyo, jizei, maxBid` |
-| `adsData/{carsensor,goonet,quicknetwork,autoserver,jutentori}` | ads.html | - | pricetag.html(carsensor, goonet) | 各広告サイトの掲載データ |
+| `adsData/{carsensor,goonet,quicknetwork,autoserver,jutentori}` | ads.html | - | pricetag.html(carsensor, goonet)、flyer.html(carsensor, goonet) | 各広告サイトの掲載データ |
 | `adsData/tanaoroshi/{normVin}` | ads.html | car-app・ハブ・pricing.html(CSV取込時に未登録分を追加) | ju-history.html、pricing.html | 棚卸CSV由来データ(`car_name, color, shaken, shiire_date`) |
-| `adsData/lastUpdated, noGyohanVins, manualShufuku` | ads.html | - | pricetag.html(manualShufuku) | 更新日時・業販除外フラグ・修復歴手動設定 |
+| `adsData/lastUpdated, noGyohanVins, manualShufuku` | ads.html | - | pricetag.html(manualShufuku)、flyer.html(manualShufuku) | 更新日時・業販除外フラグ・修復歴手動設定 |
 | `adsData/aaPhotoCounts` | ads.html | car-app・ハブ・pricing.html・pricetag.html(いずれも全体を上書き) | ju-history.html | AA画像枚数 |
 | `aaPhotos/{VIN}` | ads.html | car-app・ハブ・pricing.html・pricetag.html | ju-history.html | AA出品票画像(`img1, img2`)。通信量対策で一覧データとは別パスに保存し、モーダルを開いた時だけ取得する |
-| `pricingData/{normVin}` | pricing.html | ハブ(`manualCost`) | ads.html(`retailTarget`のみ。v1.33〜)、pricetag.html(`body`)、ハブ | 車体価格(`body`)・`extraCost, as, marginTotal, marginWholesale, retailTarget, manualCost, manualRecycle, updatedAt` |
+| `pricingData/{normVin}` | pricing.html | ハブ(`manualCost`) | ads.html(`retailTarget`のみ。v1.33〜)、pricetag.html(`body`)、flyer.html(`body`。支払総額=body+10万円)、ハブ | 車体価格(`body`)・`extraCost, as, marginTotal, marginWholesale, retailTarget, manualCost, manualRecycle, updatedAt` |
 | `priceTagTemplates/{templateId}` | pricetag.html | - | - | 価格表テンプレート設定 |
 | `priceTagData/{vin}/manual/{field}`, `printTarget`, `templateId`, `lastPrintedAt`, `lastPrintedPrice` | pricetag.html | - | - | 一覧の個別編集値・印刷対象・使用テンプレート・最終印刷日時と価格 |
-| `flyerLayouts/{layoutId}` | flyer.html | - | - | チラシのレイアウト(配置・サイズ・番号・コマデザイン等の小さなJSON。画像なし)。キーは各レイアウトのID(英数字)で、数は可変。削除したレイアウトは `{deleted:true, ua}` の目印を残す(他のパソコンへ削除を伝えるため)。変更の0.5秒後に自動保存 |
+| `flyerLayouts/{layoutId}` | flyer.html | - | - | チラシのレイアウト(配置・サイズ・番号・コマデザイン等の小さなJSON。画像なし)。キーは各レイアウトのID(英数字)で、数は可変。削除したレイアウトは `{deleted:true, ua}` の目印を残す(他のパソコンへ削除を伝えるため)。各レイアウトJSONに、選択した車台番号(normVin)の配列 `cars`(掲載順)を含む。変更の0.5秒後に自動保存 |
 | `flyerCells/{A\|B\|C\|D}` | flyer.html | - | - | コマテンプレ(コマデザインA〜D)。`{json:文字列, ua:更新時刻}`。jsonに縦横比・項目配置・外枠設定・飾り画像のIDを含む(画像本体は `flyerImages`)。変更の1.5秒後に自動保存 |
 | `flyerImages/{imgId}` | flyer.html | - | - | チラシのレイアウトに置く画像(WebP/Base64、長辺縮小済み)。「保存」ボタンを押した時だけ書き込む |
+| `flyerCarPhotos/{normVin}` | flyer.html | - | - | チラシ用の背景透過車両画像(1台1枚)。`{name, data:Base64(WebP/PNG・縮小済み), ua}`。AA画像(`aaPhotos`)とは別物 |
+| `flyerCarPhotoIndex/{normVin}` | flyer.html | - | - | `flyerCarPhotos` に画像があるかの目印 `{ua}`(一覧表示用に軽く読むため) |
 | `newsLog` | car-app | ハブ・pricing.html(新規登録の通知) | - | 変更履歴(car-appが3ヶ月より古いものを自動削除) |
 | `inspections`, `inspectionPhotos`, `loanHistories` | car-app | - | - | car-app専用(点検シート・貸出履歴) |
 | `listings`, `listingPhotos` | (廃止) | - | car-app(読取・削除のみ) | v1.90で廃止した旧方式の残り |
