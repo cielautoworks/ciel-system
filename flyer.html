@@ -108,6 +108,12 @@ input[type=number]{width:64px;}
 #cWrap .stageInner{padding:120px;}
 .handle.n,.handle.s{cursor:ns-resize;}
 .handle.e,.handle.w{cursor:ew-resize;}
+.btn.accent{background:var(--pink);border-color:var(--pink);color:#fff;font-weight:700;font-size:14px;padding:7px 16px;box-shadow:0 0 0 2px rgba(217,122,154,.25);}
+.sw{width:15px;height:15px;border:1px solid var(--border);border-radius:3px;padding:0;cursor:pointer;flex:none;}
+.crow{display:flex;gap:4px;align-items:center;flex-wrap:wrap;}
+.crow input[type=number]{width:54px;}
+.crow input[type=color]{width:32px;height:24px;padding:0;border:1px solid var(--border);background:transparent;}
+#stage{isolation:isolate;}
 .xhair{position:absolute;pointer-events:none;background:rgba(255,40,40,.75);}
 .layBtn.active{background:var(--sky);border-color:var(--sky);color:#fff;font-weight:700;}
 .dsgn label{margin-right:6px;cursor:pointer;}
@@ -120,7 +126,7 @@ input[type=number]{width:64px;}
 <body>
 <header>
   <div class="header-row">
-    <h1>チラシ作成 <span style="font-size:12px;font-weight:400;opacity:.75;">v1.12</span></h1>
+    <h1>チラシ作成 <span style="font-size:12px;font-weight:400;opacity:.75;">v1.13</span></h1>
     <div class="hdrBtns">
       <button type="button" class="updateBtn headerRefreshBtn" id="settingsBtn">⚙ 設定</button>
       <a class="updateBtn headerRefreshBtn" href="./index.html">🏠 一覧へ</a>
@@ -138,7 +144,7 @@ input[type=number]{width:64px;}
     <div class="tgroup"><span class="lbl">レイアウト</span>
       <select id="laySel" style="max-width:240px"></select>
       <span class="hint" id="infoLine"></span>
-      <button class="btn" id="lsBtn">⚙ レイアウト設定</button>
+      <button class="btn accent" id="lsBtn">⚙ レイアウト設定</button>
     </div>
     <div class="tgroup">
       <button class="btn main" id="cloudBtn" title="背景などの画像も含めて、いまのレイアウトをFirebaseに保存します">💾 保存</button>
@@ -212,11 +218,11 @@ input[type=number]{width:64px;}
     <div class="tgroup"><span class="lbl">縦横比(横:縦)</span><input type="number" id="caw" min="1" step="1" style="width:50px"> : <input type="number" id="cah" min="1" step="1" style="width:50px"></div>
     <div class="tgroup"><span class="lbl">外枠</span><label><input type="checkbox" id="cfOn">あり</label>
       色<input type="color" id="cfColor"> 太さ<input type="number" id="cfW" min="0" step="1" style="width:55px"> 角丸<input type="number" id="cfR" min="0" step="1" style="width:55px">
-      <label><input type="checkbox" id="cbgOn">背景色</label><input type="color" id="cbg"></div>
+      <label><input type="checkbox" id="cbgOn">背景色(外すと透過)</label><input type="color" id="cbg"></div>
     <div class="tgroup"><span class="lbl">一括フォント</span><select id="cBulkFont"></select><button class="btn" id="cBulkBtn">全ての文字に適用</button></div>
   </div>
   <div class="toolbar">
-    <div class="tgroup"><button class="btn" id="cSetBtn">⚙ コマ設定</button></div>
+    <div class="tgroup"><button class="btn accent" id="cSetBtn">⚙ コマ設定</button></div>
     <div class="tgroup"><span class="lbl">項目を追加</span><select id="cFieldSel"></select><button class="btn main" id="cAddField">＋ 追加</button>
       <button class="btn" id="cAddLabel">＋ 自由文字</button><button class="btn" id="cAddImg">🖼 飾り画像</button><input type="file" id="cImgFile" accept="image/*" multiple style="display:none"></div>
     <div class="tgroup"><span class="lbl">左右位置</span><button class="btn" data-cal="left">左</button><button class="btn" data-cal="hc">中央</button><button class="btn" data-cal="right">右</button></div>
@@ -1079,7 +1085,7 @@ $('settingsOverlay').onclick=function(e){if(e.target===this)this.style.display='
 /* ---------- ファイル保存/読込(画像込みのJSON) ---------- */
 $('saveFile').onclick=function(){
   var used={}; S.items.forEach(function(i){if(i.imgId&&IMGS[i.imgId])used[i.imgId]=IMGS[i.imgId];});
-  var blob=new Blob([JSON.stringify({app:'ciel-flyer',version:'1.12',state:S,designs:G.designs,images:used})],{type:'application/json'});
+  var blob=new Blob([JSON.stringify({app:'ciel-flyer',version:'1.13',state:S,designs:G.designs,images:used})],{type:'application/json'});
   var a=document.createElement('a'); a.href=URL.createObjectURL(blob);
   var d=new Date(), pad=function(n){return ('0'+n).slice(-2);};
   a.download='flyer-layout-'+d.getFullYear()+pad(d.getMonth()+1)+pad(d.getDate())+'-'+pad(d.getHours())+pad(d.getMinutes())+'.json';
@@ -1145,6 +1151,9 @@ function valMap(sample,data){
   });
   return m;
 }
+var INFO=['name','grade','year','mileage','shaken'];
+var SYNC_PRICE=['color','o1w','o1c','o2w','o2c','font','weight','ls','stretch','skew','rot'];
+var SYNC_INFO=SYNC_PRICE.concat(['size']);
 var PRICES={total:['支払総額(価格の大きな数字)','168.8'],body:['車体価格(価格の大きな数字)','159.8']};
 var CE={k:'A',sel:[],undo:[],redo:[],zoom:1,drag:null,scale:1};
 function cc(){return G.cells[CE.k];}
@@ -1154,7 +1163,8 @@ function cById(id){var a=cc().items;for(var i=0;i<a.length;i++)if(a[i].id===id)r
 function mkItem(type,field,extra){
   var it={id:uid(),type:type,field:field||'',x:100,y:100,w:400,h:100,rot:0,skew:0,
     font:0,weight:900,color:'#111111',align:'center',size:100,prefix:'',suffix:'',maxChars:0,
-    o1w:0,o1c:'#ffffff',o2w:0,o2c:'#7a0d0d',ls:0,stretch:false,text:''};
+    o1w:0,o1c:'#ffffff',o2w:0,o2c:'#7a0d0d',ls:0,stretch:false,autoW:false,sync:false,text:''};
+  if(type==='text'&&INFO.indexOf(field)>=0)it.autoW=true;
   if(type==='price'){it.color='#dc2626';it.tailPct=55;it.manyenPct=45;it.tailFont=-1;it.manyenFont=-1;it.manyenColor='';it.showManyen=true;it.w=800;it.h=240;}
   if(type==='photo'){it.w=900;it.h=560;}
   if(type==='image'){it.opacity=1;}
@@ -1202,6 +1212,7 @@ function ensureCells(){
     if(!G.cells[k])G.cells[k]=defaultCell(k);
     var c=G.cells[k]; if(!c.frame)c.frame={on:true,color:'#222222',w:6,radius:24,bgOn:true,bg:'#ffffff'};
     migratePrice(c);
+    c.items.forEach(function(i){if(i.type==='text'&&INFO.indexOf(i.field)>=0&&i.autoW===undefined)i.autoW=true;});
     if(c.aspect)G.designs[k]=c.aspect; else c.aspect={w:G.designs[k].w,h:G.designs[k].h};
   });
 }
@@ -1233,7 +1244,7 @@ function esc2(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;');}
 function buildItemEl(it,pxu,data,edit){
   var el=document.createElement('div'); el.className='ci'+(edit?' edit':''); el.dataset.id=it.id;
   el.style.cssText='position:absolute;left:'+it.x*pxu+'px;top:'+it.y*pxu+'px;width:'+it.w*pxu+'px;height:'+it.h*pxu+'px;display:flex;align-items:center;justify-content:'+(it.align==='left'?'flex-start':it.align==='right'?'flex-end':'center')+';'+
-    'transform:rotate('+(it.rot||0)+'deg) skewX('+(it.skew||0)+'deg);transform-origin:center;'+(it.hidden?'display:none;':'');
+    'transform:rotate('+(it.rot||0)+'deg) skewX('+(it.skew||0)+'deg);transform-origin:center;'+(it.hidden?'display:none;':'')+(edit&&it.locked?'pointer-events:none;':'');
   if(it.type==='image'){
     var im=document.createElement('img'); var d=IMGS[it.imgId];
     im.style.cssText='width:100%;height:100%;display:block;pointer-events:none;-webkit-user-drag:none;opacity:'+(it.opacity==null?1:it.opacity);
@@ -1284,6 +1295,14 @@ function fitItemEl(el,it,pxu){
   ct.style.fontSize=fs+'px';
   var w=ct.offsetWidth;
   ct.style.transform='';
+  if(it.autoW&&!it.stretch&&w>0){
+    var nwu=Math.max(10,w/pxu), ow=it.w;
+    if(Math.abs(nwu-ow)>0.5){
+      if(it.align==='center')it.x+=(ow-nwu)/2; else if(it.align==='right')it.x+=ow-nwu;
+      it.w=nwu; el.style.left=it.x*pxu+'px'; el.style.width=it.w*pxu+'px';
+    }
+    return;
+  }
   if(it.stretch&&w>0){
     ct.style.transformOrigin=(it.align==='left'?'left':it.align==='right'?'right':'center')+' center';
     ct.style.transform='scaleX('+(bw/w)+')';
@@ -1292,8 +1311,8 @@ function fitItemEl(el,it,pxu){
 function buildCellEl(cell,k,pxw,data,edit,rootEl){
   var d=G.designs[k], pxu=pxw/1000, hpx=pxw*d.h/d.w, f=cell.frame||{};
   var root=rootEl||document.createElement('div'); root.innerHTML='';
-  root.style.cssText='position:relative;width:'+pxw+'px;height:'+hpx+'px;overflow:'+(edit?'visible':'hidden')+';box-sizing:border-box;'+(edit?'outline:1px dashed #999;':'')+
-    (f.bgOn?'background:'+f.bg+';':'background:transparent;')+'border-radius:'+((f.radius||0)*pxu)+'px;';
+  root.style.cssText='position:relative;isolation:isolate;width:'+pxw+'px;height:'+hpx+'px;overflow:'+(edit?'visible':'hidden')+';box-sizing:border-box;'+(edit?'outline:1px dashed #999;':'')+
+    (f.bgOn?'background:'+f.bg+';':(edit?'background:repeating-conic-gradient(#d9d9d9 0 25%,#f4f4f4 0 50%) 0 0/20px 20px;':'background:transparent;'))+'border-radius:'+((f.radius||0)*pxu)+'px;';
   var dm=valMap(cell.sample,data);
   if(!dm.photo&&edit&&cell.showSample&&cell.samplePhoto&&IMGS[cell.samplePhoto])dm.photo=IMGS[cell.samplePhoto].data;
   var els=[];
@@ -1412,6 +1431,42 @@ $('cImgFile').onchange=function(){
     fr.readAsDataURL(f);});});});
   chain.then(function(){cCommit();cRender();});
 };
+function syncGroup(it){
+  if(it.type!=='text')return null;
+  var f=it.field, m=/^(total|body)(Main|Tail|Unit)$/.exec(f), items=cc().items;
+  if(m){
+    var base=m[1], mem=items.filter(function(x){return x.type==='text'&&(x.field===base+'Main'||((x.field===base+'Tail'||x.field===base+'Unit')&&x.sync));});
+    if(mem.length<2)return null;
+    if(mem.indexOf(it)<0)return null;
+    return {mem:mem,props:SYNC_PRICE};
+  }
+  if(INFO.indexOf(f)>=0&&it.sync){
+    var mem2=items.filter(function(x){return x.type==='text'&&INFO.indexOf(x.field)>=0&&x.sync;});
+    return mem2.length>1?{mem:mem2,props:SYNC_INFO}:null;
+  }
+  return null;
+}
+function syncPropagate(it,k){
+  var g=syncGroup(it); if(!g||g.props.indexOf(k)<0)return;
+  g.mem.forEach(function(m){if(m!==it)m[k]=it[k];});
+}
+function syncAdopt(it){ // 同期をONにした時、グループの見た目に合わせる
+  var g=syncGroup(it); if(!g)return;
+  var src=null;
+  g.mem.forEach(function(m){if(m!==it&&!src)src=m;});
+  var mm=/^(total|body)(Tail|Unit)$/.exec(it.field);
+  if(mm){g.mem.forEach(function(m){if(m.field===mm[1]+'Main')src=m;});}
+  if(src)g.props.forEach(function(k){it[k]=src[k];});
+}
+var COLOR_HIST=[];
+try{COLOR_HIST=JSON.parse(localStorage.getItem('flyerColorHist')||'[]');}catch(e){COLOR_HIST=[];}
+function pushHist(c){
+  c=String(c).toLowerCase(); COLOR_HIST=COLOR_HIST.filter(function(x){return x!==c;}); COLOR_HIST.unshift(c); COLOR_HIST=COLOR_HIST.slice(0,8);
+  try{localStorage.setItem('flyerColorHist',JSON.stringify(COLOR_HIST));}catch(e){}
+}
+function histHtml(k){
+  return COLOR_HIST.slice(0,6).map(function(c){return '<button type="button" class="sw" data-sw="'+k+'" data-c="'+c+'" style="background:'+c+'" title="'+c+'"></button>';}).join('');
+}
 function cDel(){
   if(!CE.sel.length)return; cc().items=cc().items.filter(function(i){return CE.sel.indexOf(i.id)<0;}); CE.sel=[]; cCommit(); cRender();
 }
@@ -1455,6 +1510,7 @@ function openCellSettings(){
   var c=cc(), b=$('cSetBody'), h='<h4>表示する項目(チェックを外すと表示も出力もされません)</h4><div style="display:grid;grid-template-columns:1fr 1fr;gap:2px 12px;">';
   c.items.slice().reverse().forEach(function(it){h+='<label style="font-size:12.5px;"><input type="checkbox" data-hid="'+it.id+'" '+(it.hidden?'':'checked')+'> '+esc(itemLabel(it))+'</label>';});
   h+='</div><h4>サンプル文字列(編集中の見た目の確認用。実際の出力では車両データに置き換わります)</h4><div class="prop" style="grid-template-columns:150px 1fr;">';
+  h+='<span></span><span class="hint">価格は「168.8」のように入れると、数字・.8・万円に自動で分かれます</span>';
   Object.keys(SAMPLE_LABELS).forEach(function(k){
     var v=(c.sample&&c.sample[k]!=null)?c.sample[k]:SAMPLES[k];
     h+='<span>'+SAMPLE_LABELS[k]+'</span><input type="text" data-sk="'+k+'" value="'+esc(v)+'">';
@@ -1500,6 +1556,8 @@ function cLayers(){
     var nm=document.createElement('span'); nm.className='nm'; nm.textContent=itemLabel(it); d.appendChild(nm);
     var b=document.createElement('button'); b.className='mini'; b.textContent=it.hidden?'🚫':'👁'; b.title='表示/非表示';
     b.onclick=function(e){e.stopPropagation();it.hidden=!it.hidden;cCommit();cRender();}; d.appendChild(b);
+    var lb=document.createElement('button'); lb.className='lockBtn'+(it.locked?' on':''); lb.textContent=it.locked?'🔒固定中':'固定する';
+    lb.title='固定すると画面上で選択・移動できなくなります'; lb.onclick=function(e){e.stopPropagation();it.locked=!it.locked;cCommit();cRender();}; d.appendChild(lb);
     d.draggable=true;
     d.ondragstart=function(e){e.dataTransfer.setData('text/x-clayer',it.id);};
     d.ondragover=function(e){if(e.dataTransfer.types.indexOf('text/x-clayer')<0)return;e.preventDefault();var r=d.getBoundingClientRect(),top=(e.clientY-r.top)<r.height/2;d.classList.toggle('dragover-top',top);d.classList.toggle('dragover-bot',!top);};
@@ -1507,7 +1565,7 @@ function cLayers(){
     d.ondrop=function(e){e.preventDefault();var r=d.getBoundingClientRect(),top=(e.clientY-r.top)<r.height/2;d.classList.remove('dragover-top','dragover-bot');
       var mv=cById(e.dataTransfer.getData('text/x-clayer')); if(!mv||mv===it)return;
       cc().items=cc().items.filter(function(x){return x!==mv;}); var ti=cc().items.indexOf(it); cc().items.splice(top?ti+1:ti,0,mv); cCommit(); cRender();};
-    d.onclick=function(e){if(e.shiftKey){var k=CE.sel.indexOf(it.id);if(k>=0)CE.sel.splice(k,1);else CE.sel.push(it.id);}else CE.sel=[it.id];cOverlay();cLayers();cProps();};
+    d.onclick=function(e){if(e.shiftKey||e.ctrlKey||e.metaKey){var k=CE.sel.indexOf(it.id);if(k>=0)CE.sel.splice(k,1);else CE.sel.push(it.id);}else CE.sel=[it.id];cOverlay();cLayers();cProps();};
     box.appendChild(d);})(items[i]);}
 }
 function selOpt(arr,val,withNone){
@@ -1521,7 +1579,8 @@ function cProps(){
   if(its.length>1){p.innerHTML='<div class="hint">'+its.length+'個選択中</div>'+btns;bindBtns(p);return;}
   var it=its[0], h='<div class="prop"><span>項目</span><span>'+esc(itemLabel(it))+'</span>';
   function num(k,l,min,max,step){h+='<span>'+l+'</span><input type="number" data-k="'+k+'" value="'+(it[k]==null?0:it[k])+'" min="'+min+'" max="'+max+'" step="'+step+'">';}
-  function col(k,l){h+='<span>'+l+'</span><input type="color" data-k="'+k+'" value="'+(it[k]||'#000000')+'">';}
+  function col(k,l){h+='<span>'+l+'</span><span class="crow"><input type="color" data-k="'+k+'" value="'+(it[k]||'#000000')+'">'+histHtml(k)+'</span>';}
+  function numcol(kn,kc,l,min,max,step){h+='<span>'+l+'</span><span class="crow"><input type="number" data-k="'+kn+'" value="'+(it[kn]==null?0:it[kn])+'" min="'+min+'" max="'+max+'" step="'+step+'" title="太さ"><input type="color" data-k="'+kc+'" value="'+(it[kc]||'#000000')+'" title="色">'+histHtml(kc)+'</span>';}
   num('x','X',-2000,3000,1); num('y','Y',-2000,3000,1); num('w','幅',5,3000,1); num('h','高さ',5,3000,1);
   num('rot','角度(°)',-180,180,0.5); num('skew','傾き(°)',-60,60,0.5);
   if(it.type==='image'){num('opacity','不透明度',0,1,0.1);}
@@ -1534,13 +1593,16 @@ function cProps(){
     h+='<span>揃え</span><select data-k="align"><option value="left"'+(it.align==='left'?' selected':'')+'>左</option><option value="center"'+(it.align==='center'?' selected':'')+'>中央</option><option value="right"'+(it.align==='right'?' selected':'')+'>右</option></select>';
     num('size','文字の大きさ%',10,300,1); num('ls','文字間隔%',-20,100,1);
     h+='<span>枠いっぱい</span><label><input type="checkbox" data-k="stretch" '+(it.stretch?'checked':'')+'> 枠の幅に合わせて文字を伸縮</label>';
+    if(it.type==='text'&&it.field!=='label'&&INFO.indexOf(it.field)>=0)h+='<span>枠の幅</span><label><input type="checkbox" data-k="autoW" '+(it.autoW?'checked':'')+'> 文字の幅に自動で合わせる</label>';
+    if(/^(total|body)(Tail|Unit)$/.test(it.field||''))h+='<span>同期</span><label><input type="checkbox" data-k="sync" '+(it.sync?'checked':'')+'> 価格(数字)と同じスタイルにする<br><span class="hint">色・縁取り・フォント・伸縮・傾き・角度が連動(大きさは別)</span></label>';
+    if(INFO.indexOf(it.field||'')>=0)h+='<span>同期</span><label><input type="checkbox" data-k="sync" '+(it.sync?'checked':'')+'> 文字情報のスタイルを同期<br><span class="hint">車名・グレード・年式・走行距離・車検(同期にチェックした項目)で大きさも込みで連動</span></label>';
     if(it.type==='text'){
       h+='<span>前に付ける</span><input type="text" data-k="prefix" value="'+esc(it.prefix||'')+'">';
       h+='<span>後ろに付ける</span><input type="text" data-k="suffix" value="'+esc(it.suffix||'')+'">';
       num('maxChars','最大文字数(0=無制限)',0,100,1);
     }
-    num('o1w','縁取り1の太さ%',0,30,0.5); col('o1c','縁取り1の色');
-    num('o2w','縁取り2の太さ%',0,30,0.5); col('o2c','縁取り2の色');
+    numcol('o1w','o1c','縁取り1',0,30,0.5);
+    numcol('o2w','o2c','縁取り2',0,30,0.5);
     if(it.type==='price'){
       num('tailPct','「.8」の大きさ%',10,150,1);
       h+='<span>「.8」のフォント</span><select data-k="tailFont" data-int="1">'+selOpt(FONTS,it.tailFont,true)+'</select>';
@@ -1556,9 +1618,14 @@ function cProps(){
       var k=inp.dataset.k, v;
       if(inp.type==='checkbox')v=inp.checked; else if(inp.type==='number')v=parseFloat(inp.value); else if(inp.dataset.int)v=parseInt(inp.value); else v=inp.value;
       if(typeof v==='number'&&isNaN(v))return;
-      it[k]=v; cCommit(); cRender();
+      if(k==='sync'){it.sync=v; if(v)syncAdopt(it);}
+      else{ it[k]=v; if(inp.type==='color')pushHist(v); syncPropagate(it,k); }
+      if(k==='stretch'&&v)it.autoW=false;
+      cCommit(); cRender();
     };
   });
+  [].forEach.call(p.querySelectorAll('[data-sw]'),function(b){b.onclick=function(){
+    var k=b.dataset.sw; it[k]=b.dataset.c; syncPropagate(it,k); cCommit(); cRender();};});
 }
 function bindBtns(p){
   [].forEach.call(p.querySelectorAll('[data-cz]'),function(b){b.onclick=function(){cZ(b.dataset.cz);};});
@@ -1570,23 +1637,28 @@ function bindBtns(p){
 
 /* ポインタ操作(移動・四隅での大きさ変更) */
 function cPos(e){var r=$('cStage').getBoundingClientRect();return {x:(e.clientX-r.left)/CE.scale,y:(e.clientY-r.top)/CE.scale};}
-$('cStage').addEventListener('pointerdown',function(e){
-  if(e.button!==0)return; var p=cPos(e), t=e.target;
+$('cWrap').addEventListener('pointerdown',function(e){
+  if(e.button!==0)return; var wr=$('cWrap').getBoundingClientRect();
+  if(e.clientX>wr.left+$('cWrap').clientWidth||e.clientY>wr.top+$('cWrap').clientHeight)return; // スクロールバー
+  var p=cPos(e), t=e.target;
   var hd=t.closest&&t.closest('.handle');
-  if(hd){var it=cById(CE.sel[0]); if(!it)return; var c=hd.dataset.corner;
+  if(hd){var it=cById(CE.sel[0]); if(!it)return; var c=hd.dataset.corner; if(it.autoW)it.autoW=false;
     CE.drag={mode:'resize',it:it,corner:c,ax:(c==='nw'||c==='sw')?it.x+it.w:it.x,ay:(c==='nw'||c==='ne')?it.y+it.h:it.y,ratio:it.w/it.h,x0:it.x,y0:it.y,w0:it.w,h0:it.h};
-    $('cStage').setPointerCapture(e.pointerId); e.preventDefault(); return;}
+    $('cWrap').setPointerCapture(e.pointerId); e.preventDefault(); return;}
   var el=t.closest&&t.closest('.ci');
   if(el){var id=el.dataset.id;
-    if(e.shiftKey){var k=CE.sel.indexOf(id);if(k>=0)CE.sel.splice(k,1);else CE.sel.push(id);}
+    if(e.shiftKey||e.ctrlKey||e.metaKey){var k=CE.sel.indexOf(id);if(k>=0)CE.sel.splice(k,1);else CE.sel.push(id);}
     else if(CE.sel.indexOf(id)<0)CE.sel=[id];
     cOverlay();cLayers();cProps();
     var its=CE.sel.map(cById).filter(Boolean); if(!its.length)return;
     CE.drag={mode:'move',start:p,orig:its.map(function(i){return {it:i,x:i.x,y:i.y};}),moved:false};
-    $('cStage').setPointerCapture(e.pointerId); e.preventDefault(); return;}
-  if(!e.shiftKey)CE.sel=[]; cOverlay();cLayers();cProps();
+    $('cWrap').setPointerCapture(e.pointerId); e.preventDefault(); return;}
+  var addMode=e.shiftKey||e.ctrlKey||e.metaKey;
+  if(!addMode)CE.sel=[]; cOverlay();cLayers();cProps();
+  CE.drag={mode:'marquee',start:p,base:CE.sel.slice()};
+  $('cWrap').setPointerCapture(e.pointerId); e.preventDefault();
 });
-$('cStage').addEventListener('pointermove',function(e){
+$('cWrap').addEventListener('pointermove',function(e){
   var d=CE.drag; if(!d)return; var p=cPos(e);
   if(d.mode==='move'){
     var dx=p.x-d.start.x, dy=p.y-d.start.y;
@@ -1599,6 +1671,15 @@ $('cStage').addEventListener('pointermove',function(e){
       if(bx)it.x+=bx.d; if(by)it.y+=by.d;
     }
     cMoveEls();
+  }else if(d.mode==='marquee'){
+    var x1=Math.min(d.start.x,p.x),y1=Math.min(d.start.y,p.y),x2=Math.max(d.start.x,p.x),y2=Math.max(d.start.y,p.y);
+    var ns=d.base.slice();
+    cc().items.forEach(function(i){if(i.locked||i.hidden)return;
+      if(i.x<x2&&i.x+i.w>x1&&i.y<y2&&i.y+i.h>y1&&ns.indexOf(i.id)<0)ns.push(i.id);});
+    CE.sel=ns; cOverlay();
+    var st=$('cStage'), m=st.querySelector('.marquee');
+    if(!m){m=document.createElement('div');m.className='marquee';m.style.zIndex=7000;st.appendChild(m);}
+    m.style.left=x1*CE.scale+'px';m.style.top=y1*CE.scale+'px';m.style.width=(x2-x1)*CE.scale+'px';m.style.height=(y2-y1)*CE.scale+'px';
   }else if(d.mode==='resize'){
     var it2=d.it, nw,nh;
     if(it2.type==='image'){nw=Math.max(Math.abs(p.x-d.ax),Math.abs(p.y-d.ay)*d.ratio,10);nh=nw/d.ratio;}
@@ -1621,10 +1702,12 @@ function cMoveEls(){
 function cRenderLive(){cRender();}
 function cEnd(){
   var d=CE.drag; if(!d)return; CE.drag=null;
+  var mq=$('cStage').querySelector('.marquee'); if(mq)mq.remove();
+  if(d.mode==='marquee'){cOverlay();cLayers();cProps();return;}
   if(d.mode==='move'&&!d.moved)return;
   cCommit(); cRender();
 }
-$('cStage').addEventListener('pointerup',cEnd); $('cStage').addEventListener('pointercancel',cEnd);
+$('cWrap').addEventListener('pointerup',cEnd); $('cWrap').addEventListener('pointercancel',cEnd);
 document.addEventListener('keydown',function(e){
   if(view!=='cell')return;
   var tg=e.target.tagName; if(tg==='INPUT'||tg==='SELECT'||tg==='TEXTAREA')return;
@@ -1637,6 +1720,13 @@ document.addEventListener('keydown',function(e){
     CE.sel.map(cById).filter(Boolean).forEach(function(i){i.x+=dx;i.y+=dy;}); cCommit(); cRender();}
 });
 window.addEventListener('resize',function(){if(view==='cell')cRender();});
+
+document.addEventListener('pointerdown',function(e){
+  var t=e.target; if(!t||!t.closest)return;
+  if(t.closest('#stage,#cWrap,.side,.settingsOverlay,button,input,select,textarea,label,a,option'))return;
+  if(view==='cell'){CE.sel=[];cOverlay();cLayers();cProps();}
+  else{sel=[];drawOverlay();renderLayers();renderProps();}
+});
 
 /* 画面(タブ)切り替え */
 function showView(v){
