@@ -105,7 +105,7 @@ input[type=number]{width:64px;}
 .settingsPanel .row{display:flex;gap:6px;align-items:center;flex-wrap:wrap;padding:6px 0;}
 .ci.edit{outline:1px dashed rgba(90,90,90,.45);}
 .ci.missing{background:repeating-linear-gradient(45deg,#d6d6d6,#d6d6d6 6px,#ececec 6px,#ececec 12px);}
-#cWrap .stageInner{padding:120px;}
+#cWrap .stageInner{padding:70px;}
 .handle.n,.handle.s{cursor:ns-resize;}
 .handle.e,.handle.w{cursor:ew-resize;}
 .btn.accent{background:var(--pink);border-color:var(--pink);color:#fff;font-weight:700;font-size:14px;padding:7px 16px;box-shadow:0 0 0 2px rgba(217,122,154,.25);}
@@ -126,7 +126,7 @@ input[type=number]{width:64px;}
 <body>
 <header>
   <div class="header-row">
-    <h1>チラシ作成 <span style="font-size:12px;font-weight:400;opacity:.75;">v1.13</span></h1>
+    <h1>チラシ作成 <span style="font-size:12px;font-weight:400;opacity:.75;">v1.14</span></h1>
     <div class="hdrBtns">
       <button type="button" class="updateBtn headerRefreshBtn" id="settingsBtn">⚙ 設定</button>
       <a class="updateBtn headerRefreshBtn" href="./index.html">🏠 一覧へ</a>
@@ -219,7 +219,9 @@ input[type=number]{width:64px;}
     <div class="tgroup"><span class="lbl">外枠</span><label><input type="checkbox" id="cfOn">あり</label>
       色<input type="color" id="cfColor"> 太さ<input type="number" id="cfW" min="0" step="1" style="width:55px"> 角丸<input type="number" id="cfR" min="0" step="1" style="width:55px">
       <label><input type="checkbox" id="cbgOn">背景色(外すと透過)</label><input type="color" id="cbg"></div>
-    <div class="tgroup"><span class="lbl">一括フォント</span><select id="cBulkFont"></select><button class="btn" id="cBulkBtn">全ての文字に適用</button></div>
+    <div class="tgroup"><span class="lbl">一括フォント</span><select id="cBulkFont"></select><button class="btn" id="cBulkBtn">全ての文字に適用</button>
+      <label style="margin-left:8px;"><input type="checkbox" id="cSyncInfo"> 文字情報のスタイルを同期</label>
+      <label><input type="checkbox" id="cSyncPrice"> 価格・.8・万円のスタイルを同期</label></div>
   </div>
   <div class="toolbar">
     <div class="tgroup"><button class="btn accent" id="cSetBtn">⚙ コマ設定</button></div>
@@ -1085,7 +1087,7 @@ $('settingsOverlay').onclick=function(e){if(e.target===this)this.style.display='
 /* ---------- ファイル保存/読込(画像込みのJSON) ---------- */
 $('saveFile').onclick=function(){
   var used={}; S.items.forEach(function(i){if(i.imgId&&IMGS[i.imgId])used[i.imgId]=IMGS[i.imgId];});
-  var blob=new Blob([JSON.stringify({app:'ciel-flyer',version:'1.13',state:S,designs:G.designs,images:used})],{type:'application/json'});
+  var blob=new Blob([JSON.stringify({app:'ciel-flyer',version:'1.14',state:S,designs:G.designs,images:used})],{type:'application/json'});
   var a=document.createElement('a'); a.href=URL.createObjectURL(blob);
   var d=new Date(), pad=function(n){return ('0'+n).slice(-2);};
   a.download='flyer-layout-'+d.getFullYear()+pad(d.getMonth()+1)+pad(d.getDate())+'-'+pad(d.getHours())+pad(d.getMinutes())+'.json';
@@ -1153,7 +1155,7 @@ function valMap(sample,data){
 }
 var INFO=['name','grade','year','mileage','shaken'];
 var SYNC_PRICE=['color','o1w','o1c','o2w','o2c','font','weight','ls','stretch','skew','rot'];
-var SYNC_INFO=SYNC_PRICE.concat(['size']);
+var SYNC_INFO=SYNC_PRICE.concat(['size','h']);
 var PRICES={total:['支払総額(価格の大きな数字)','168.8'],body:['車体価格(価格の大きな数字)','159.8']};
 var CE={k:'A',sel:[],undo:[],redo:[],zoom:1,drag:null,scale:1};
 function cc(){return G.cells[CE.k];}
@@ -1213,6 +1215,8 @@ function ensureCells(){
     var c=G.cells[k]; if(!c.frame)c.frame={on:true,color:'#222222',w:6,radius:24,bgOn:true,bg:'#ffffff'};
     migratePrice(c);
     c.items.forEach(function(i){if(i.type==='text'&&INFO.indexOf(i.field)>=0&&i.autoW===undefined)i.autoW=true;});
+    if(c.syncInfo===undefined)c.syncInfo=c.items.some(function(i){return INFO.indexOf(i.field)>=0&&i.sync;});
+    if(c.syncPrice===undefined)c.syncPrice=c.items.some(function(i){return /^(total|body)(Tail|Unit)$/.test(i.field||'')&&i.sync;});
     if(c.aspect)G.designs[k]=c.aspect; else c.aspect={w:G.designs[k].w,h:G.designs[k].h};
   });
 }
@@ -1326,11 +1330,16 @@ function buildCellEl(cell,k,pxw,data,edit,rootEl){
 
 /* ---- エディタ ---- */
 function cRender(){
-  var wrap=$('cWrap'), H=cH(), aw=wrap.clientWidth-240, ah=wrap.clientHeight-240;
+  var wrap=$('cWrap'), H=cH(), aw=wrap.clientWidth-140, ah=wrap.clientHeight-140;
   CE.scale=Math.max(0.05,Math.min(aw/1000,ah/H))*CE.zoom;
   var st=$('cStage'); buildCellEl(cc(),CE.k,1000*CE.scale,null,true,st); st._fit();
   st.style.margin='0 auto'; st.style.boxShadow='0 2px 14px rgba(0,0,0,.35)'; st.style.touchAction='none'; st.style.userSelect='none';
   cOverlay(); cLayers(); cProps(); cSyncBar();
+}
+function gBox(list){
+  var x1=1e9,y1=1e9,x2=-1e9,y2=-1e9;
+  list.forEach(function(i){x1=Math.min(x1,i.x);y1=Math.min(y1,i.y);x2=Math.max(x2,i.x+i.w);y2=Math.max(y2,i.y+i.h);});
+  return {x:x1,y:y1,w:x2-x1,h:y2-y1};
 }
 function cOverlay(){
   var st=$('cStage');
@@ -1338,10 +1347,11 @@ function cOverlay(){
   var z=6000, its=CE.sel.map(cById).filter(Boolean), s=CE.scale;
   its.forEach(function(it){var b=document.createElement('div');b.className='selbox';
     b.style.cssText+='left:'+it.x*s+'px;top:'+it.y*s+'px;width:'+it.w*s+'px;height:'+it.h*s+'px;z-index:'+z+';transform:rotate('+(it.rot||0)+'deg);';st.appendChild(b);});
-  if(its.length===1){
-    var it=its[0];
+  var ulist=its.filter(function(x){return !x.locked;});
+  if(its.length===1||ulist.length>1){
+    var it=its.length===1?its[0]:gBox(ulist), edgeOk=its.length===1?it.type!=='image':!ulist.some(function(x){return x.type==='image';});
     var pts=[['nw',it.x,it.y],['ne',it.x+it.w,it.y],['sw',it.x,it.y+it.h],['se',it.x+it.w,it.y+it.h]];
-    if(it.type!=='image')pts.push(['n',it.x+it.w/2,it.y],['s',it.x+it.w/2,it.y+it.h],['w',it.x,it.y+it.h/2],['e',it.x+it.w,it.y+it.h/2]);
+    if(edgeOk)pts.push(['n',it.x+it.w/2,it.y],['s',it.x+it.w/2,it.y+it.h],['w',it.x,it.y+it.h/2],['e',it.x+it.w,it.y+it.h/2]);
     pts.forEach(function(c){
       var h=document.createElement('div');h.className='handle '+c[0];h.dataset.corner=c[0];
       h.style.cssText+='left:'+c[1]*s+'px;top:'+c[2]*s+'px;z-index:'+(z+1);st.appendChild(h);});
@@ -1353,6 +1363,7 @@ function cSyncBar(){
   $('caw').value=d.w; $('cah').value=d.h;
   $('cfOn').checked=!!f.on; $('cfColor').value=f.color; $('cfW').value=f.w; $('cfR').value=f.radius;
   $('cbgOn').checked=!!f.bgOn; $('cbg').value=f.bg;
+  $('cSyncInfo').checked=!!cc().syncInfo; $('cSyncPrice').checked=!!cc().syncPrice;
 }
 function cSnap(){return JSON.stringify(cc());}
 function cCommit(){
@@ -1433,15 +1444,13 @@ $('cImgFile').onchange=function(){
 };
 function syncGroup(it){
   if(it.type!=='text')return null;
-  var f=it.field, m=/^(total|body)(Main|Tail|Unit)$/.exec(f), items=cc().items;
-  if(m){
-    var base=m[1], mem=items.filter(function(x){return x.type==='text'&&(x.field===base+'Main'||((x.field===base+'Tail'||x.field===base+'Unit')&&x.sync));});
-    if(mem.length<2)return null;
-    if(mem.indexOf(it)<0)return null;
-    return {mem:mem,props:SYNC_PRICE};
+  var f=it.field||'', c=cc(), m=/^(total|body)(Main|Tail|Unit)$/.exec(f), items=c.items;
+  if(m&&c.syncPrice){
+    var mem=items.filter(function(x){return x.type==='text'&&(x.field===m[1]+'Main'||x.field===m[1]+'Tail'||x.field===m[1]+'Unit');});
+    return mem.length>1?{mem:mem,props:SYNC_PRICE,main:m[1]+'Main'}:null;
   }
-  if(INFO.indexOf(f)>=0&&it.sync){
-    var mem2=items.filter(function(x){return x.type==='text'&&INFO.indexOf(x.field)>=0&&x.sync;});
+  if(INFO.indexOf(f)>=0&&c.syncInfo){
+    var mem2=items.filter(function(x){return x.type==='text'&&INFO.indexOf(x.field)>=0;});
     return mem2.length>1?{mem:mem2,props:SYNC_INFO}:null;
   }
   return null;
@@ -1450,14 +1459,21 @@ function syncPropagate(it,k){
   var g=syncGroup(it); if(!g||g.props.indexOf(k)<0)return;
   g.mem.forEach(function(m){if(m!==it)m[k]=it[k];});
 }
-function syncAdopt(it){ // 同期をONにした時、グループの見た目に合わせる
-  var g=syncGroup(it); if(!g)return;
-  var src=null;
-  g.mem.forEach(function(m){if(m!==it&&!src)src=m;});
-  var mm=/^(total|body)(Tail|Unit)$/.exec(it.field);
-  if(mm){g.mem.forEach(function(m){if(m.field===mm[1]+'Main')src=m;});}
-  if(src)g.props.forEach(function(k){it[k]=src[k];});
+function syncAdoptAll(kind){ // スイッチをONにした時、見た目をそろえる
+  var c=cc(), items=c.items;
+  if(kind==='info'){
+    var mem=items.filter(function(x){return x.type==='text'&&INFO.indexOf(x.field)>=0;});
+    var src=null; CE.sel.map(cById).forEach(function(x){if(x&&mem.indexOf(x)>=0&&!src)src=x;}); if(!src)src=mem[0];
+    if(src)mem.forEach(function(m){if(m!==src)SYNC_INFO.forEach(function(k){m[k]=src[k];});});
+  }else{
+    ['total','body'].forEach(function(b){
+      var main=items.filter(function(x){return x.field===b+'Main';})[0]; if(!main)return;
+      items.forEach(function(m){if(m!==main&&(m.field===b+'Tail'||m.field===b+'Unit'))SYNC_PRICE.forEach(function(k){m[k]=main[k];});});
+    });
+  }
 }
+$('cSyncInfo').onchange=function(){cc().syncInfo=this.checked;if(this.checked)syncAdoptAll('info');cCommit();cRender();};
+$('cSyncPrice').onchange=function(){cc().syncPrice=this.checked;if(this.checked)syncAdoptAll('price');cCommit();cRender();};
 var COLOR_HIST=[];
 try{COLOR_HIST=JSON.parse(localStorage.getItem('flyerColorHist')||'[]');}catch(e){COLOR_HIST=[];}
 function pushHist(c){
@@ -1594,8 +1610,6 @@ function cProps(){
     num('size','文字の大きさ%',10,300,1); num('ls','文字間隔%',-20,100,1);
     h+='<span>枠いっぱい</span><label><input type="checkbox" data-k="stretch" '+(it.stretch?'checked':'')+'> 枠の幅に合わせて文字を伸縮</label>';
     if(it.type==='text'&&it.field!=='label'&&INFO.indexOf(it.field)>=0)h+='<span>枠の幅</span><label><input type="checkbox" data-k="autoW" '+(it.autoW?'checked':'')+'> 文字の幅に自動で合わせる</label>';
-    if(/^(total|body)(Tail|Unit)$/.test(it.field||''))h+='<span>同期</span><label><input type="checkbox" data-k="sync" '+(it.sync?'checked':'')+'> 価格(数字)と同じスタイルにする<br><span class="hint">色・縁取り・フォント・伸縮・傾き・角度が連動(大きさは別)</span></label>';
-    if(INFO.indexOf(it.field||'')>=0)h+='<span>同期</span><label><input type="checkbox" data-k="sync" '+(it.sync?'checked':'')+'> 文字情報のスタイルを同期<br><span class="hint">車名・グレード・年式・走行距離・車検(同期にチェックした項目)で大きさも込みで連動</span></label>';
     if(it.type==='text'){
       h+='<span>前に付ける</span><input type="text" data-k="prefix" value="'+esc(it.prefix||'')+'">';
       h+='<span>後ろに付ける</span><input type="text" data-k="suffix" value="'+esc(it.suffix||'')+'">';
@@ -1618,8 +1632,7 @@ function cProps(){
       var k=inp.dataset.k, v;
       if(inp.type==='checkbox')v=inp.checked; else if(inp.type==='number')v=parseFloat(inp.value); else if(inp.dataset.int)v=parseInt(inp.value); else v=inp.value;
       if(typeof v==='number'&&isNaN(v))return;
-      if(k==='sync'){it.sync=v; if(v)syncAdopt(it);}
-      else{ it[k]=v; if(inp.type==='color')pushHist(v); syncPropagate(it,k); }
+      { it[k]=v; if(inp.type==='color')pushHist(v); syncPropagate(it,k); }
       if(k==='stretch'&&v)it.autoW=false;
       cCommit(); cRender();
     };
@@ -1642,7 +1655,15 @@ $('cWrap').addEventListener('pointerdown',function(e){
   if(e.clientX>wr.left+$('cWrap').clientWidth||e.clientY>wr.top+$('cWrap').clientHeight)return; // スクロールバー
   var p=cPos(e), t=e.target;
   var hd=t.closest&&t.closest('.handle');
-  if(hd){var it=cById(CE.sel[0]); if(!it)return; var c=hd.dataset.corner; if(it.autoW)it.autoW=false;
+  if(hd){var c=hd.dataset.corner;
+    var gl=CE.sel.map(cById).filter(function(x){return x&&!x.locked;});
+    if(CE.sel.length>1&&gl.length>1){
+      var gb=gBox(gl);
+      CE.drag={mode:'gresize',corner:c,bb:gb,orig:gl.map(function(i){return {it:i,x:i.x,y:i.y,w:i.w,h:i.h};}),
+        ax:(c.indexOf('w')>=0)?gb.x+gb.w:gb.x,ay:(c.indexOf('n')>=0)?gb.y+gb.h:gb.y};
+      $('cWrap').setPointerCapture(e.pointerId); e.preventDefault(); return;
+    }
+    var it=cById(CE.sel[0]); if(!it)return; if(it.autoW)it.autoW=false;
     CE.drag={mode:'resize',it:it,corner:c,ax:(c==='nw'||c==='sw')?it.x+it.w:it.x,ay:(c==='nw'||c==='ne')?it.y+it.h:it.y,ratio:it.w/it.h,x0:it.x,y0:it.y,w0:it.w,h0:it.h};
     $('cWrap').setPointerCapture(e.pointerId); e.preventDefault(); return;}
   var el=t.closest&&t.closest('.ci');
@@ -1671,6 +1692,15 @@ $('cWrap').addEventListener('pointermove',function(e){
       if(bx)it.x+=bx.d; if(by)it.y+=by.d;
     }
     cMoveEls();
+  }else if(d.mode==='gresize'){
+    var cn=d.corner, fx=1, fy=1, isC=cn.length===2;
+    if(isC){var f=Math.max(Math.abs(p.x-d.ax)/d.bb.w,Math.abs(p.y-d.ay)/d.bb.h,0.05);fx=f;fy=f;}
+    else if(cn==='e'||cn==='w')fx=Math.max(Math.abs(p.x-d.ax)/d.bb.w,0.05);
+    else fy=Math.max(Math.abs(p.y-d.ay)/d.bb.h,0.05);
+    d.orig.forEach(function(o){
+      o.it.x=d.ax+(o.x-d.ax)*fx; o.it.y=d.ay+(o.y-d.ay)*fy; o.it.w=o.w*fx; o.it.h=o.h*fy;
+    });
+    cRenderLive();
   }else if(d.mode==='marquee'){
     var x1=Math.min(d.start.x,p.x),y1=Math.min(d.start.y,p.y),x2=Math.max(d.start.x,p.x),y2=Math.max(d.start.y,p.y);
     var ns=d.base.slice();
@@ -1705,6 +1735,7 @@ function cEnd(){
   var mq=$('cStage').querySelector('.marquee'); if(mq)mq.remove();
   if(d.mode==='marquee'){cOverlay();cLayers();cProps();return;}
   if(d.mode==='move'&&!d.moved)return;
+  if(d.mode==='resize')syncPropagate(d.it,'h');
   cCommit(); cRender();
 }
 $('cWrap').addEventListener('pointerup',cEnd); $('cWrap').addEventListener('pointercancel',cEnd);
