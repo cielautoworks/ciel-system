@@ -139,7 +139,7 @@ input[type=number]{width:64px;}
 <body>
 <header>
   <div class="header-row">
-    <h1>チラシ作成 <span style="font-size:12px;font-weight:400;opacity:.75;">v1.23</span></h1>
+    <h1>チラシ作成 <span style="font-size:12px;font-weight:400;opacity:.75;">v1.24</span></h1>
     <div class="hdrBtns">
       <button type="button" class="updateBtn headerRefreshBtn" id="settingsBtn">⚙ 設定</button>
       <a class="updateBtn headerRefreshBtn" href="./index.html">🏠 一覧へ</a>
@@ -1168,7 +1168,7 @@ $('settingsOverlay').onclick=function(e){if(e.target===this)this.style.display='
 /* ---------- ファイル保存/読込(画像込みのJSON) ---------- */
 $('saveFile').onclick=function(){
   var used={}; S.items.forEach(function(i){if(i.imgId&&IMGS[i.imgId])used[i.imgId]=IMGS[i.imgId];});
-  var blob=new Blob([JSON.stringify({app:'ciel-flyer',version:'1.23',state:S,designs:G.designs,images:used})],{type:'application/json'});
+  var blob=new Blob([JSON.stringify({app:'ciel-flyer',version:'1.24',state:S,designs:G.designs,images:used})],{type:'application/json'});
   var a=document.createElement('a'); a.href=URL.createObjectURL(blob);
   var d=new Date(), pad=function(n){return ('0'+n).slice(-2);};
   a.download='flyer-layout-'+d.getFullYear()+pad(d.getMonth()+1)+pad(d.getDate())+'-'+pad(d.getHours())+pad(d.getMinutes())+'.json';
@@ -1247,7 +1247,7 @@ function mkItem(type,field,extra){
   var it={id:uid(),type:type,field:field||'',x:100,y:100,w:400,h:100,rot:0,skew:0,
     font:0,weight:900,color:'#111111',align:'center',size:100,prefix:'',suffix:'',maxChars:0,
     o1w:0,o1c:'#ffffff',o2w:0,o2c:'#7a0d0d',ls:0,stretch:false,autoW:false,sync:false,text:''};
-  if(type==='text'&&INFO.indexOf(field)>=0)it.autoW=true;
+  if(type==='text'&&INFO.indexOf(field)>=0){it.autoW=true;it.align='left';}
   if(type==='price'){it.color='#dc2626';it.tailPct=55;it.manyenPct=45;it.tailFont=-1;it.manyenFont=-1;it.manyenColor='';it.showManyen=true;it.w=800;it.h=240;}
   if(type==='photo'){it.w=900;it.h=560;}
   if(type==='image'){it.opacity=1;}
@@ -1282,9 +1282,9 @@ function defaultCell(k){
     mkItem('text','no',{x:800,y:y(40),w:160,h:y(90),prefix:'No.',color:'#ffffff',o1w:6,o1c:'#1e6a86'}),
     mkItem('text','name',{x:30,y:y(650),w:940,h:y(95),align:'left',size:100}),
     mkItem('text','grade',{x:30,y:y(750),w:940,h:y(60),align:'left',weight:700,color:'#374151'}),
-    mkItem('text','year',{x:30,y:y(820),w:300,h:y(60),weight:700}),
-    mkItem('text','mileage',{x:340,y:y(820),w:300,h:y(60),weight:700}),
-    mkItem('text','shaken',{x:650,y:y(820),w:320,h:y(60),weight:700}),
+    mkItem('text','year',{x:30,y:y(820),w:300,h:y(60),weight:700,align:'left'}),
+    mkItem('text','mileage',{x:340,y:y(820),w:300,h:y(60),weight:700,align:'left'}),
+    mkItem('text','shaken',{x:650,y:y(820),w:320,h:y(60),weight:700,align:'left'}),
     mkItem('text','label',{x:30,y:y(900),w:260,h:y(60),text:'支払総額',color:'#2563eb',align:'left'}),
   ].concat(mkPriceSet('total',30,y(960),940,y(260)));
   return {aspect:{w:d.w,h:d.h},items:items,frame:{on:true,color:'#222222',w:6,radius:24,bgOn:true,bg:'#ffffff'},ua:0};
@@ -1296,6 +1296,11 @@ function ensureCells(){
     var c=G.cells[k]; if(!c.frame)c.frame={on:true,color:'#222222',w:6,radius:24,bgOn:true,bg:'#ffffff'};
     migratePrice(c);
     c.items.forEach(function(i){if(i.type==='text'&&INFO.indexOf(i.field)>=0&&i.autoW===undefined)i.autoW=true;});
+    if(!c.infoLeftDone){
+      var chg=false;
+      c.items.forEach(function(i){if(i.type==='text'&&INFO.indexOf(i.field)>=0&&i.align!=='left'){i.align='left';chg=true;}});
+      c.infoLeftDone=true; if(chg)c.ua=Date.now();
+    }
     if(c.syncInfo===undefined)c.syncInfo=c.items.some(function(i){return INFO.indexOf(i.field)>=0&&i.sync;});
     if(c.syncPrice===undefined)c.syncPrice=c.items.some(function(i){return /^(total|body)(Tail|Unit)$/.test(i.field||'')&&i.sync;});
     if(c.aspect)G.designs[k]=c.aspect; else c.aspect={w:G.designs[k].w,h:G.designs[k].h};
@@ -1624,6 +1629,19 @@ $('cCloudBtn').onclick=function(){
 };
 
 /* コマ設定(表示項目・サンプル文字・サンプル画像) */
+function cpCopyInit(){
+  var btn=$('cpyBtn'); if(!btn)return;
+  btn.onclick=function(){
+    var t=$('cpyTo').value, from=CE.k;
+    if(!confirm('コマデザイン'+t+'を、いまのコマデザイン'+from+'の内容で上書きします。\n元に戻せません。よろしいですか?'))return;
+    var c=JSON.parse(JSON.stringify(G.cells[from]));
+    c.items.forEach(function(i){i.id=uid();}); c.ua=Date.now();
+    G.cells[t]=c; G.designs[t]={w:G.designs[from].w,h:G.designs[from].h}; c.aspect={w:G.designs[t].w,h:G.designs[t].h};
+    applyDesignAspect(t); G.layouts.forEach(function(l){if(l.design===t)l.ua=Date.now();});
+    setDirty(true); doSave(); scheduleCellCloud(t); syncToolbar();
+    toast('コマデザイン'+from+'の内容をコマデザイン'+t+'にコピーしました');
+  };
+}
 function openCellSettings(){
   $('cSetName').textContent=CE.k;
   var c=cc(), b=$('cSetBody'), h='<h4>表示する項目(チェックを外すと表示も出力もされません)</h4><div style="display:grid;grid-template-columns:1fr 1fr;gap:2px 12px;">';
@@ -1637,8 +1655,10 @@ function openCellSettings(){
   h+='</div><h4>車両画像の枠</h4><div class="row"><label><input type="checkbox" id="cShowPhoto" '+(c.showSample?'checked':'')+'> 車両サンプル画像を表示する</label>'+
     '<button class="btn" id="cPickPhoto">サンプル画像を選択</button><span class="hint" id="cPhotoName">'+esc(c.samplePhoto&&IMGS[c.samplePhoto]?IMGS[c.samplePhoto].name:'(未選択)')+'</span>'+
     '<input type="file" id="cPhotoFile" accept="image/*" style="display:none"></div>'+
+    '<h4>コマデザインのコピー</h4><div class="row"><span>このコマデザイン('+CE.k+')を</span><select id="cpyTo">'+['A','B','C','D'].filter(function(x){return x!==CE.k;}).map(function(x){return '<option value="'+x+'">コマデザイン'+x+'</option>';}).join('')+'</select><button class="btn" id="cpyBtn">上書きコピー</button></div><div class="hint">項目の配置・外枠・サンプル・縦横比をすべてコピーします(コピー先の内容は置き換わります)</div>'+
     '<h4>取り込む画像の大きさ</h4><div class="row"><select id="maxPx2"><option value="1200">1200px</option><option value="1600">1600px</option><option value="2000">2000px</option><option value="3000">3000px</option><option value="0">縮小しない</option></select><span class="hint">長辺の最大ピクセル。小さいほど保存容量が減ります</span></div>';
   b.innerHTML=h; $('maxPx2').value=$('maxPx').value;
+  cpCopyInit();
   $('maxPx2').onchange=function(){$('maxPx').value=this.value;$('maxPx').onchange();};
   [].forEach.call(b.querySelectorAll('[data-hid]'),function(cb){cb.onchange=function(){var it=cById(cb.dataset.hid);if(it){it.hidden=!cb.checked;cCommit();cRender();}};});
   [].forEach.call(b.querySelectorAll('[data-sk]'),function(inp){inp.onchange=function(){
