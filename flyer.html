@@ -57,16 +57,16 @@ input[type=number]{width:64px;}
 .main-area{flex:1;display:flex;min-height:0;}
 .stageWrap{flex:1;overflow:auto;background:var(--stage-bg);position:relative;}
 .stageInner{display:inline-block;padding:20px;min-width:100%;min-height:100%;}
-#stage{position:relative;background:#fff;box-shadow:0 2px 14px rgba(0,0,0,.35);margin:0 auto;overflow:visible;touch-action:none;user-select:none;}
+#stage{position:relative;background:var(--paperBg,#fff);box-shadow:0 2px 14px rgba(0,0,0,.35);margin:0 auto;overflow:visible;touch-action:none;user-select:none;}
 .it{position:absolute;}
-.it.slot{border:2px dashed #3d8fae;background:rgba(74,171,207,.18);display:flex;align-items:center;justify-content:center;color:#1e6a86;font-weight:800;}
+.it.slot{border:var(--slotBw,2px) dashed var(--slotBc,#3d8fae);background:var(--slotBg,rgba(74,171,207,.18));display:flex;align-items:center;justify-content:center;color:var(--slotTc,#1e6a86);font-weight:800;}
 .it.slot .no{pointer-events:none;line-height:1;}
 .it.img img{width:100%;height:100%;display:block;pointer-events:none;-webkit-user-drag:none;}
 .it.locked{pointer-events:none;}
 .it.hidden{display:none;}
-.selbox{position:absolute;border:2px solid var(--sel);pointer-events:none;}
-.groupbox{position:absolute;border:1px dashed var(--sel);pointer-events:none;}
-.handle{position:absolute;width:12px;height:12px;background:#fff;border:2px solid var(--sel);margin:-6px 0 0 -6px;pointer-events:auto;}
+.selbox{position:absolute;border:2px solid var(--hc,var(--sel));pointer-events:none;}
+.groupbox{position:absolute;border:1px dashed var(--hc,var(--sel));pointer-events:none;}
+.handle{position:absolute;width:12px;height:12px;background:#fff;border:2px solid var(--hc,var(--sel));margin:-6px 0 0 -6px;pointer-events:auto;}
 .handle.nw,.handle.se{cursor:nwse-resize;}
 .handle.ne,.handle.sw{cursor:nesw-resize;}
 .marquee{position:absolute;border:1px solid var(--sel);background:rgba(232,118,10,.12);pointer-events:none;}
@@ -125,6 +125,8 @@ input[type=number]{width:64px;}
 .crow input[type=number]{width:54px;}
 .crow input[type=color]{width:32px;height:24px;padding:0;border:1px solid var(--border);background:transparent;}
 #stage{isolation:isolate;}
+.paperFrame{position:absolute;left:0;top:0;right:0;bottom:0;border:2px dashed var(--pc,#ff2d95);pointer-events:none;z-index:99990;box-sizing:border-box;}
+#stage.dimOut .paperFrame{box-shadow:0 0 0 9999px rgba(0,0,0,var(--dim,.4));}
 .xhair{position:absolute;pointer-events:none;background:rgba(255,40,40,.75);}
 .layBtn.active{background:var(--sky);border-color:var(--sky);color:#fff;font-weight:700;}
 .dsgn label{margin-right:6px;cursor:pointer;}
@@ -137,7 +139,7 @@ input[type=number]{width:64px;}
 <body>
 <header>
   <div class="header-row">
-    <h1>チラシ作成 <span style="font-size:12px;font-weight:400;opacity:.75;">v1.22</span></h1>
+    <h1>チラシ作成 <span style="font-size:12px;font-weight:400;opacity:.75;">v1.23</span></h1>
     <div class="hdrBtns">
       <button type="button" class="updateBtn headerRefreshBtn" id="settingsBtn">⚙ 設定</button>
       <a class="updateBtn headerRefreshBtn" href="./index.html">🏠 一覧へ</a>
@@ -180,6 +182,7 @@ input[type=number]{width:64px;}
       間隔<input type="number" id="gg" value="5" min="0" style="width:50px">
       <button class="btn" id="gridBtn">コマを格子に並べる</button>
     </div>
+    <div class="tgroup"><button class="btn" id="uiBtn" title="コマの色・透明度・枠線、操作点の色、用紙の外側の暗さなどを変えます">🎨 見た目</button></div>
     <div class="tgroup"><span class="lbl">表示</span>
       <button class="btn" id="zoomOut" title="縮小">－</button>
       <select id="zoomSel"></select>
@@ -241,6 +244,22 @@ input[type=number]{width:64px;}
       <div class="row" style="margin-top:6px;"><button class="btn" id="carCompact">空きを詰める</button></div>
       <div class="hint" style="margin-top:6px;">枠をドラッグして入れ替えられます。左の一覧の車両を、好きな枠へドラッグして入れることもできます。枠の番号は、レイアウトで振ったコマ番号に対応します。コマ数より多く選ぶとページが増えます。</div>
     </div>
+  </div>
+</div>
+<div class="settingsOverlay" id="uiOverlay" style="display:none;">
+  <div class="settingsPanel wide">
+    <h3>見た目の設定(この画面の表示だけが変わります。出力には影響しません)</h3>
+    <div class="prop" style="grid-template-columns:170px 1fr;gap:8px 6px;">
+      <span>コマの塗り色</span><span class="crow"><input type="color" id="uiFill"> 透明度 <input type="range" id="uiFillA" min="0" max="100" step="5"><span id="uiFillAv"></span></span>
+      <span>コマの枠線</span><span class="crow"><input type="color" id="uiBc"> 太さ <input type="number" id="uiBw" min="0" max="12" step="1"></span>
+      <span>コマの番号の色</span><input type="color" id="uiTc">
+      <span>選択枠・操作点の色</span><input type="color" id="uiHc">
+      <span>用紙の背景色</span><input type="color" id="uiPaper">
+      <span>用紙(出力範囲)の枠線の色</span><input type="color" id="uiPc">
+      <span>用紙の外側を暗くする</span><span class="crow"><label><input type="checkbox" id="uiDim"> 暗くする</label> 濃さ <input type="range" id="uiDimA" min="10" max="80" step="5"></span>
+    </div>
+    <div class="row" style="margin-top:10px;"><button class="btn" id="uiReset">初期値に戻す</button></div>
+    <button class="settingsCloseBtn" id="uiClose">閉じる</button>
   </div>
 </div>
 <div class="settingsOverlay" id="carPhotoOverlay" style="display:none;">
@@ -611,6 +630,7 @@ function render(){
     if(el.parentNode!==st)st.appendChild(el);
   });
   Object.keys(els).forEach(function(id){if(!seen[id]){els[id].remove();delete els[id];}});
+  if(!st.querySelector('.paperFrame')){var pf=document.createElement('div');pf.className='paperFrame';st.appendChild(pf);}
   drawOverlay();
   renderLayers();
   renderProps();
@@ -630,7 +650,7 @@ function clearOverlay(){
 }
 function drawOverlay(){
   clearOverlay();
-  var st=$('stage'), z=S.items.length+10;
+  var st=$('stage'), z=100000;
   var its=sel.map(byId).filter(Boolean);
   its.forEach(function(it){
     var b=document.createElement('div'); b.className='selbox';
@@ -972,7 +992,7 @@ $('stageWrap').addEventListener('pointermove',function(e){
     });
     sel=ns;
     [].slice.call($('stage').querySelectorAll('.selbox,.groupbox,.handle')).forEach(function(e){e.remove();});
-    var z=S.items.length+10;
+    var z=100000;
     sel.map(byId).forEach(function(i){var b=document.createElement('div');b.className='selbox';b.style.cssText+='left:'+px(i.x)+'px;top:'+px(i.y)+'px;width:'+px(i.w)+'px;height:'+px(i.h)+'px;z-index:'+z;$('stage').appendChild(b);});
   }
 });
@@ -1148,7 +1168,7 @@ $('settingsOverlay').onclick=function(e){if(e.target===this)this.style.display='
 /* ---------- ファイル保存/読込(画像込みのJSON) ---------- */
 $('saveFile').onclick=function(){
   var used={}; S.items.forEach(function(i){if(i.imgId&&IMGS[i.imgId])used[i.imgId]=IMGS[i.imgId];});
-  var blob=new Blob([JSON.stringify({app:'ciel-flyer',version:'1.22',state:S,designs:G.designs,images:used})],{type:'application/json'});
+  var blob=new Blob([JSON.stringify({app:'ciel-flyer',version:'1.23',state:S,designs:G.designs,images:used})],{type:'application/json'});
   var a=document.createElement('a'); a.href=URL.createObjectURL(blob);
   var d=new Date(), pad=function(n){return ('0'+n).slice(-2);};
   a.download='flyer-layout-'+d.getFullYear()+pad(d.getMonth()+1)+pad(d.getDate())+'-'+pad(d.getHours())+pad(d.getMinutes())+'.json';
@@ -2109,6 +2129,33 @@ $('carPreviewBtn').onclick=function(){
 $('carPrevPrev').onclick=function(){PV.page--;renderPreview();};
 $('carPrevNext').onclick=function(){PV.page++;renderPreview();};
 $('carPrevClose').onclick=function(){$('carPrevOverlay').style.display='none';};
+
+/* ---------- 見た目(この画面の表示だけ。localStorageに保存) ---------- */
+var UI_DEF={fill:'#4aabcf',fillA:18,bc:'#3d8fae',bw:2,tc:'#1e6a86',hc:'#e8760a',paper:'#ffffff',pc:'#ff2d95',dim:true,dimA:40};
+var UI={};
+try{UI=JSON.parse(localStorage.getItem('flyerUI')||'{}')||{};}catch(e){UI={};}
+Object.keys(UI_DEF).forEach(function(k){if(UI[k]===undefined)UI[k]=UI_DEF[k];});
+function hex2rgba(h,a){var n=parseInt(h.slice(1),16);return 'rgba('+(n>>16&255)+','+(n>>8&255)+','+(n&255)+','+a+')';}
+function applyUI(){
+  var r=document.documentElement.style;
+  r.setProperty('--slotBg',hex2rgba(UI.fill,UI.fillA/100)); r.setProperty('--slotBc',UI.bc); r.setProperty('--slotBw',UI.bw+'px');
+  r.setProperty('--slotTc',UI.tc); r.setProperty('--hc',UI.hc); r.setProperty('--paperBg',UI.paper); r.setProperty('--pc',UI.pc); r.setProperty('--dim',UI.dimA/100);
+  $('stage').classList.toggle('dimOut',!!UI.dim);
+}
+function saveUI(){try{localStorage.setItem('flyerUI',JSON.stringify(UI));}catch(e){}}
+function syncUIForm(){
+  $('uiFill').value=UI.fill;$('uiFillA').value=UI.fillA;$('uiFillAv').textContent=UI.fillA+'%';$('uiBc').value=UI.bc;$('uiBw').value=UI.bw;$('uiTc').value=UI.tc;
+  $('uiHc').value=UI.hc;$('uiPaper').value=UI.paper;$('uiPc').value=UI.pc;$('uiDim').checked=!!UI.dim;$('uiDimA').value=UI.dimA;
+}
+[['uiFill','fill'],['uiFillA','fillA'],['uiBc','bc'],['uiBw','bw'],['uiTc','tc'],['uiHc','hc'],['uiPaper','paper'],['uiPc','pc'],['uiDimA','dimA']].forEach(function(p){
+  var el=$(p[0]); el.oninput=function(){var v=(el.type==='range'||el.type==='number')?parseFloat(el.value):el.value; if(typeof v==='number'&&isNaN(v))return; UI[p[1]]=v; $('uiFillAv').textContent=UI.fillA+'%'; applyUI(); saveUI();};
+});
+$('uiDim').onchange=function(){UI.dim=this.checked;applyUI();saveUI();};
+$('uiReset').onclick=function(){UI=JSON.parse(JSON.stringify(UI_DEF));applyUI();saveUI();syncUIForm();};
+$('uiBtn').onclick=function(){syncUIForm();$('uiOverlay').style.display='flex';};
+$('uiClose').onclick=function(){$('uiOverlay').style.display='none';};
+$('uiOverlay').onclick=function(e){if(e.target===this)this.style.display='none';};
+applyUI();
 
 /* ---------- 起動 ---------- */
 fillSelects();
