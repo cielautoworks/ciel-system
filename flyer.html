@@ -162,7 +162,7 @@ input[type=number]{width:64px;}
 <body>
 <header>
   <div class="header-row">
-    <h1>チラシ作成 <span style="font-size:12px;font-weight:400;opacity:.75;">v1.36</span></h1>
+    <h1>チラシ作成 <span style="font-size:12px;font-weight:400;opacity:.75;">v1.37</span></h1>
     <div class="hdrBtns">
       <button type="button" class="updateBtn headerRefreshBtn" id="settingsBtn">⚙ 設定</button>
       <a class="updateBtn headerRefreshBtn xlink" href="./ads.html" title="広告掲載データ管理(検索語を引き継ぎます)">📢 広告</a>
@@ -214,6 +214,10 @@ input[type=number]{width:64px;}
       <button class="btn" id="zoomOut" title="縮小">－</button>
       <select id="zoomSel"></select>
       <button class="btn" id="zoomIn" title="拡大">＋</button>
+    </div>
+    <div class="tgroup"><span class="lbl">選択のサイズ</span>
+      <button class="btn" id="szUp" title="選んだコマ・画像を、それぞれの中心を保ったまま大きくします(Shiftで細かく)">⬆ アップ</button>
+      <button class="btn" id="szDown" title="選んだコマ・画像を、それぞれの中心を保ったまま小さくします(Shiftで細かく)">⬇ ダウン</button>
     </div>
   </div>
   <div class="toolbar" id="alignBar">
@@ -1268,6 +1272,23 @@ $('rotBtn').onclick=function(){
 });
 $('zoomIn').onclick=function(){zoomBy(1.25);};
 $('zoomOut').onclick=function(){zoomBy(0.8);};
+/* 選択したコマ・画像を、それぞれの中心を保ったまま一括で拡大・縮小(Shiftで細かく) */
+function scaleSel(f){
+  var its=sel.map(byId).filter(function(i){return i&&!i.locked;});
+  if(!its.length){toast('サイズを変えるコマや画像を選んでください');return;}
+  var targets=its.slice();
+  if($('linkSize').checked&&its.some(function(i){return i.type==='slot';})){
+    slots().forEach(function(s){if(targets.indexOf(s)<0&&!s.locked)targets.push(s);});
+  }
+  targets.forEach(function(i){
+    var cx=i.x+i.w/2, cy=i.y+i.h/2, nw=Math.max(3,i.w*f);
+    var nh=(i.type==='slot')?nw*ar():Math.max(3,i.h*f);
+    i.w=nw; i.h=nh; i.x=cx-nw/2; i.y=cy-nh/2;
+  });
+  commit(); render();
+}
+$('szUp').onclick=function(e){scaleSel(e.shiftKey?1.01:1.05);};
+$('szDown').onclick=function(e){scaleSel(e.shiftKey?1/1.01:1/1.05);};
 $('addSlot').onclick=addSlot;
 $('delSelBtn').onclick=function(){if(!sel.length){toast('削除する部品が選ばれていません');return;}delSel();};
 $('addImg').onclick=function(){$('imgFile').click();};
@@ -1296,7 +1317,7 @@ $('settingsOverlay').onclick=function(e){if(e.target===this)this.style.display='
 /* ---------- ファイル保存/読込(画像込みのJSON) ---------- */
 $('saveFile').onclick=function(){
   var used={}; S.items.forEach(function(i){if(i.imgId&&IMGS[i.imgId])used[i.imgId]=IMGS[i.imgId];});
-  var blob=new Blob([JSON.stringify({app:'ciel-flyer',version:'1.36',state:S,designs:G.designs,images:used})],{type:'application/json'});
+  var blob=new Blob([JSON.stringify({app:'ciel-flyer',version:'1.37',state:S,designs:G.designs,images:used})],{type:'application/json'});
   var a=document.createElement('a'); a.href=URL.createObjectURL(blob);
   var d=new Date(), pad=function(n){return ('0'+n).slice(-2);};
   a.download='flyer-layout-'+d.getFullYear()+pad(d.getMonth()+1)+pad(d.getDate())+'-'+pad(d.getHours())+pad(d.getMinutes())+'.json';
