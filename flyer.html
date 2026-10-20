@@ -162,7 +162,7 @@ input[type=number]{width:64px;}
 <body>
 <header>
   <div class="header-row">
-    <h1>チラシ作成 <span style="font-size:12px;font-weight:400;opacity:.75;">v1.37</span></h1>
+    <h1>チラシ作成 <span style="font-size:12px;font-weight:400;opacity:.75;">v1.38</span></h1>
     <div class="hdrBtns">
       <button type="button" class="updateBtn headerRefreshBtn" id="settingsBtn">⚙ 設定</button>
       <a class="updateBtn headerRefreshBtn xlink" href="./ads.html" title="広告掲載データ管理(検索語を引き継ぎます)">📢 広告</a>
@@ -355,7 +355,7 @@ input[type=number]{width:64px;}
     <div class="tgroup"><span class="lbl">縦横比(横:縦)</span><input type="number" id="caw" min="1" step="1" style="width:50px"> : <input type="number" id="cah" min="1" step="1" style="width:50px"></div>
     <div class="tgroup"><span class="lbl">外枠</span><label><input type="checkbox" id="cfOn">あり</label>
       色<input type="color" id="cfColor"> 太さ<input type="number" id="cfW" min="0" step="1" style="width:55px"> 角丸<input type="number" id="cfR" min="0" step="1" style="width:55px">
-      <label><input type="checkbox" id="cbgOn">背景色(外すと透過)</label><input type="color" id="cbg"></div>
+      <label><input type="checkbox" id="cbgOn">背景色(外すと透過)</label><input type="color" id="cbg"> 不透明度<input type="range" id="cbgA" min="0" max="100" step="5" value="100" style="width:90px;vertical-align:middle"><span id="cbgAv" class="hint">100%</span></div>
     <div class="tgroup"><span class="lbl">一括フォント</span><select id="cBulkFont"></select><button class="btn" id="cBulkBtn">全ての文字に適用</button>
       <label style="margin-left:8px;"><input type="checkbox" id="cSyncInfo"> 文字情報のスタイルを同期</label>
       <button class="btn" id="cUnifyInfo" title="車名・グレード・年式・走行距離・車検の文字の大きさを、選択中(なければ車名)のものに揃えます">文字情報のサイズを統一</button>
@@ -1317,7 +1317,7 @@ $('settingsOverlay').onclick=function(e){if(e.target===this)this.style.display='
 /* ---------- ファイル保存/読込(画像込みのJSON) ---------- */
 $('saveFile').onclick=function(){
   var used={}; S.items.forEach(function(i){if(i.imgId&&IMGS[i.imgId])used[i.imgId]=IMGS[i.imgId];});
-  var blob=new Blob([JSON.stringify({app:'ciel-flyer',version:'1.37',state:S,designs:G.designs,images:used})],{type:'application/json'});
+  var blob=new Blob([JSON.stringify({app:'ciel-flyer',version:'1.38',state:S,designs:G.designs,images:used})],{type:'application/json'});
   var a=document.createElement('a'); a.href=URL.createObjectURL(blob);
   var d=new Date(), pad=function(n){return ('0'+n).slice(-2);};
   a.download='flyer-layout-'+d.getFullYear()+pad(d.getMonth()+1)+pad(d.getDate())+'-'+pad(d.getHours())+pad(d.getMinutes())+'.json';
@@ -1565,11 +1565,17 @@ function fitItemEl(el,it,pxu,persist){
     ct.style.transform='scaleX('+(bw/w)+')';
   }else if(w>bw&&w>0){fs=fs*bw/w;ct.style.fontSize=fs+'px';}
 }
+function cellBgCss(f,edit){ // 背景色+不透明度(100%未満の編集中は、透けている所が分かるよう市松模様を下に敷く)
+  var a=(f.bgA==null?100:f.bgA);
+  if(a>=100)return 'background:'+f.bg+';';
+  var c=hex2rgba(f.bg,Math.max(0,a)/100);
+  return edit?('background:linear-gradient('+c+','+c+'),repeating-conic-gradient(#d9d9d9 0 25%,#f4f4f4 0 50%) 0 0/20px 20px;'):('background:'+c+';');
+}
 function buildCellEl(cell,k,pxw,data,edit,rootEl){
   var d=G.designs[k], pxu=pxw/1000, hpx=pxw*d.h/d.w, f=cell.frame||{};
   var root=rootEl||document.createElement('div'); root.innerHTML='';
   root.style.cssText='position:relative;isolation:isolate;width:'+pxw+'px;height:'+hpx+'px;overflow:'+(edit?'visible':'hidden')+';box-sizing:border-box;'+(edit?'outline:1px dashed #999;':'')+
-    (f.bgOn?'background:'+f.bg+';':(edit?'background:repeating-conic-gradient(#d9d9d9 0 25%,#f4f4f4 0 50%) 0 0/20px 20px;':'background:transparent;'))+'border-radius:'+((f.radius||0)*pxu)+'px;';
+    (f.bgOn?cellBgCss(f,edit):(edit?'background:repeating-conic-gradient(#d9d9d9 0 25%,#f4f4f4 0 50%) 0 0/20px 20px;':'background:transparent;'))+'border-radius:'+((f.radius||0)*pxu)+'px;';
   var dm=valMap(cell.sample,data); dm.photoAnchor=cell.photoAnchor||'center'; dm.photoFit=!!cell.photoAutoFit;
   if(!dm.photo&&edit&&cell.showSample&&cell.samplePhoto&&IMGS[cell.samplePhoto]){
     dm.photo=IMGS[cell.samplePhoto].data; dm.photoInfo=PINFO['s:'+cell.samplePhoto]||null;
@@ -1635,6 +1641,7 @@ function cSyncBar(){
   $('caw').value=d.w; $('cah').value=d.h;
   $('cfOn').checked=!!f.on; $('cfColor').value=f.color; $('cfW').value=f.w; $('cfR').value=f.radius;
   $('cbgOn').checked=!!f.bgOn; $('cbg').value=f.bg;
+  $('cbgA').value=(f.bgA==null?100:f.bgA); $('cbgAv').textContent=(f.bgA==null?100:f.bgA)+'%';
   $('cSyncInfo').checked=!!cc().syncInfo; $('cSyncPrice').checked=!!cc().syncPrice; $('cPhotoFit').checked=!!cc().photoAutoFit;
 }
 function cSnap(){return JSON.stringify(cc());}
@@ -1675,10 +1682,12 @@ $('caw').onchange=aspectChanged; $('cah').onchange=aspectChanged;
 function frameChanged(){
   var f=cc().frame;
   f.on=$('cfOn').checked; f.color=$('cfColor').value; f.w=Math.max(0,parseFloat($('cfW').value)||0);
-  f.radius=Math.max(0,parseFloat($('cfR').value)||0); f.bgOn=$('cbgOn').checked; f.bg=$('cbg').value;
+  f.radius=Math.max(0,parseFloat($('cfR').value)||0); f.bgOn=$('cbgOn').checked; f.bg=$('cbg').value; f.bgA=Math.min(100,Math.max(0,parseFloat($('cbgA').value)));
+  if(isNaN(f.bgA))f.bgA=100; $('cbgAv').textContent=f.bgA+'%';
   cCommit(); cRender();
 }
-['cfOn','cfColor','cfW','cfR','cbgOn','cbg'].forEach(function(id){$(id).onchange=frameChanged;});
+['cfOn','cfColor','cfW','cfR','cbgOn','cbg','cbgA'].forEach(function(id){$(id).onchange=frameChanged;});
+$('cbgA').oninput=function(){var f=cc().frame;f.bgA=parseFloat(this.value);$('cbgAv').textContent=this.value+'%';cRender();}; // ドラッグ中は表示だけ更新し、離した時に保存
 
 /* 追加・削除など */
 (function(){
