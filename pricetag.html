@@ -360,7 +360,7 @@
 
 <div class="panel">
   <div class="topBar">
-    <h1>プライスシート作成（A3横） <span style="font-size:12px;font-weight:400;opacity:.75;">v1.28</span></h1>
+    <h1>プライスシート作成（A3横） <span style="font-size:12px;font-weight:400;opacity:.75;">v1.29</span></h1>
     <a class="btn" href="./index.html">🏠 一覧へ</a>
     <a class="btn" id="backToAdsLink" href="./ads.html" data-base-href="./ads.html">📊 広告掲載へ</a>
     <a class="btn" id="backToPricingLink" href="./pricing.html" data-base-href="./pricing.html">💰 プライシングへ</a>
@@ -387,7 +387,9 @@
       <span class="countHint">テンプレート(文字サイズ・位置・色などのレイアウト)は「🎨 テンプレート編集」タブで作成・編集します。各車両に使うテンプレートは右端の列で選べます。</span>
     </div>
     <div class="listToolbar">
-      <button type="button" class="filterbtn active" id="showAllToggleBtn"></button>
+      <button type="button" class="filterbtn active" id="viewModeAdBtn" data-viewmode="ad">📢 広告掲載車両</button>
+      <button type="button" class="filterbtn" id="viewModePricingBtn" data-viewmode="pricing">💰 広告掲載なし(プライシング対象)</button>
+      <button type="button" class="filterbtn" id="viewModeAllBtn" data-viewmode="all">全車両</button>
       <div class="searchWrap">
         <input type="text" id="listSearchBox" placeholder="車台番号・車名で検索">
         <button type="button" class="searchClearBtn" id="listSearchClearBtn">×</button>
@@ -1988,6 +1990,7 @@ function buildRows(){
       supplyVenue: displaySupplier(sv.sup||''),
       color: sv.color||'',
       isAdListed: isAdListed,
+      isRetailTarget: pd.retailTarget!==false,
       aaCount: aaPhotoCounts[vin] || 0,
       maker: manual.maker!=null?manual.maker:autoMaker,
       carName: manual.carName!=null?manual.carName:autoCarName,
@@ -2085,13 +2088,20 @@ document.querySelectorAll('table.listTable thead th[data-sort]').forEach(functio
 });
 updateSortHeaderUI(); // v1.20:初期表示(仕入情報・降順)の矢印表示を最初から反映しておく
 
-// 初期値は広告掲載車両のみ表示。ボタンで全車両表示に切り替えられる(pricing.htmlのfilterbtnと同じ方式)。
-var showAllVehicles=false;
-function updateShowAllBtnUI(){
-  var btn=document.getElementById('showAllToggleBtn');
-  if(!btn) return;
-  if(showAllVehicles){ btn.classList.remove('active'); btn.textContent='📢 全車両を表示中(クリックで広告掲載車両のみに戻す)'; }
-  else { btn.classList.add('active'); btn.textContent='📢 広告掲載車両のみ表示中(クリックで全車両表示)'; }
+// v1.29:表示対象を3つから選ぶ。初期値は従来どおり広告掲載車両のみ。
+//  ad     = 広告掲載車両(カーセンサー/グーネットで「掲載」中)
+//  pricing= 広告掲載なし かつ プライシング対象(pricingData/{vin}/retailTarget が false 以外。未設定もON扱い=ads.html・pricing.htmlと同じ判定)
+//  all    = 全車両
+var viewMode='ad';
+function rowMatchesViewMode(r){
+  if(viewMode==='all') return true;
+  if(viewMode==='pricing') return !r.isAdListed && r.isRetailTarget;
+  return r.isAdListed;
+}
+function updateViewModeUI(){
+  document.querySelectorAll('[data-viewmode]').forEach(function(b){
+    b.classList.toggle('active', b.getAttribute('data-viewmode')===viewMode);
+  });
 }
 
 function renderPrintDateCell(r){
@@ -2115,7 +2125,7 @@ function updateCrossToolLink(){
 function renderList(){
   var q=document.getElementById('listSearchBox').value.trim();
   var tbody=document.getElementById('listTbody');
-  var visible=rows.filter(function(r){ return matchesSearch(r,q) && (showAllVehicles || r.isAdListed) && matchesFilters(r); });
+  var visible=rows.filter(function(r){ return matchesSearch(r,q) && rowMatchesViewMode(r) && matchesFilters(r); });
   visible=sortVisibleRows(visible);
   // v1.21:編集モーダルの「前の車両/次の車両」ボタンが、今まさに画面に表示されている順序
   // (検索・絞込・並べ替えを反映した順)で移動できるように、表示順のVIN一覧を控えておく。
@@ -2546,13 +2556,15 @@ document.getElementById('editModalOverlay').addEventListener('click', function(e
   if(e.target.id==='editModalOverlay') closeEditModal();
 });
 
-// ---- 広告掲載車両のみ表示トグル ----
-document.getElementById('showAllToggleBtn').addEventListener('click', function(){
-  showAllVehicles=!showAllVehicles;
-  updateShowAllBtnUI();
-  renderList();
+// ---- 表示対象の切替(広告掲載/広告掲載なし・プライシング対象/全車両) ----
+document.querySelectorAll('[data-viewmode]').forEach(function(btn){
+  btn.addEventListener('click', function(){
+    viewMode=btn.getAttribute('data-viewmode');
+    updateViewModeUI();
+    renderList();
+  });
 });
-updateShowAllBtnUI();
+updateViewModeUI();
 
 // ---- ⚙設定(ダークモード) ----
 (function(){
