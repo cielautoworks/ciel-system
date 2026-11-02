@@ -249,7 +249,7 @@ table.diffTable td.diffNew{color:var(--danger-text);font-weight:600;}
 <header>
 <div class="header-row">
   <div>
-    <h1>プライシングツール <span style="font-size:12px;font-weight:400;opacity:.75;">v1.19</span></h1>
+    <h1>プライシングツール <span style="font-size:12px;font-weight:400;opacity:.75;">v1.20</span></h1>
     <p>原価から総額下限・業販下限を算出し、車体価格に対する粗利をランク表示します。※データはFirebaseで共有されます</p>
   </div>
   <div style="display:flex;gap:8px;flex-shrink:0;">
@@ -1613,10 +1613,14 @@ function showStockInfoDiffConfirm(diffs, statusEl, onDone){
       const okIds = new Set(ids.filter((id,i)=>exists[i]));
       const targets = selected.filter(d=>okIds.has(d.id));
       const skipped = ids.length - okIds.size;
+      // adsData/tanaoroshi/<vin> も、書く直前に今も存在するか確認する(無ければ項目だけの不完全なレコードができるため書かない)
+      const tanaVinList = Array.from(new Set(targets.filter(d=>d.tanaField).map(d=>d.vin)));
+      const tanaExistFlags = await Promise.all(tanaVinList.map(vin=> get(ref(db, `adsData/tanaoroshi/${vin}`)).then(s=>s.exists())));
+      const okTanaVins = new Set(tanaVinList.filter((vin,i)=>tanaExistFlags[i]));
       const updates = {};
       targets.forEach(d=>{
         updates[`stock/${d.id}/${d.field}`] = d.newVal;
-        if(d.tanaField) updates[`adsData/tanaoroshi/${d.vin}/${d.tanaField}`] = d.rawVal;
+        if(d.tanaField && d.rawVal !== '' && okTanaVins.has(d.vin)) updates[`adsData/tanaoroshi/${d.vin}/${d.tanaField}`] = d.rawVal;
       });
       const updatedIds = new Set(targets.map(d=>d.id));
       if(targets.length){
