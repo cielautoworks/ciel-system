@@ -39,12 +39,12 @@ const firebaseConfig = {
 
 | ノード | 主な書き込み元 | その他の書き込み(実態) | 読取専用で参照するツール | 内容 |
 |---|---|---|---|---|
-| `stock/{id}` | car-app | ハブ・pricing.html(棚卸CSVで未登録車のみ新規登録) | ads.html(在庫一覧。v1.33〜)、ju-history.html、pricetag.html、flyer.html(掲載車両の選択) | 在庫車両。フィールド例: `id, vin, name, color, year, shaken, sup, date, price, total, regNo, status1, status2, memo`。car-appはこのほか `cleaned, photographed, maintained, needsParts, isLoaner, addedAt, displayNote, deliveryClean, deliveryMaint, docDone` も持つ |
+| `stock/{id}` | car-app | ハブ・pricing.html(棚卸CSVで未登録車を新規登録。登録済みの車は、確認画面で承認した項目に限り `color, name, year, shaken, sup, date` を項目単位で更新。`vin, price, total` とcar-app専用項目は書かない) | ads.html(在庫一覧。v1.33〜)、ju-history.html、pricetag.html、flyer.html(掲載車両の選択) | 在庫車両。フィールド例: `id, vin, name, color, year, shaken, sup, date, price, total, regNo, status1, status2, memo`。car-appはこのほか `cleaned, photographed, maintained, needsParts, isLoaner, addedAt, displayNote, deliveryClean, deliveryMaint, docDone` も持つ |
 | `stockArchive/{id}` | car-app | - | ハブ、ju-history.html、pricing.html | 納車済みアーカイブ(stockと同形式＋`archivedAt`) |
 | `cars/{id}` | car-app | - | - | 代車・レンタカー。`stockId`経由でstockを都度参照(vin・colorは持たない) |
 | `juHistory/{normVin}/{source_kai_shuppinNo}` | ju-history.html | pricing.html(精算書CSV取込) | ハブ、pricing.html | オークション出品・落札履歴。フィールド例: `source, kai, date, shuppinNo, carName, grade, nendo, category('shuppin'|'rakusatsu'), status, pref, sharyDai, recycle, shuppinRyo, seiyakuRyo, rakusatsuRyo, jizei, maxBid` |
 | `adsData/{carsensor,goonet,quicknetwork,autoserver,jutentori}` | ads.html | - | pricetag.html(carsensor, goonet)、flyer.html(carsensor, goonet) | 各広告サイトの掲載データ |
-| `adsData/tanaoroshi/{normVin}` | ads.html | car-app・ハブ・pricing.html(CSV取込時に未登録分を追加) | ju-history.html、pricing.html | 棚卸CSV由来データ(`car_name, color, shaken, shiire_date`) |
+| `adsData/tanaoroshi/{normVin}` | ads.html | car-app・ハブ・pricing.html(CSV取込時に未登録分を追加。ハブ・pricing.htmlは登録済みの車の `car_name, color, shaken, shiire_date` も、確認画面で承認した項目に限り項目単位で更新) | ju-history.html、pricing.html | 棚卸CSV由来データ(`car_name, color, shaken, shiire_date`) |
 | `adsData/lastUpdated, noGyohanVins, manualShufuku` | ads.html | - | pricetag.html(manualShufuku)、flyer.html(manualShufuku) | 更新日時・業販除外フラグ・修復歴手動設定 |
 | `adsData/aaPhotoCounts` | ads.html | car-app・ハブ・pricing.html・pricetag.html(いずれも全体を上書き) | ju-history.html | AA画像枚数 |
 | `aaPhotos/{VIN}` | ads.html | car-app・ハブ・pricing.html・pricetag.html | ju-history.html | AA出品票画像(`img1, img2`)。通信量対策で一覧データとは別パスに保存し、モーダルを開いた時だけ取得する |
