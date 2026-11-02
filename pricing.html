@@ -249,7 +249,7 @@ table.diffTable td.diffNew{color:var(--danger-text);font-weight:600;}
 <header>
 <div class="header-row">
   <div>
-    <h1>プライシングツール <span style="font-size:12px;font-weight:400;opacity:.75;">v1.18</span></h1>
+    <h1>プライシングツール <span style="font-size:12px;font-weight:400;opacity:.75;">v1.19</span></h1>
     <p>原価から総額下限・業販下限を算出し、車体価格に対する粗利をランク表示します。※データはFirebaseで共有されます</p>
   </div>
   <div style="display:flex;gap:8px;flex-shrink:0;">
@@ -290,7 +290,7 @@ table.diffTable td.diffNew{color:var(--danger-text);font-weight:600;}
   <div>
     <div class="dropZone" id="tanaCsvDropZone">
       <p>📄 棚卸CSVをドラッグ&ドロップ</p>
-      <span>新規車台番号を登録(adsData/tanaoroshi・stockノードに保存・ciel-systemハブと共有)。既存車両も車両代金(税抜仕入金額)を比較し、非AA仕入車両はプライシングの車両代金との差分を確認画面で反映可否選択、AA仕入車両は精算書とのずれを表示のみで通知します。</span>
+      <span>新規車台番号を登録(adsData/tanaoroshi・stockノードに保存・ciel-systemハブと共有)。登録済み車両(在庫)も、色・車名・年式・車検期限・仕入先・仕入日がCSVと異なる場合は確認画面で項目ごとに更新できます。既存車両も車両代金(税抜仕入金額)を比較し、非AA仕入車両はプライシングの車両代金との差分を確認画面で反映可否選択、AA仕入車両は精算書とのずれを表示のみで通知します。</span>
     </div>
     <input type="file" id="tanaCsvFileInput" accept=".csv" style="display:none">
     <div class="uploadStatus" id="tanaCsvUploadStatus"></div>
@@ -467,6 +467,29 @@ table.diffTable td.diffNew{color:var(--danger-text);font-weight:600;}
     </table>
     <div class="diffModalBtnRow">
       <button id="aaMismatchOkBtn">確認しました</button>
+    </div>
+  </div>
+</div>
+<!-- 登録済み車両の情報更新(棚卸CSV)の確認モーダル -->
+<div class="overlay" id="infoDiffOverlay">
+  <div class="diffModalPanel">
+    <div class="aaModalHeader">
+      <h3>登録済み車両の情報更新(棚卸CSV)</h3>
+      <button class="modalCloseX" id="infoDiffCloseX">✕</button>
+    </div>
+    <p class="diffNote">以下の登録済み車両は、棚卸CSVの内容が現在の登録内容と異なります。更新する項目にチェックを付けて「反映する」を押してください。car-appで手入力した内容も、チェックした項目は上書きされます(CSVが空欄の項目は対象外です)。</p>
+    <div style="display:flex;gap:8px;margin-bottom:8px;">
+      <button class="filterbtn" id="infoDiffAllOn" type="button">すべて選択</button>
+      <button class="filterbtn" id="infoDiffAllOff" type="button">すべて解除</button>
+    </div>
+    <table class="diffTable">
+      <thead><tr><th></th><th>車名</th><th>車台番号</th><th>項目</th><th>今の値</th><th>新しい値</th></tr></thead>
+      <tbody id="infoDiffTableBody"></tbody>
+    </table>
+    <p class="diffNote" id="infoDiffMsg" style="margin:10px 0 0;"></p>
+    <div class="diffModalBtnRow">
+      <button id="infoDiffApplyBtn">反映する(チェックした項目のみ)</button>
+      <button id="infoDiffCancelBtn" style="background:transparent;border:2px solid var(--border);color:var(--text-sub);">キャンセル(反映しない)</button>
     </div>
   </div>
 </div>
@@ -1506,6 +1529,119 @@ function showTanaCostDiffConfirm(costDiffs, statusEl, onDone){
   };
 }
 
+// ===== 登録済み車両の情報更新(棚卸CSV) =====
+// stockの車(stockArchiveは対象外)について、棚卸CSVの値と現在値を比較する。更新できるのは下の6項目だけ。
+// CSV側が空欄の項目は「差分なし」。比較値は新規登録時と同じ整形(車名=toFullWidth、年式・車検・仕入日=fmtDate)。
+const INFO_FIELDS = [
+  { field:'color',  label:'色',       csv:'color',  fmt:s=>s,           tana:'color' },
+  { field:'name',   label:'車名',     csv:'name',   fmt:toFullWidth,    tana:'car_name' },
+  { field:'year',   label:'年式',     csv:'year',   fmt:fmtDate,        tana:null },
+  { field:'shaken', label:'車検期限', csv:'shaken', fmt:fmtDate,        tana:'shaken' },
+  { field:'sup',    label:'仕入先',   csv:'sup',    fmt:s=>s,           tana:null },
+  { field:'date',   label:'仕入日',   csv:'date',   fmt:fmtDate,        tana:'shiire_date' },
+];
+function escHtml(s){
+  return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+function collectStockInfoDiffs(rowsArr, hIdx, idx, g, stockObj, tanaObj){
+  const stockByVin = {};
+  Object.entries(stockObj || {}).forEach(([id, rec])=>{
+    if(!rec || !rec.vin) return;
+    const vin = normVin(rec.vin);
+    (stockByVin[vin] = stockByVin[vin] || []).push({ id, rec });
+  });
+  const diffs = [];
+  const seen = new Set(); // 同じ車台番号がCSVに複数行ある場合は最初の行のみ
+  for(const row of rowsArr.slice(hIdx+1)){
+    const first = g(row, 0);
+    if(!first || !/^(平成|令和|昭和|\d{4})/.test(first)) continue;
+    const vin = normVin(g(row, idx.vin));
+    if(!vin || seen.has(vin) || !stockByVin[vin]) continue;
+    seen.add(vin);
+    const tanaExists = !!(tanaObj && tanaObj[vin] && typeof tanaObj[vin] === 'object');
+    stockByVin[vin].forEach(({id, rec})=>{
+      INFO_FIELDS.forEach(f=>{
+        const raw = g(row, idx[f.csv]);
+        if(raw === '') return;
+        const newVal = f.fmt(raw);
+        if(newVal === '' || newVal == null) return;
+        const oldVal = String(rec[f.field] == null ? '' : rec[f.field]).trim();
+        if(oldVal === String(newVal).trim()) return;
+        diffs.push({ id, vin, carName: rec.name || '', field:f.field, label:f.label,
+          oldVal, newVal: String(newVal).trim(),
+          tanaField: (f.tana && tanaExists) ? f.tana : null, rawVal: raw });
+      });
+    });
+  }
+  return diffs;
+}
+
+function showStockInfoDiffConfirm(diffs, statusEl, onDone){
+  const overlay = document.getElementById('infoDiffOverlay');
+  const tbody = document.getElementById('infoDiffTableBody');
+  const msgEl = document.getElementById('infoDiffMsg');
+  const applyBtn = document.getElementById('infoDiffApplyBtn');
+  msgEl.textContent = ''; msgEl.style.color = '';
+  tbody.innerHTML = diffs.map((d,i)=>`
+    <tr>
+      <td><input type="checkbox" class="infoDiffCk" data-i="${i}" checked></td>
+      <td>${escHtml(displayCarName(d.carName))}</td>
+      <td class="vin">${escHtml(d.vin)}</td>
+      <td>${escHtml(d.label)}</td>
+      <td class="diffOld">${d.oldVal==='' ? '(空欄)' : escHtml(d.oldVal)}</td>
+      <td class="diffNew">${escHtml(d.newVal)}</td>
+    </tr>
+  `).join('');
+  const cks = ()=> Array.from(tbody.querySelectorAll('.infoDiffCk'));
+  document.getElementById('infoDiffAllOn').onclick = ()=> cks().forEach(c=> c.checked = true);
+  document.getElementById('infoDiffAllOff').onclick = ()=> cks().forEach(c=> c.checked = false);
+  applyBtn.disabled = false;
+  overlay.classList.add('open');
+
+  const close = ()=>{ overlay.classList.remove('open'); };
+  document.getElementById('infoDiffCloseX').onclick = ()=>{ close(); onDone(0, 0); };
+  document.getElementById('infoDiffCancelBtn').onclick = ()=>{ close(); onDone(0, 0); };
+  applyBtn.onclick = async ()=>{
+    const selected = cks().filter(c=>c.checked).map(c=> diffs[Number(c.dataset.i)]);
+    if(!selected.length){ close(); onDone(0, 0); return; }
+    applyBtn.disabled = true;
+    msgEl.style.color = ''; msgEl.textContent = '反映中…';
+    try{
+      // 書く直前に、stock/<id> が今も存在するか確認する(存在しないidに書くと不完全なレコードができるため)
+      const ids = Array.from(new Set(selected.map(d=>d.id)));
+      const exists = await Promise.all(ids.map(id=> get(ref(db, `stock/${id}`)).then(s=>s.exists())));
+      const okIds = new Set(ids.filter((id,i)=>exists[i]));
+      const targets = selected.filter(d=>okIds.has(d.id));
+      const skipped = ids.length - okIds.size;
+      const updates = {};
+      targets.forEach(d=>{
+        updates[`stock/${d.id}/${d.field}`] = d.newVal;
+        if(d.tanaField) updates[`adsData/tanaoroshi/${d.vin}/${d.tanaField}`] = d.rawVal;
+      });
+      const updatedIds = new Set(targets.map(d=>d.id));
+      if(targets.length){
+        await update(ref(db), updates);
+        // 画面内のデータも更新(一覧に即反映)
+        targets.forEach(d=>{
+          if(stock[d.id]) stock[d.id][d.field] = d.newVal;
+          const v = vehicles.find(x=>x.vin===d.vin && x.stockStatus==='stock');
+          if(v && ['name','color','date','sup'].includes(d.field)) v[d.field] = d.newVal;
+        });
+        renderTable();
+        const newsId = 'n' + Date.now() + Math.random().toString(36).slice(2,6);
+        await set(ref(db, `newsLog/${newsId}`), {ts: Date.now(), vin: '', message: `登録済みの車 ${updatedIds.size}台の情報を更新しました`});
+      }
+      close();
+      onDone(updatedIds.size, skipped);
+    }catch(err){
+      console.error('showStockInfoDiffConfirm apply error:', err);
+      msgEl.style.color = 'var(--danger-text)';
+      msgEl.textContent = '● 反映エラー: ' + err.message + '(一部だけ反映されている可能性があります。「最新を取得」で確認してください)';
+      applyBtn.disabled = false;
+    }
+  };
+}
+
 // AA仕入車両の棚卸CSV(税抜仕入金額)と精算書の車両代金のずれ(表示のみ・書き込みなし)
 function showAaMismatchAlert(aaMismatches){
   const overlay = document.getElementById('aaMismatchOverlay');
@@ -1670,6 +1806,9 @@ async function handleTanaCsvFile(file, statusEl){
       }
     }
 
+    // 登録済み車両(stockのみ)の情報差分。新規登録より前の状態(stock・tanaoroshiの読込み結果)と比較する
+    const infoDiffs = collectStockInfoDiffs(rowsArr, hIdx, idx, g, stockSnap2.val(), tanaSnap.val());
+
     const newTanaoroshi = {};
     const newStock = {};
     let addedBoth = 0, addedTanaOnly = 0, addedStockOnly = 0, skipped = 0;
@@ -1726,10 +1865,23 @@ async function handleTanaCsvFile(file, statusEl){
     }
     if(costDiffs.length) statusMsg += ` / 車両代金の差分(非AA仕入): ${costDiffs.length}台(要確認)`;
     if(aaMismatches.length) statusMsg += ` / AA仕入車両の車両代金ずれ: ${aaMismatches.length}台(要確認)`;
+    if(infoDiffs.length) statusMsg += ` / 登録済み車両の情報差分: ${new Set(infoDiffs.map(d=>d.id)).size}台(要確認)`;
     statusEl.textContent = statusMsg;
     statusEl.className = 'uploadStatus ok';
 
-    const finish = ()=>{ if(aaMismatches.length) showAaMismatchAlert(aaMismatches); };
+    // 確認画面は車両代金の差分 → 登録済み車両の情報更新 → AA仕入のずれ通知 の順に、1つずつ表示する
+    const finishAa = ()=>{ if(aaMismatches.length) showAaMismatchAlert(aaMismatches); };
+    const finish = ()=>{
+      if(infoDiffs.length){
+        showStockInfoDiffConfirm(infoDiffs, statusEl, (updatedCount, skippedCount)=>{
+          if(updatedCount) statusEl.textContent += ` (登録済み車両${updatedCount}台の情報を更新しました)`;
+          if(skippedCount) statusEl.textContent += ` (${skippedCount}台は在庫から見つからず更新しませんでした)`;
+          finishAa();
+        });
+      } else {
+        finishAa();
+      }
+    };
     if(costDiffs.length){
       showTanaCostDiffConfirm(costDiffs, statusEl, (appliedCount)=>{
         if(appliedCount) statusEl.textContent += ` (${appliedCount}台反映しました)`;
