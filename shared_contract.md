@@ -43,7 +43,7 @@ const firebaseConfig = {
 | `stockArchive/{id}` | car-app | - | ハブ、ju-history.html、pricing.html | 納車済みアーカイブ(stockと同形式＋`archivedAt`) |
 | `cars/{id}` | car-app | - | - | 代車・レンタカー。`stockId`経由でstockを都度参照(vin・colorは持たない) |
 | `juHistory/{normVin}/{source_kai_shuppinNo}` | ju-history.html | pricing.html(精算書CSV取込) | ハブ、pricing.html | オークション出品・落札履歴。フィールド例: `source, kai, date, shuppinNo, carName, grade, nendo, category('shuppin'|'rakusatsu'), status, pref, sharyDai, recycle, shuppinRyo, seiyakuRyo, rakusatsuRyo, jizei, maxBid` |
-| `adsData/{carsensor,goonet,quicknetwork,autoserver,jutentori}` | ads.html | - | pricetag.html(carsensor, goonet)、flyer.html(carsensor, goonet) | 各広告サイトの掲載データ |
+| `adsData/{carsensor,goonet,quicknetwork,autoserver,jutentori}` | ads.html | - | pricetag.html(carsensor, goonet)、flyer.html(carsensor, goonet) | 各広告サイトの掲載データ(ads.html v1.39〜、carsensor の各行に修復歴照合用の年式(西暦)と色も保存) |
 | `adsData/tanaoroshi/{normVin}` | ads.html | car-app・ハブ・pricing.html(CSV取込時に未登録分を追加。ハブ・pricing.htmlは登録済みの車の `car_name, color, shaken, shiire_date` も、確認画面で承認した項目に限り項目単位で更新) | ju-history.html、pricing.html | 棚卸CSV由来データ(`car_name, color, shaken, shiire_date`) |
 | `adsData/lastUpdated, noGyohanVins, manualShufuku, excludedVins` | ads.html | - | pricetag.html(manualShufuku)、flyer.html(manualShufuku) | 更新日時・業販除外フラグ・修復歴手動設定・掲載対象外の車両(`excludedVins/{正式VIN}=true`。ads.html v1.34〜。キーはcanonicalVinMapの正式VIN。他ツールは現時点で未使用) |
 | `adsData/aaPhotoCounts` | ads.html | car-app・ハブ・pricing.html・pricetag.html(いずれも全体を上書き) | ju-history.html | AA画像枚数 |
@@ -56,7 +56,7 @@ const firebaseConfig = {
 | `flyerImages/{imgId}` | flyer.html | - | - | チラシのレイアウトに置く画像(WebP/Base64、長辺縮小済み)。「保存」ボタンを押した時だけ書き込む |
 | `flyerCarPhotos/{normVin}` | flyer.html | - | - | チラシ用の背景透過車両画像(1台1枚)。`{name, data:Base64(WebP/PNG・縮小済み), ua}`。AA画像(`aaPhotos`)とは別物 |
 | `flyerCarPhotoIndex/{normVin}` | flyer.html | - | - | `flyerCarPhotos` に画像があるかの目印 `{ua}`(一覧表示用に軽く読むため) |
-| `carsensorRestoration` | カーセンサーのスクレイピング(python フォルダの carsensor 系スクリプト。carsensor_daily.bat から毎朝実行。このリポジトリの外) | - | ads.html | カーセンサー掲載中の自社車両の修復歴。`{updatedAt, items:{<URLの物件ID>:{total(支払総額・円), year, mileage(km), color, restoration('あり'\|'なし'), url, fetchedAt}}}`。毎朝、自社分だけでノード全体を置き換える(書き込み元はスクレイピングのみ)。車台番号を持たないため、ads.html は 支払総額・年式・走行距離・色 の4項目でカーセンサーの行と突き合わせ、修復歴の「候補」として表示する(優先順位: 手動設定 > グーネット > このノード。manualShufuku へ自動で書き込まない) |
+| `carsensorRestoration` | カーセンサーのスクレイピング(python フォルダの carsensor 系スクリプト。carsensor_daily.bat から毎朝実行。このリポジトリの外) | - | ads.html | カーセンサー掲載中の自社車両の修復歴。`{updatedAt, items:{<URLの物件ID>:{total(支払総額・円), year, mileage(km), color, restoration('あり'\|'なし'), url, fetchedAt}}}`。毎朝、自社分だけでノード全体を置き換える(書き込み元はスクレイピングのみ)。値の形式: updatedAt・fetchedAt はミリ秒の数値。total は円の整数(84.8万円→848000、四捨五入で誤差を避ける)。mileage は km の整数(13.9万km→139000)で、取れない場合は 0 にせず null か省略。year は西暦4桁の文字列。color はページ表記のまま(全角可)、空欄なら空文字。ads.html は総額・走行距離を1,000単位に丸めて照合する。車台番号を持たないため、ads.html は 支払総額・年式・走行距離・色 の4項目でカーセンサーの行と突き合わせ、修復歴の「候補」として表示する(優先順位: 手動設定 > グーネット > このノード。manualShufuku へ自動で書き込まない) |
 | `newsLog` | car-app | ハブ・pricing.html(新規登録の通知) | - | 変更履歴(car-appが3ヶ月より古いものを自動削除) |
 | `inspections`, `inspectionPhotos`, `loanHistories` | car-app | - | - | car-app専用(点検シート・貸出履歴) |
 | `listings`, `listingPhotos` | (廃止) | - | car-app(読取・削除のみ) | v1.90で廃止した旧方式の残り |
