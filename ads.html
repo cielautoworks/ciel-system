@@ -122,6 +122,9 @@ html[data-theme="dark"] .card.warn{box-shadow:0 0 10px rgba(255,194,51,.2);}
 .toggleBtn{font-size:11.5px;font-weight:600;padding:4px 10px;border:2px solid var(--toggle-on-border);border-radius:6px;background:var(--toggle-on-bg);color:var(--toggle-on-text);cursor:pointer;white-space:nowrap;}
 .toggleBtn.off{background:var(--toggle-off-bg);color:var(--toggle-off-text);border-color:var(--toggle-off-border);}
 .toggleBtn:hover{opacity:0.8;}
+.listBtn{font-size:11.5px;font-weight:600;padding:4px 10px;border:2px solid var(--pink);border-radius:6px;background:rgba(217,122,154,0.14);color:var(--pink);cursor:pointer;white-space:nowrap;}
+.listBtn.off{background:transparent;color:var(--text-muted);border-color:var(--text-muted);}
+.listBtn:hover{opacity:0.8;}
 .aaBtn{font-size:11.5px;font-weight:600;padding:4px 10px;border:2px solid var(--sky);border-radius:6px;background:transparent;color:var(--sky);cursor:pointer;white-space:nowrap;}
 .aaBtn.has1{border-color:#ff9d33;color:#ff9d33;}
 .aaBtn.has2{border-color:var(--warn-text);color:var(--warn-text);}
@@ -155,6 +158,7 @@ html[data-theme="dark"] .card.warn{box-shadow:0 0 10px rgba(255,194,51,.2);}
 .aaModalStatus.err{color:var(--danger-text);}
 .aaModalCloseBtn{margin-top:16px;width:100%;padding:8px;background:transparent;border:2px solid var(--sky);color:var(--sky);border-radius:8px;font-size:13px;cursor:pointer;font-weight:600;}
 .aaModalCloseBtn:hover{background:rgba(74,171,207,0.12);box-shadow:0 0 8px var(--sky);}
+tr.rowExcluded{opacity:.5;}
 tr.rowNotInStock{background:var(--rowwarn-bg);}
 tr.rowNotInStock:hover{background:var(--rowwarn-bg-hover);}
 .subtle{color:var(--text-muted);font-size:11px;}
@@ -204,7 +208,7 @@ body:not(.debugMode) .debugOnly{display:none !important;}
 <header>
 <div class="header-row">
   <div>
-    <h1>広告掲載状況ダッシュボード <span style="font-size:12px;font-weight:400;opacity:.75;">v1.33</span></h1>
+    <h1>広告掲載状況ダッシュボード <span style="font-size:12px;font-weight:400;opacity:.75;">v1.35</span></h1>
     <p>カーセンサー ／ グーネット ／ QuickNetwork（業販） ／ オートサーバー（業販） ／ JUテントリ（業販） の5サイト突合(棚卸一覧は参考照合用)　※データはFirebaseで共有されます</p>
   </div>
   <div style="display:flex;gap:8px;flex-shrink:0;">
@@ -344,6 +348,7 @@ body:not(.debugMode) .debugOnly{display:none !important;}
   <button class="filterbtn w" data-filter="price">価格ずれのみ</button>
   <button class="filterbtn w" data-filter="mileage">走行距離ずれ</button>
   <button class="filterbtn w" data-filter="shaken">車検ずれ</button>
+  <button class="filterbtn" id="showExcludedBtn">対象外も含めすべて表示</button>
   <button class="filterbtn" id="resetSortBtn">並び替え解除</button>
 </div>
 
@@ -355,6 +360,7 @@ body:not(.debugMode) .debugOnly{display:none !important;}
 <tr>
   <th class="sortable" data-sort="shiire" rowspan="2">仕入日<span class="arrow">↕</span></th>
   <th class="sortable" data-sort="vin" rowspan="2">車台番号<span class="arrow">↕</span></th>
+  <th rowspan="2">掲載</th>
   <th rowspan="2">業販不要</th>
   <th rowspan="2">修復歴</th>
   <th rowspan="2">出品票</th>
@@ -385,7 +391,7 @@ body:not(.debugMode) .debugOnly{display:none !important;}
 </table>
 </div>
 
-<p class="legend">※掲載漏れ＝いずれかのサイトで掲載中なのに別サイトで非掲載・未掲載　／　棚卸に該当なし＝車両棚卸一覧にVINが見当たらない車両（売約済みの可能性がありますが棚卸には非売品も混在するため断定はできません。要確認の参考情報です）　／　価格ずれ＝小売2サイト間または業販2サイト間で金額不一致　／　走行距離ずれ＝サイト間最大差1,000km以上　／　車検ずれ＝有効期限(年月)がサイト間で不一致。「整備付」と空欄は同じ「日付なし」として扱い、日付ありのサイトと混在する場合はずれとして検知　／　「業販不要」をONにした車両は、QuickNetwork・オートサーバー・JUテントリの未掲載チェックから除外</p>
+<p class="legend">※「掲載」ボタン＝一覧に出す車両かどうかの切替(対象外にすると一覧・件数から外れます。「対象外も含めすべて表示」で確認・元に戻せます)　／　掲載漏れ＝いずれかのサイトで掲載中なのに別サイトで非掲載・未掲載　／　棚卸に該当なし＝車両棚卸一覧にVINが見当たらない車両（売約済みの可能性がありますが棚卸には非売品も混在するため断定はできません。要確認の参考情報です）　／　価格ずれ＝小売2サイト間または業販2サイト間で金額不一致　／　走行距離ずれ＝サイト間最大差1,000km以上　／　車検ずれ＝有効期限(年月)がサイト間で不一致。「整備付」と空欄は同じ「日付なし」として扱い、日付ありのサイトと混在する場合はずれとして検知　／　「業販不要」をONにした車両は、QuickNetwork・オートサーバー・JUテントリの未掲載チェックから除外</p>
 
 </div>
 
@@ -430,6 +436,7 @@ async function loadAdsData(){
     const data = snap.val() || {};
     ADS_SITES_KEYS.forEach(k => { raw[k] = data[k] || {}; });
     noGyohanVins = data.noGyohanVins || {};
+    excludedVins = data.excludedVins || {};
     aaPhotoCounts = data.aaPhotoCounts || {};
     manualShufuku = data.manualShufuku || {};
     lastLoadedLabel = data.lastUpdated || null;
@@ -481,6 +488,7 @@ async function saveAdsData(){
     ADS_SITES_KEYS.forEach(k => { payload[k] = raw[k] || {}; });
     payload.lastUpdated = label;
     payload.noGyohanVins = noGyohanVins || {}; // 業販不要フラグは上書きせず保持する
+    payload.excludedVins = excludedVins || {}; // 掲載対象外フラグも上書きせず保持する
     payload.aaPhotoCounts = aaPhotoCounts || {}; // AA画像の枚数(軽量なメタ情報のみ)も上書きせず保持する
     payload.manualShufuku = manualShufuku || {}; // 修復歴の手動設定も上書きせず保持する
     await set(ref(db, 'adsData'), payload);
@@ -505,6 +513,23 @@ async function toggleNoGyohan(vin){
     await set(ref(db, 'adsData/noGyohanVins'), noGyohanVins);
   } catch(err){
     console.error('toggleNoGyohan error:', err);
+    setSyncStatus('● 保存エラー: ' + err.message, 'err');
+  }
+}
+
+// 一覧への「掲載」対象/対象外を切り替える。対象外にした車両は通常は一覧・件数から外れる。
+// 該当車両1件分のパス(adsData/excludedVins/{vin})だけを書き込む。
+async function toggleExcluded(vin){
+  const wasExcluded = !!excludedVins[vin];
+  if(wasExcluded) delete excludedVins[vin];
+  else excludedVins[vin] = true;
+  recompute();
+  try{
+    await set(ref(db, 'adsData/excludedVins/' + vin), wasExcluded ? null : true);
+  } catch(err){
+    console.error('toggleExcluded error:', err);
+    if(wasExcluded) excludedVins[vin] = true; else delete excludedVins[vin];
+    recompute();
     setSyncStatus('● 保存エラー: ' + err.message, 'err');
   }
 }
@@ -720,6 +745,8 @@ async function openAaModal(vin){
 
 let raw = {carsensor:{}, goonet:{}, quicknetwork:{}, autoserver:{}, jutentori:{}, tanaoroshi:{}};
 let noGyohanVins = {};
+let excludedVins = {}; // 掲載対象外にした車台番号(true)。通常は一覧に表示しない。「対象外も含めすべて表示」ボタンの時だけ表示する
+let showExcluded = false;
 let aaPhotoCounts = {};
 let manualShufuku = {}; // 修復歴の手動設定(true=あり/false=なし)。未設定の車台番号はグーネットのCSV値に従う
 let lastLoadedLabel = null;
@@ -835,6 +862,11 @@ function applyCanonicalVins(rawData){
 let rows = [];
 let total = 0;
 
+// 一覧・件数の対象にする車両。対象外にした車両は「対象外も含めすべて表示」がONの時だけ含める。
+function activeRows(){
+  return showExcluded ? rows : rows.filter(r=>!r.excluded);
+}
+
 function recompute(){
   const rawCanon = applyCanonicalVins({...raw, stockTarget: stockTargets});
   const stockRecords = rawCanon.tanaoroshi || {};
@@ -876,6 +908,7 @@ function recompute(){
     }).filter(v=>v!=null);
     const shakenMismatch = shakenSignatures.length>=2 && new Set(shakenSignatures).size>1;
 
+    const excluded = !!excludedVins[vin];
     const skipGyohan = !!noGyohanVins[vin]; // 業販3サイトへの掲載が不要な車両は未掲載チェックから除外
     const checkSites = skipGyohan ? SITES.filter(s=>!GYOHAN_ONLY_SITES.includes(s)) : SITES;
     const activeSites = checkSites.filter(s => isActive(s, bySite[s]));
@@ -902,17 +935,18 @@ function recompute(){
     const flagCount = (allMissing?1:0) + (missing?1:0) + (notInStock?1:0) + (priceMismatch?1:0) + (mileageMismatch?1:0) + (shakenMismatch?1:0);
 
     return {vin, carName, maker, gradeNote, yearDisp, bySite, inStock, notInStock, retailMismatch, gyohanMismatch, priceMismatch,
-             mileages, mileageMismatch, shakenNorm, shakenMismatch, skipGyohan, shiireDate, aaCount,
+             mileages, mileageMismatch, shakenNorm, shakenMismatch, skipGyohan, excluded, shiireDate, aaCount,
              shufukuCsv, shufukuManual, shufukuEffective, shufukuCsOnly, shufukuDiff,
              allMissing, missing, missingSites: missing ? missingSitesAll : [], flagCount};
   });
 
-  total = rows.length;
+  total = activeRows().length;
   renderSummary();
   applyFilters();
 }
 
 function renderSummary(){
+  const rows = activeRows();
   const missingCount = rows.filter(r=>r.missing).length;
   const allMissingCount = rows.filter(r=>r.allMissing).length;
   const notInStockCount = rows.filter(r=>r.notInStock).length;
@@ -1023,7 +1057,7 @@ function getSortValue(r, key){
 }
 
 function applyFilters(){
-  let filtered = rows;
+  let filtered = activeRows();
   if(currentFilter==='missing') filtered = filtered.filter(r=>r.missing);
   if(currentFilter==='allmissing') filtered = filtered.filter(r=>r.allMissing);
   if(currentFilter==='notinstock') filtered = filtered.filter(r=>r.notInStock);
@@ -1053,11 +1087,12 @@ function applyFilters(){
 }
 
 function render(list){
-  document.getElementById('countHint').textContent = `${list.length}件表示中（全${total}件）`;
+  document.getElementById('countHint').textContent = `${list.length}件表示中（全${total}件）` + (showExcluded ? `　※対象外${rows.filter(r=>r.excluded).length}台を含む` : '');
   document.getElementById('tbody').innerHTML = list.map(r => `
-    <tr class="${r.notInStock ? 'rowNotInStock' : ''}">
+    <tr class="${r.notInStock ? 'rowNotInStock' : ''} ${r.excluded ? 'rowExcluded' : ''}">
       <td class="numcol">${r.shiireDate ? r.shiireDate.label : '<span class="subtle">―</span>'}</td>
       <td class="vin">${r.vin}</td>
+      <td class="togglecol"><button type="button" class="listBtn ${r.excluded?'off':''}" data-vin="${r.vin}" title="${r.excluded?'掲載対象外です。クリックで掲載対象に戻します':'クリックで掲載対象外にします(一覧から非表示)'}">${r.excluded ? '対象外' : '掲載'}</button></td>
       <td class="togglecol"><button type="button" class="toggleBtn ${r.skipGyohan?'off':''}" data-vin="${r.vin}">${r.skipGyohan ? '不要' : '対象'}</button></td>
       <td class="togglecol"><button type="button" class="shufukuBtn ${r.shufukuEffective?'on':''} ${r.shufukuCsOnly?'csonly':(r.shufukuDiff?'diff':'')}" data-vin="${r.vin}" title="${r.shufukuCsOnly?'グーネットのデータがなく未確認です(手動設定)':r.shufukuDiff?'グーネットのCSV値と異なる値に手動設定されています':'クリックで手動設定を切り替えます'}">${r.shufukuEffective ? 'あり' : 'なし'}</button></td>
       <td class="togglecol"><button type="button" class="aaBtn ${r.aaCount===1?'has1':r.aaCount===2?'has2':''}" data-vin="${r.vin}">AA</button></td>
@@ -1084,7 +1119,7 @@ function render(list){
 
 function setFilter(key){
   currentFilter = (currentFilter === key) ? 'all' : key;
-  document.querySelectorAll('.filterbtn').forEach(b=>{
+  document.querySelectorAll('.filterbtn[data-filter]').forEach(b=>{
     b.classList.toggle('active', b.dataset.filter === currentFilter);
   });
   document.querySelectorAll('.card[data-filter]').forEach(c=>{
@@ -1093,8 +1128,16 @@ function setFilter(key){
   applyFilters();
 }
 
-document.querySelectorAll('.filterbtn').forEach(btn=>{
+document.querySelectorAll('.filterbtn[data-filter]').forEach(btn=>{
   btn.addEventListener('click', ()=> setFilter(btn.dataset.filter));
+});
+document.getElementById('showExcludedBtn').addEventListener('click', ()=>{
+  showExcluded = !showExcluded;
+  const b = document.getElementById('showExcludedBtn');
+  b.classList.toggle('active', showExcluded);
+  b.textContent = showExcluded ? '対象外を隠す' : '対象外も含めすべて表示';
+  renderSummary();
+  applyFilters();
 });
 document.getElementById('summary').addEventListener('click', (e)=>{
   const card = e.target.closest('.card[data-filter]');
@@ -1547,6 +1590,8 @@ document.getElementById('refreshBtn').addEventListener('click', ()=>{
 });
 
 document.getElementById('tbody').addEventListener('click', e=>{
+  const listBtn = e.target.closest('.listBtn');
+  if(listBtn){ toggleExcluded(listBtn.dataset.vin); return; }
   const toggleBtn = e.target.closest('.toggleBtn');
   if(toggleBtn){ toggleNoGyohan(toggleBtn.dataset.vin); return; }
   const shufukuBtn = e.target.closest('.shufukuBtn');
