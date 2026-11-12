@@ -48,7 +48,7 @@ const firebaseConfig = {
 | `adsData/lastUpdated, noGyohanVins, manualShufuku, excludedVins` | ads.html | - | pricetag.html(manualShufuku)、flyer.html(manualShufuku) | 更新日時・業販除外フラグ・修復歴手動設定・掲載対象外の車両(`excludedVins/{正式VIN}=true`。ads.html v1.34〜。キーはcanonicalVinMapの正式VIN。他ツールは現時点で未使用) |
 | `adsData/aaPhotoCounts` | ads.html | car-app・ハブ・pricing.html・pricetag.html(いずれも全体を上書き) | ju-history.html | AA画像枚数 |
 | `aaPhotos/{VIN}` | ads.html | car-app・ハブ・pricing.html・pricetag.html | ju-history.html | AA出品票画像(`img1, img2`)。通信量対策で一覧データとは別パスに保存し、モーダルを開いた時だけ取得する |
-| `pricingData/{normVin}` | pricing.html | ハブ(`manualCost`) | ads.html(`retailTarget`のみ。v1.33〜)、pricetag.html(`body`)、flyer.html(`body`。支払総額=body+10万円)、ハブ | 車体価格(`body`)・`extraCost, as, marginTotal, marginWholesale, retailTarget, manualCost, manualRecycle, updatedAt` |
+| `pricingData/{normVin}` | pricing.html | ハブ(`manualCost`) | ads.html(`retailTarget`、`body`、`as`。総額・業販価格を価格ずれの基準に使用)、pricetag.html(`body`)、flyer.html(`body`。支払総額=body+10万円)、ハブ | 車体価格(`body`)・`extraCost, as, marginTotal, marginWholesale, retailTarget, manualCost, manualRecycle, updatedAt` |
 | `priceTagTemplates/{templateId}` | pricetag.html | - | - | 価格表テンプレート設定 |
 | `priceTagData/{vin}/manual/{field}`, `printTarget`, `templateId`, `lastPrintedAt`, `lastPrintedPrice` | pricetag.html | - | - | 一覧の個別編集値・印刷対象・使用テンプレート・最終印刷日時と価格 |
 | `flyerLayouts/{layoutId}` | flyer.html | - | - | チラシのレイアウト(配置・サイズ・番号・コマデザイン等の小さなJSON。画像なし)。キーは各レイアウトのID(英数字)で、数は可変。削除したレイアウトは `{deleted:true, ua}` の目印を残す(他のパソコンへ削除を伝えるため)。各レイアウトJSONに、選択した車台番号(normVin)の配列 `cars`(掲載順)を含む。変更の0.5秒後に自動保存 |
@@ -93,6 +93,7 @@ function normVin(v){ return (v||'').replace(/\s+/g,'').toUpperCase(); }
 - 新しいツールを作る場合、ads.html・ju-history.htmlと同じ見た目・設計(ダークモード対応、カード/テーブルのCSSパターン、Firebase共有)を踏襲する。
 - バージョン表記は修正のたびに+0.01する(新規ツールはv1.00開始)。
 - 仕入先名(`stock.sup`)を画面に表示するときは `displaySupplier()` で変換する(表示だけの変換で、保存値は変えない): 「新潟県中古車販売商工組合」を含む→`JU新潟`、「トヨタユーゼック」または「TAA東北」を含む→`TAA東北`、それ以外はそのまま。実装済み: pricing.html・pricetag.html・flyer.html。car-appは未対応(2026-10-20依頼)。ハブ・ads・ju-historyは仕入先名を表示しない。
+- 支払総額は `pricingData.body + 100000`(円。各ファイルの定数 `TOTAL_ADD`)で計算する。pricing.html・pricetag.html・flyer.html・ads.html で共通。値を変える場合は4ファイルを同時に直すこと。業販価格は `pricingData.as`(円)をそのまま使う。ads.html は、この総額を カーセンサー・グーネットの支払総額の、業販価格を QuickNetwork・オートサーバー・JUテントリの業販価格の、価格ずれの基準にする。
 
 ## 6. アプリ↔GitHubリポジトリ対応表
 
