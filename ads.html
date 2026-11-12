@@ -208,7 +208,7 @@ body:not(.debugMode) .debugOnly{display:none !important;}
 <header>
 <div class="header-row">
   <div>
-    <h1>広告掲載状況ダッシュボード <span style="font-size:12px;font-weight:400;opacity:.75;">v1.38</span></h1>
+    <h1>広告掲載状況ダッシュボード <span style="font-size:12px;font-weight:400;opacity:.75;">v1.39</span></h1>
     <p>カーセンサー ／ グーネット ／ QuickNetwork（業販） ／ オートサーバー（業販） ／ JUテントリ（業販） の5サイト突合(棚卸一覧は参考照合用)　※データはFirebaseで共有されます</p>
   </div>
   <div style="display:flex;gap:8px;flex-shrink:0;">
@@ -353,6 +353,7 @@ body:not(.debugMode) .debugOnly{display:none !important;}
 </div>
 
 <p class="count-hint" id="countHint"></p>
+<p class="count-hint" id="csNote" style="display:none;"></p>
 
 <div class="tablewrap">
 <table>
@@ -443,7 +444,7 @@ async function loadAdsData(){
     manualShufuku = data.manualShufuku || {};
     lastLoadedLabel = data.lastUpdated || null;
     document.getElementById('lastUpdated').textContent = lastLoadedLabel ? ('データ基準日: ' + lastLoadedLabel) : 'データがまだ保存されていません。CSVを読み込んで保存してください。';
-    const stockOk = await loadStockTargets();
+    const [stockOk] = await Promise.all([loadStockTargets(), loadCsRestoration()]);
     setSyncStatus(stockOk ? '● 同期済み' : '● 同期済み(在庫・プライシング対象の読み込みに失敗したため、広告サイト未掲載の車両は表示されていません)', stockOk ? 'ok' : 'err');
     recompute();
   } catch(err){
@@ -456,6 +457,23 @@ function numOrNull(v){
   if(v == null || v === '') return null;
   const n = Number(v);
   return isFinite(n) ? n : null;
+}
+
+// カーセンサーの修復歴(毎朝のスクレイピング結果を自社分だけ置いた carsensorRestoration)。読み取り専用。
+// ノードが無い・空の場合や読み込み失敗時は、何もせず今までどおり動く。
+let csRestoration = {};
+let csRestorationUpdatedAt = null;
+async function loadCsRestoration(){
+  try{
+    const snap = await get(ref(db, 'carsensorRestoration'));
+    const v = snap.val() || {};
+    csRestoration = v.items || {};
+    csRestorationUpdatedAt = typeof v.updatedAt === 'number' ? v.updatedAt : null;
+  } catch(err){
+    console.error('loadCsRestoration error:', err);
+    csRestoration = {};
+    csRestorationUpdatedAt = null;
+  }
 }
 
 // car-appの在庫(stock。アーカイブ=納車済みは含めない)のうち、pricing.htmlの「対象」スイッチがON
@@ -892,11 +910,100 @@ function activeRows(){
   return showExcluded ? rows : rows.filter(r=>!r.excluded);
 }
 
+/* ============ カーセンサー修復歴の照合 ============ */
+// スクレイピング結果には車台番号が無いため、支払総額・年式・走行距離・色の4項目で、CSV由来のカーセンサー行と突き合わせる。
+// 総額・走行距離は表示が0.1万単位に丸められているため、1,000円/1,000km単位に丸めて比べる。
+// 色が無い古い保存データや、スクレイピング側の色が空欄の行は、総額・年式・走行距離の3項目で比べる。
+// 1対1で決まるものだけを候補にし、複数当てはまる・取り合いになる・当てはまらない場合は候補にしない(取り違え防止)。
+function round1000(v){
+  if(v == null || v === '') return null;
+  const n = Number(v);
+  return isFinite(n) ? Math.round(n/1000) : null;
+}
+function normYearW(v){
+  const m = String(v == null ? '' : v).match(/(19|20)\d{2}/);
+  return m ? m[0] : null;
+}
+function normColor(v){ return v == null ? '' : String(v).normalize('NFKC').replace(/\s+/g, ''); }
+function carsensorYearW(rec){
+  const w = normYearW(rec.year_w) || normYearW(rec.year_disp);
+  if(w) return w;
+  const m = String(rec.year_disp || '').match(/^([RHS])\s*0?(\d{1,2})/);
+  if(!m) return null;
+  const base = {R:2018, H:1988, S:1925}[m[1]];
+  return String(base + parseInt(m[2], 10));
+}
+function buildCsMatches(csRows){
+  const idx3 = {}, idx4 = {}, idxNoColor = {};
+  Object.entries(csRestoration || {}).forEach(([id, it])=>{
+    if(!it || (it.restoration !== 'あり' && it.restoration !== 'なし')) return;
+    const t = round1000(it.total), y = normYearW(it.year), m = round1000(it.mileage);
+    if(t == null || !y || m == null) return;
+    const k3 = t + '|' + y + '|' + m;
+    (idx3[k3] = idx3[k3] || []).push(id);
+    const k4 = k3 + '|' + normColor(it.color);
+    (idx4[k4] = idx4[k4] || []).push(id);
+    if(!normColor(it.color)) (idxNoColor[k3] = idxNoColor[k3] || []).push(id); // ページ側で色が空欄のもの
+  });
+  const byVin = {}, claims = {}, unmatched = [], ambiguous = [];
+  Object.entries(csRows || {}).forEach(([vin, rec])=>{
+    const listed = rec.status === '掲載';
+    const t = round1000(rec.price_total), y = carsensorYearW(rec), m = round1000(rec.mileage_km);
+    let ids = null;
+    if(t != null && y && m != null){
+      const k3 = t + '|' + y + '|' + m;
+      if(rec.color){
+        ids = idx4[k3 + '|' + normColor(rec.color)];
+        if(!ids || !ids.length) ids = idxNoColor[k3]; // 色が空欄のスクレイピング行は、総額・年式・走行距離だけで比べる
+      } else {
+        ids = idx3[k3];
+      }
+    }
+    if(ids && ids.length === 1){
+      byVin[vin] = ids[0];
+      claims[ids[0]] = (claims[ids[0]] || 0) + 1;
+    } else if(listed){
+      (ids && ids.length > 1 ? ambiguous : unmatched).push(vin);
+    }
+  });
+  Object.keys(byVin).forEach(vin=>{
+    if(claims[byVin[vin]] > 1){
+      if(csRows[vin].status === '掲載') ambiguous.push(vin);
+      delete byVin[vin];
+    }
+  });
+  const out = {};
+  Object.entries(byVin).forEach(([vin, id])=>{ out[vin] = csRestoration[id]; });
+  return {byVin: out, unmatched, ambiguous};
+}
+
+// 画面上の小さな注記:照合できなかった件数と、スクレイピングの更新が古い場合の警告
+function renderCsNote(stats){
+  const el = document.getElementById('csNote');
+  if(!el) return;
+  if(!csRestorationUpdatedAt && !Object.keys(csRestoration).length){ el.style.display = 'none'; return; }
+  const parts = [];
+  const matched = Object.keys(stats.byVin).length;
+  parts.push(`CS修復歴(スクレイピング): 照合${matched}台・未照合${stats.unmatched.length}台・複数該当${stats.ambiguous.length}台`);
+  let stale = false;
+  if(csRestorationUpdatedAt){
+    const days = (Date.now() - csRestorationUpdatedAt) / 86400000;
+    const d = new Date(csRestorationUpdatedAt);
+    parts.push(`更新 ${d.getMonth()+1}/${d.getDate()} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`);
+    if(days >= 2){ stale = true; parts.push('⚠ 2日以上更新されていません。スクレイピングが止まっている可能性があります'); }
+  }
+  el.textContent = parts.join(' ／ ');
+  el.title = '未照合: ' + (stats.unmatched.join(', ') || 'なし') + '\n複数該当: ' + (stats.ambiguous.join(', ') || 'なし');
+  el.style.color = stale ? 'var(--warn-text)' : '';
+  el.style.display = '';
+}
+
 function recompute(){
   const rawCanon = applyCanonicalVins({...raw, stockTarget: stockTargets});
   const stockRecords = rawCanon.tanaoroshi || {};
   const stockVins = new Set(Object.keys(stockRecords));
   const targetRecords = rawCanon.stockTarget || {};
+  const csMatches = buildCsMatches(rawCanon.carsensor || {});
 
   // 正式な車台番号 → その行に属する元の車台番号の一覧(各サイト・棚卸・在庫の表記)
   const membersOf = {};
@@ -1002,24 +1109,29 @@ function recompute(){
     const maker = (bySite.carsensor?.maker || bySite.goonet?.maker || '');
     const gradeNote = (bySite.carsensor?.grade_note || bySite.goonet?.grade_note || '');
     const yearDisp = (bySite.carsensor?.year_disp || bySite.goonet?.year_disp || '');
-    // 修復歴:グーネットのCSV値(無し/有り)を基本とし、手動設定があればそれを優先する。
-    // カーセンサーには修復歴の項目が無いため、グーネットの掲載が無い車両は手動設定が無ければ「なし」扱い。
+    // 修復歴:手動設定 > グーネットのCSV値(無し/有り) > カーセンサーの掲載ページ(スクレイピング)の順で採用する。
+    // スクレイピング由来の値は照合できた車両だけ。手動設定(manualShufuku)へは自動で書き込まない。
     const shufukuCsv = bySite.goonet ? !!bySite.goonet.shufuku : null; // null=グーネットのデータ自体が無い
+    const csItem = csMatches.byVin[vin] || null;
+    const shufukuCs = csItem ? csItem.restoration === 'あり' : null; // null=照合できなかった
     const hasManualShufuku = Object.prototype.hasOwnProperty.call(manualShufuku, vin);
     const shufukuManual = hasManualShufuku ? !!manualShufuku[vin] : null;
-    const shufukuEffective = hasManualShufuku ? shufukuManual : (shufukuCsv != null ? shufukuCsv : false);
-    const shufukuCsOnly = !bySite.goonet; // グーネットのデータが無い(カーセンサーのみ等)ため未確認
-    const shufukuDiff = hasManualShufuku && shufukuCsv != null && shufukuManual !== shufukuCsv; // 手動値がグーネットの値と異なる
+    const shufukuRef = shufukuCsv != null ? shufukuCsv : shufukuCs; // 手動値と比べる自動取得の値
+    const shufukuEffective = hasManualShufuku ? shufukuManual : (shufukuRef != null ? shufukuRef : false);
+    const shufukuFromCs = !hasManualShufuku && shufukuCsv == null && shufukuCs != null; // 値の出どころがカーセンサー(スクレイピング)
+    const shufukuCsOnly = shufukuRef == null; // グーネットもスクレイピングも値が無く未確認
+    const shufukuDiff = hasManualShufuku && shufukuRef != null && shufukuManual !== shufukuRef; // 手動値が自動取得の値と異なる
 
     const flagCount = (allMissing?1:0) + (missing?1:0) + (notInStock?1:0) + (priceMismatch?1:0) + (mileageMismatch?1:0) + (shakenMismatch?1:0);
 
     return {vin, carName, maker, gradeNote, yearDisp, bySite, inStock, notInStock, retailMismatch, gyohanMismatch, priceMismatch, priceMismatchSites, pricingTotal, pricingGyohan,
              mileages, mileageMismatch, shakenNorm, shakenMismatch, skipGyohan, excluded, shiireDate, aaCount,
-             shufukuCsv, shufukuManual, shufukuEffective, shufukuCsOnly, shufukuDiff,
+             shufukuCsv, shufukuCs, shufukuManual, shufukuEffective, shufukuFromCs, shufukuCsOnly, shufukuDiff,
              allMissing, missing, missingSites: missing ? missingSitesAll : [], flagCount};
   });
 
   total = activeRows().length;
+  renderCsNote(csMatches);
   renderSummary();
   applyFilters();
 }
@@ -1180,7 +1292,7 @@ function render(list){
       <td class="vin">${r.vin}</td>
       <td class="togglecol"><button type="button" class="listBtn ${r.excluded?'off':''}" data-vin="${r.vin}" title="${r.excluded?'掲載対象外です。クリックで掲載対象に戻します':'クリックで掲載対象外にします(一覧から非表示)'}">${r.excluded ? '対象外' : '掲載'}</button></td>
       <td class="togglecol"><button type="button" class="toggleBtn ${r.skipGyohan?'off':''}" data-vin="${r.vin}">${r.skipGyohan ? '不要' : '対象'}</button></td>
-      <td class="togglecol"><button type="button" class="shufukuBtn ${r.shufukuEffective?'on':''}" data-vin="${r.vin}" title="${r.shufukuCsOnly?'グーネットのデータがなく未確認です(手動設定)':r.shufukuDiff?'グーネットのCSV値と異なる値に手動設定されています':'クリックで手動設定を切り替えます'}">${r.shufukuEffective ? 'あり' : 'なし'}${r.shufukuCsOnly ? '<span class="shufukuMark">?</span>' : (r.shufukuDiff ? '<span class="shufukuMark">!</span>' : '')}</button></td>
+      <td class="togglecol"><button type="button" class="shufukuBtn ${r.shufukuEffective?'on':''}" data-vin="${r.vin}" title="${r.shufukuFromCs?'カーセンサーの掲載ページ(スクレイピング)の修復歴です。クリックで手動設定に切り替えます':r.shufukuCsOnly?'グーネット・カーセンサーともに値が取れず未確認です(手動設定)':r.shufukuDiff?'グーネット/カーセンサーの値と異なる値に手動設定されています':'クリックで手動設定を切り替えます'}">${r.shufukuEffective ? 'あり' : 'なし'}${r.shufukuFromCs ? '<span class="shufukuMark">CS</span>' : (r.shufukuCsOnly ? '<span class="shufukuMark">?</span>' : (r.shufukuDiff ? '<span class="shufukuMark">!</span>' : ''))}</button></td>
       <td class="togglecol"><button type="button" class="aaBtn ${r.aaCount===1?'has1':r.aaCount===2?'has2':''}" data-vin="${r.vin}">AA</button></td>
       <td><div class="carname">${r.carName}</div></td>
       <td class="site-col">${pricingCell(r.pricingTotal)}</td>
@@ -1387,6 +1499,8 @@ function parseCarsensorCSV(text){
       grade: (r[idx['グレード']]||'').trim(),
       grade_note: (r[idx['グレード補記']]||'').trim(),
       year_disp: carsensorYearDisp(r[idx['年式表示用']], r[idx['年式検索用（月）']]),
+      year_w: (r[idx['年式検索用（年）']]||'').trim(), // 西暦の年(カーセンサー修復歴の照合に使用)
+      color: (r[idx['色']]||'').trim(),                  // 色(同上)
       price_honntai: /^\d+$/.test(honntai) ? parseInt(honntai,10) : null,
       price_total: /^\d+$/.test(total) ? parseInt(total,10) : null,
       mileage_km: /^\d+$/.test(mileage) ? parseInt(mileage,10) : null,
