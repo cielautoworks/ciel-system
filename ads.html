@@ -115,6 +115,7 @@ html[data-theme="dark"] .card.danger{box-shadow:0 0 10px rgba(255,92,110,.2);}
 html[data-theme="dark"] .card.warn{box-shadow:0 0 10px rgba(255,194,51,.2);}
 .site-col{border-left:2px solid var(--border);}
 .numcol{text-align:right;white-space:nowrap;}
+.pricingNum{color:var(--pink);}
 .priceNum{font-size:14px;font-weight:600;}
 .mileageNum{font-size:13.5px;font-weight:600;}
 .mileageUnit{font-size:10px;margin-left:1px;opacity:0.75;}
@@ -208,7 +209,7 @@ body:not(.debugMode) .debugOnly{display:none !important;}
 <header>
 <div class="header-row">
   <div>
-    <h1>広告掲載状況ダッシュボード <span style="font-size:12px;font-weight:400;opacity:.75;">v1.35</span></h1>
+    <h1>広告掲載状況ダッシュボード <span style="font-size:12px;font-weight:400;opacity:.75;">v1.37</span></h1>
     <p>カーセンサー ／ グーネット ／ QuickNetwork（業販） ／ オートサーバー（業販） ／ JUテントリ（業販） の5サイト突合(棚卸一覧は参考照合用)　※データはFirebaseで共有されます</p>
   </div>
   <div style="display:flex;gap:8px;flex-shrink:0;">
@@ -345,7 +346,7 @@ body:not(.debugMode) .debugOnly{display:none !important;}
   <button class="filterbtn d" data-filter="allmissing">全サイト未掲載</button>
   <button class="filterbtn d" data-filter="missing">掲載漏れのみ</button>
   <button class="filterbtn w" data-filter="notinstock">棚卸に該当なし(要確認)</button>
-  <button class="filterbtn w" data-filter="price">価格ずれのみ</button>
+  <button class="filterbtn w" data-filter="price" title="プライシングの価格を基準に、各サイトの価格が違う車両(プライシングに価格が無い車両はサイト同士の比較)">価格ずれのみ</button>
   <button class="filterbtn w" data-filter="mileage">走行距離ずれ</button>
   <button class="filterbtn w" data-filter="shaken">車検ずれ</button>
   <button class="filterbtn" id="showExcludedBtn">対象外も含めすべて表示</button>
@@ -370,6 +371,8 @@ body:not(.debugMode) .debugOnly{display:none !important;}
   <th class="site-col sortable" data-sort="quicknetwork" rowspan="2">Quick<span class="arrow">↕</span></th>
   <th class="sortable" data-sort="autoserver" rowspan="2">AS<span class="arrow">↕</span></th>
   <th class="sortable" data-sort="jutentori" rowspan="2">テントリ<span class="arrow">↕</span></th>
+  <th class="site-col sortable" data-sort="pricingTotal" rowspan="2">プライシング<br>総額<span class="arrow">↕</span></th>
+  <th class="sortable" data-sort="pricingGyohan" rowspan="2">プライシング<br>業販<span class="arrow">↕</span></th>
   <th class="site-col sortable" data-sort="mileage" colspan="5">走行距離<span class="arrow">↕</span></th>
   <th class="sortable" data-sort="shaken" colspan="5">車検<span class="arrow">↕</span></th>
   <th class="sortable" data-sort="flags" rowspan="2">フラグ<span class="arrow">↕</span></th>
@@ -391,7 +394,7 @@ body:not(.debugMode) .debugOnly{display:none !important;}
 </table>
 </div>
 
-<p class="legend">※「掲載」ボタン＝一覧に出す車両かどうかの切替(対象外にすると一覧・件数から外れます。「対象外も含めすべて表示」で確認・元に戻せます)　／　掲載漏れ＝いずれかのサイトで掲載中なのに別サイトで非掲載・未掲載　／　棚卸に該当なし＝車両棚卸一覧にVINが見当たらない車両（売約済みの可能性がありますが棚卸には非売品も混在するため断定はできません。要確認の参考情報です）　／　価格ずれ＝小売2サイト間または業販2サイト間で金額不一致　／　走行距離ずれ＝サイト間最大差1,000km以上　／　車検ずれ＝有効期限(年月)がサイト間で不一致。「整備付」と空欄は同じ「日付なし」として扱い、日付ありのサイトと混在する場合はずれとして検知　／　「業販不要」をONにした車両は、QuickNetwork・オートサーバー・JUテントリの未掲載チェックから除外</p>
+<p class="legend">※「掲載」ボタン＝一覧に出す車両かどうかの切替(対象外にすると一覧・件数から外れます。「対象外も含めすべて表示」で確認・元に戻せます)　／　掲載漏れ＝いずれかのサイトで掲載中なのに別サイトで非掲載・未掲載　／　棚卸に該当なし＝車両棚卸一覧にVINが見当たらない車両（売約済みの可能性がありますが棚卸には非売品も混在するため断定はできません。要確認の参考情報です）　／　価格ずれ＝プライシングに価格がある車両は、小売(CS・goo)の値がプライシング総額(車体価格＋10万円)と、業販(Quick・AS・テントリ)の値がプライシング業販価格と1円でも違うこと(違うサイトのセルが色付き)。プライシングに価格が無い車両は、小売2サイト間または業販サイト間の金額不一致　／　走行距離ずれ＝サイト間最大差1,000km以上　／　車検ずれ＝有効期限(年月)がサイト間で不一致。「整備付」と空欄は同じ「日付なし」として扱い、日付ありのサイトと混在する場合はずれとして検知　／　「業販不要」をONにした車両は、QuickNetwork・オートサーバー・JUテントリの未掲載チェックから除外</p>
 
 </div>
 
@@ -450,6 +453,12 @@ async function loadAdsData(){
   }
 }
 
+function numOrNull(v){
+  if(v == null || v === '') return null;
+  const n = Number(v);
+  return isFinite(n) ? n : null;
+}
+
 // car-appの在庫(stock。アーカイブ=納車済みは含めない)のうち、pricing.htmlの「対象」スイッチがON
 // (pricingData/{vin}/retailTarget が false 以外。未設定もON扱い＝pricing.htmlと同じ判定)の車両を取得する。
 // 広告サイトのどこにもデータが無い車両も一覧に出すために使う。読み取り専用で、このページから書き込みはしない。
@@ -462,18 +471,31 @@ async function loadStockTargets(){
     const stock = stockSnap.val() || {};
     const pricingData = pdSnap.val() || {};
     const out = {};
+    const allVins = {};
     Object.values(stock).forEach(sv=>{
       if(!sv || !sv.vin) return;
       const vin = normVin(sv.vin);
       if(!vin) return;
+      allVins[vin] = true; // 対象外も含む全在庫の車台番号(価格の照合で、表記ゆれの車を見つけるために使う)
       if(pricingData[vin]?.retailTarget === false) return;
       out[vin] = {car_name: sv.name || '', date: sv.date || ''};
     });
+    // プライシングの価格(車体価格body・業販価格as。どちらも円)。値のある車両だけ手元に残す。
+    const pm = {};
+    Object.entries(pricingData).forEach(([key, pd])=>{
+      if(!pd) return;
+      const body = numOrNull(pd.body), as = numOrNull(pd.as);
+      if(body != null || as != null) pm[normVin(key)] = {body, as};
+    });
     stockTargets = out;
+    stockAllVins = allVins;
+    pricingMap = pm;
     return true;
   } catch(err){
     console.error('loadStockTargets error:', err);
     stockTargets = {};
+    stockAllVins = {};
+    pricingMap = {};
     return false;
   }
 }
@@ -750,6 +772,9 @@ let showExcluded = false;
 let aaPhotoCounts = {};
 let manualShufuku = {}; // 修復歴の手動設定(true=あり/false=なし)。未設定の車台番号はグーネットのCSV値に従う
 let lastLoadedLabel = null;
+let stockAllVins = {}; // 在庫(stock)全車両の車台番号(normVin)
+let pricingMap = {};   // プライシングの価格 {normVin: {body, as}}(円)。読み取り専用
+const PRICING_TOTAL_ADD = 100000; // 支払総額 = 車体価格 + この額(pricing.html/pricetag.html/flyer.htmlのTOTAL_ADDと同じ)
 let stockTargets = {}; // 在庫かつプライシング対象ONの車両(loadStockTargetsで取得。adsDataには保存しない)
 const SITES = ['carsensor','goonet','quicknetwork','autoserver','jutentori'];
 const GYOHAN_ONLY_SITES = ['quicknetwork','autoserver','jutentori'];
@@ -855,6 +880,7 @@ function applyCanonicalVins(rawData){
       if(!out[s][cv]) out[s][cv] = rec;
     });
   });
+  out.canonicalOf = canonicalOf; // 元の車台番号 → 正式な車台番号(プライシング価格の照合に使う)
   return out;
 }
 
@@ -873,6 +899,41 @@ function recompute(){
   const stockVins = new Set(Object.keys(stockRecords));
   const targetRecords = rawCanon.stockTarget || {};
 
+  // 正式な車台番号 → その行に属する元の車台番号の一覧(各サイト・棚卸・在庫の表記)
+  const membersOf = {};
+  Object.entries(rawCanon.canonicalOf || {}).forEach(([rawVin, cv])=>{
+    (membersOf[cv] = membersOf[cv] || []).push(rawVin);
+  });
+  // 在庫(stock)全車両の車台番号を製造番号ごとに索引化する。プライシング価格を探す照合専用で、
+  // 正式な車台番号(canonicalVinMap)の決定には使わない(保存済みのフラグ・画像のキーを変えないため)。
+  const stockBySerial = {};
+  Object.keys(stockAllVins).forEach(v=>{
+    const i = v.lastIndexOf('-');
+    const serial = i>=0 ? v.slice(i+1) : v;
+    (stockBySerial[serial] = stockBySerial[serial] || []).push(v);
+  });
+  const splitVin = v=>{ const i = v.lastIndexOf('-'); return {prefix: i>=0 ? v.slice(0,i) : '', serial: i>=0 ? v.slice(i+1) : v}; };
+  // その行のプライシング価格を探す。正式な車台番号に加え、元の表記(normVin)や、型式の表記ゆれ
+  // (前方一致・同じ製造番号)を含めた在庫の車台番号でも探す。
+  // 複数見つかった場合は、在庫の車台番号に一致するものを優先する。
+  function findPricing(vin){
+    const members = membersOf[vin] || [];
+    const own = [vin, ...members];
+    const stockCands = new Set(own.filter(m => stockAllVins[m]));
+    own.forEach(m=>{
+      const a = splitVin(m);
+      (stockBySerial[a.serial] || []).forEach(sv=>{
+        const b = splitVin(sv);
+        if(a.prefix && b.prefix && (a.prefix.startsWith(b.prefix) || b.prefix.startsWith(a.prefix))) stockCands.add(sv);
+      });
+    });
+    const cands = [...stockCands, ...own];
+    for(const c of cands){
+      if(pricingMap[c]) return pricingMap[c];
+    }
+    return null;
+  }
+
   // 広告サイトのいずれかにデータがある車両＋在庫かつプライシング対象ONの車両(広告サイト未掲載でも表示する)
   const vinSet = new Set();
   SITES.forEach(s => Object.keys(rawCanon[s]||{}).forEach(v => vinSet.add(v)));
@@ -890,8 +951,27 @@ function recompute(){
 
     const retailPrices = [bySite.carsensor?.price_total, bySite.goonet?.price_total].filter(v=>v!=null);
     const gyohanPrices = [bySite.quicknetwork?.price_gyohan, bySite.autoserver?.price_gyohan, bySite.jutentori?.price_gyohan].filter(v=>v!=null);
-    const retailMismatch = retailPrices.length>=2 && new Set(retailPrices).size>1;
-    const gyohanMismatch = gyohanPrices.length>=2 && new Set(gyohanPrices).size>1;
+    // プライシングの価格(総額=車体価格+10万円・業販価格)があれば、それを基準に各サイトの値と比較する。
+    // 無い場合は従来どおりサイト同士で比較する。値が違うサイトのセルを priceMismatchSites で色分けする。
+    const pricing = findPricing(vin);
+    const pricingTotal = (pricing && pricing.body != null) ? pricing.body + PRICING_TOTAL_ADD : null;
+    const pricingGyohan = pricing ? pricing.as : null;
+    const priceMismatchSites = {};
+    const judgePrice = (siteList, field, base, prices)=>{
+      let mismatch = false;
+      if(base != null){
+        siteList.forEach(st=>{
+          const v = bySite[st]?.[field];
+          if(v != null && v !== base){ priceMismatchSites[st] = true; mismatch = true; }
+        });
+      } else if(prices.length>=2 && new Set(prices).size>1){
+        mismatch = true;
+        siteList.forEach(st=>{ if(bySite[st]?.[field] != null) priceMismatchSites[st] = true; });
+      }
+      return mismatch;
+    };
+    const retailMismatch = judgePrice(['carsensor','goonet'], 'price_total', pricingTotal, retailPrices);
+    const gyohanMismatch = judgePrice(['quicknetwork','autoserver','jutentori'], 'price_gyohan', pricingGyohan, gyohanPrices);
     const priceMismatch = retailMismatch || gyohanMismatch;
 
     const mileages = SITES.map(s=>bySite[s]?.mileage_km).filter(v=>v!=null);
@@ -934,7 +1014,7 @@ function recompute(){
 
     const flagCount = (allMissing?1:0) + (missing?1:0) + (notInStock?1:0) + (priceMismatch?1:0) + (mileageMismatch?1:0) + (shakenMismatch?1:0);
 
-    return {vin, carName, maker, gradeNote, yearDisp, bySite, inStock, notInStock, retailMismatch, gyohanMismatch, priceMismatch,
+    return {vin, carName, maker, gradeNote, yearDisp, bySite, inStock, notInStock, retailMismatch, gyohanMismatch, priceMismatch, priceMismatchSites, pricingTotal, pricingGyohan,
              mileages, mileageMismatch, shakenNorm, shakenMismatch, skipGyohan, excluded, shiireDate, aaCount,
              shufukuCsv, shufukuManual, shufukuEffective, shufukuCsOnly, shufukuDiff,
              allMissing, missing, missingSites: missing ? missingSitesAll : [], flagCount};
@@ -995,10 +1075,15 @@ function siteCell(site, r){
   if(!d) return '<span class="miss">未掲載</span>';
   if(site==='carsensor' || site==='goonet'){
     const v = fmtSenYen(d.price_total);
-    return v ? `<span class="priceNum ${r.retailMismatch?'mismatch':''}">${v}</span>` : '<span class="subtle">―</span>';
+    return v ? `<span class="priceNum ${r.priceMismatchSites[site]?'mismatch':''}">${v}</span>` : '<span class="subtle">―</span>';
   }
   const v = fmtSenYen(d.price_gyohan);
-  return v ? `<span class="priceNum ${r.gyohanMismatch?'mismatch':''}">${v}</span>` : '<span class="subtle">―</span>';
+  return v ? `<span class="priceNum ${r.priceMismatchSites[site]?'mismatch':''}">${v}</span>` : '<span class="subtle">―</span>';
+}
+
+// プライシングの価格(千円単位)。値が無い車両は空欄。
+function pricingCell(v){
+  return v != null ? `<span class="priceNum pricingNum">${fmtSenYen(v)}</span>` : '';
 }
 
 function mileageSiteCell(site, r){
@@ -1046,6 +1131,8 @@ function getSortValue(r, key){
     case 'quicknetwork': return r.bySite.quicknetwork?.price_gyohan ?? -1;
     case 'autoserver': return r.bySite.autoserver?.price_gyohan ?? -1;
     case 'jutentori': return r.bySite.jutentori?.price_gyohan ?? -1;
+    case 'pricingTotal': return r.pricingTotal ?? -1;
+    case 'pricingGyohan': return r.pricingGyohan ?? -1;
     case 'mileage': return r.mileages.length ? Math.max(...r.mileages) : -1;
     case 'shaken': {
       const yms = SITES.map(s=>r.shakenNorm[s]?.ym).filter(v=>v!=null);
@@ -1102,6 +1189,8 @@ function render(list){
       <td class="site-col">${siteCell('quicknetwork', r)}</td>
       <td>${siteCell('autoserver', r)}</td>
       <td>${siteCell('jutentori', r)}</td>
+      <td class="site-col">${pricingCell(r.pricingTotal)}</td>
+      <td>${pricingCell(r.pricingGyohan)}</td>
       <td class="site-col numcol">${mileageSiteCell('carsensor', r)}</td>
       <td class="numcol">${mileageSiteCell('goonet', r)}</td>
       <td class="numcol">${mileageSiteCell('quicknetwork', r)}</td>
