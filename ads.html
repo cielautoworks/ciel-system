@@ -209,7 +209,7 @@ body:not(.debugMode) .debugOnly{display:none !important;}
 <header>
 <div class="header-row">
   <div>
-    <h1>広告掲載状況ダッシュボード <span style="font-size:12px;font-weight:400;opacity:.75;">v1.36</span></h1>
+    <h1>広告掲載状況ダッシュボード <span style="font-size:12px;font-weight:400;opacity:.75;">v1.37</span></h1>
     <p>カーセンサー ／ グーネット ／ QuickNetwork（業販） ／ オートサーバー（業販） ／ JUテントリ（業販） の5サイト突合(棚卸一覧は参考照合用)　※データはFirebaseで共有されます</p>
   </div>
   <div style="display:flex;gap:8px;flex-shrink:0;">
@@ -842,7 +842,6 @@ function buildCanonicalVinMap(rawData){
   SITES.forEach(s => Object.keys(rawData[s]||{}).forEach(v => allVins.add(v)));
   Object.keys(rawData.tanaoroshi||{}).forEach(v => allVins.add(v));
   Object.keys(rawData.stockTarget||{}).forEach(v => allVins.add(v));
-  Object.keys(rawData.stockAll||{}).forEach(v => allVins.add(v));
 
   const bySerial = {};
   allVins.forEach(vin=>{
@@ -895,7 +894,7 @@ function activeRows(){
 }
 
 function recompute(){
-  const rawCanon = applyCanonicalVins({...raw, stockTarget: stockTargets, stockAll: stockAllVins});
+  const rawCanon = applyCanonicalVins({...raw, stockTarget: stockTargets});
   const stockRecords = rawCanon.tanaoroshi || {};
   const stockVins = new Set(Object.keys(stockRecords));
   const targetRecords = rawCanon.stockTarget || {};
@@ -905,11 +904,30 @@ function recompute(){
   Object.entries(rawCanon.canonicalOf || {}).forEach(([rawVin, cv])=>{
     (membersOf[cv] = membersOf[cv] || []).push(rawVin);
   });
-  // その行のプライシング価格を探す。正式な車台番号に加え、元の表記(normVin)や在庫の車台番号でも探す。
+  // 在庫(stock)全車両の車台番号を製造番号ごとに索引化する。プライシング価格を探す照合専用で、
+  // 正式な車台番号(canonicalVinMap)の決定には使わない(保存済みのフラグ・画像のキーを変えないため)。
+  const stockBySerial = {};
+  Object.keys(stockAllVins).forEach(v=>{
+    const i = v.lastIndexOf('-');
+    const serial = i>=0 ? v.slice(i+1) : v;
+    (stockBySerial[serial] = stockBySerial[serial] || []).push(v);
+  });
+  const splitVin = v=>{ const i = v.lastIndexOf('-'); return {prefix: i>=0 ? v.slice(0,i) : '', serial: i>=0 ? v.slice(i+1) : v}; };
+  // その行のプライシング価格を探す。正式な車台番号に加え、元の表記(normVin)や、型式の表記ゆれ
+  // (前方一致・同じ製造番号)を含めた在庫の車台番号でも探す。
   // 複数見つかった場合は、在庫の車台番号に一致するものを優先する。
   function findPricing(vin){
     const members = membersOf[vin] || [];
-    const cands = [...members.filter(m => stockAllVins[m]), vin, ...members];
+    const own = [vin, ...members];
+    const stockCands = new Set(own.filter(m => stockAllVins[m]));
+    own.forEach(m=>{
+      const a = splitVin(m);
+      (stockBySerial[a.serial] || []).forEach(sv=>{
+        const b = splitVin(sv);
+        if(a.prefix && b.prefix && (a.prefix.startsWith(b.prefix) || b.prefix.startsWith(a.prefix))) stockCands.add(sv);
+      });
+    });
+    const cands = [...stockCands, ...own];
     for(const c of cands){
       if(pricingMap[c]) return pricingMap[c];
     }
