@@ -249,7 +249,7 @@ table.diffTable td.diffNew{color:var(--danger-text);font-weight:600;}
 <header>
 <div class="header-row">
   <div>
-    <h1>プライシングツール <span style="font-size:12px;font-weight:400;opacity:.75;">v1.20</span></h1>
+    <h1>プライシングツール <span style="font-size:12px;font-weight:400;opacity:.75;">v1.21</span></h1>
     <p>原価から総額下限・業販下限を算出し、車体価格に対する粗利をランク表示します。※データはFirebaseで共有されます</p>
   </div>
   <div style="display:flex;gap:8px;flex-shrink:0;">
@@ -325,6 +325,13 @@ table.diffTable td.diffNew{color:var(--danger-text);font-weight:600;}
   <span style="flex:1"></span>
   <button class="filterbtn" id="targetToggleBtn">小売対象外も表示</button>
 </div>
+<div class="toolbar">
+  <span style="font-size:12.5px;font-weight:600;color:var(--text-sub);">車検期限が近い車(期限切れを含む):</span>
+  <button class="filterbtn" data-shaken="1">1か月以内</button>
+  <button class="filterbtn" data-shaken="2">2か月以内</button>
+  <button class="filterbtn" data-shaken="3">3か月以内</button>
+  <span style="font-size:11px;color:var(--text-muted);">もう一度押すと解除。上の状態の絞り込みと組み合わせられます(車検期限が未登録の車は対象外)</span>
+</div>
 <p class="legend" id="loadingNote">読み込み中…</p>
 <div class="tablewrap">
 <table>
@@ -334,6 +341,7 @@ table.diffTable td.diffNew{color:var(--danger-text);font-weight:600;}
   <th class="sortable" data-sort="vin">車台番号<span class="arrow">↕</span></th>
   <th class="sortable" data-sort="name">車両<span class="arrow">↕</span></th>
   <th class="sortable" data-sort="date">仕入情報<span class="arrow">↕</span></th>
+  <th class="sortable" data-sort="shaken">車検期限<span class="arrow">↕</span></th>
   <th>状態</th>
   <th>対象</th>
   <th>出品票</th>
@@ -555,6 +563,44 @@ function fmtSen(n){ // 千円単位で表示(198000円→198)
   const sign = n<0 ? '-' : '';
   return sign + Math.abs(Math.round(n/1000)).toLocaleString('ja-JP');
 }
+// ===== 車検期限(stock.shaken)の解釈と絞り込み用の日付 =====
+function pad2(n){ return String(n).padStart(2,'0'); }
+function toIsoLocal(y, m, d){ return `${y}-${pad2(m)}-${pad2(d)}`; } // mは1〜12
+// 'YYYY-MM-DD'形式にそろえる。和暦・スラッシュ区切りはfmtDateで変換、'YYYY-MM'のみの場合は月末とみなす。解釈できなければ''
+function parseShakenIso(raw){
+  const s0 = String(raw==null ? '' : raw).trim();
+  if(!s0) return '';
+  const s = fmtDate(s0);
+  let m = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+  if(m){
+    const y=+m[1], mo=+m[2], d=+m[3];
+    if(mo>=1 && mo<=12 && d>=1 && d<=31) return toIsoLocal(y, mo, d);
+    return '';
+  }
+  m = s.match(/^(\d{4})[\/\-\.](\d{1,2})$/);
+  if(m){
+    const y=+m[1], mo=+m[2];
+    if(mo>=1 && mo<=12) return toIsoLocal(y, mo, new Date(y, mo, 0).getDate());
+  }
+  return '';
+}
+// 今日からnか月後の日付(月末を超える場合はその月の末日に丸める。例:1/31の1か月後=2/28)
+function addMonthsIso(n){
+  const t = new Date();
+  const y0 = t.getFullYear(), m0 = t.getMonth(), d0 = t.getDate();
+  const last = new Date(y0, m0 + n + 1, 0); // 目標月の末日
+  const d = Math.min(d0, last.getDate());
+  return toIsoLocal(last.getFullYear(), last.getMonth()+1, d);
+}
+function shakenLimitIso(n){ return addMonthsIso(n); }
+function todayIso(){ const t = new Date(); return toIsoLocal(t.getFullYear(), t.getMonth()+1, t.getDate()); }
+// 期限切れ=赤、1か月以内=橙(色は既存のテーマ変数を使用)
+function shakenCellStyle(iso){
+  if(!iso) return 'color:var(--text-muted);';
+  if(iso < todayIso()) return 'color:var(--danger-text);font-weight:700;';
+  if(iso <= addMonthsIso(1)) return 'color:var(--orange-text);font-weight:600;';
+  return '';
+}
 // ===== 一覧表示用の文字整形 =====
 function displayCarName(name){ return (name||'').replace(/ハイブリッド/g, 'HV'); }
 function truncateText(s, maxLen){
@@ -680,6 +726,7 @@ function build(){
       name: sv.name || '',
       color: sv.color || '',
       date: sv.date || '',
+      shakenIso: parseShakenIso(sv.shaken),
       sup: sv.sup || '',
       grade: (lastBuy && lastBuy.grade) || '',
       hasSeisan,
@@ -708,6 +755,7 @@ function build(){
 }
 
 // ===== 絞り込み・並べ替え =====
+let shakenMonths = 0; // 車検期限の絞り込み(0=なし / 1・2・3 = 今日からNか月以内。期限切れを含む)
 let statusFilter = 'instock'; // 'instock'(在庫あり・初期値) | 'all' | 'archive' | car-appのstatus1キー(在庫あり内のみで絞込)
 let showNonTarget = false; // false=小売対象(retailTarget!==false)のみ表示(初期値)
 let sortKey = 'date', sortDir = -1; // 初期値:仕入日の新しい順(降順)
@@ -719,6 +767,7 @@ function getSortValue(v, key){
     case 'vin': return v.vin || '';
     case 'name': return v.name || '';
     case 'date': return v.date || '';
+    case 'shaken': return v.shakenIso || '';
     case 'body': return v.body;
     case 'total': return v.body==null ? null : v.body + TOTAL_ADD;
     case 'as': return v.as;
@@ -799,6 +848,10 @@ function getVisibleVehicles(){
   if(statusFilter === 'instock') list = list.filter(v=>v.stockStatus==='stock');
   else if(statusFilter === 'archive') list = list.filter(v=>v.stockStatus==='archive');
   else if(statusFilter !== 'all') list = list.filter(v=>v.stockStatus==='stock' && v.status1===statusFilter);
+  if(shakenMonths){
+    const limit = shakenLimitIso(shakenMonths);
+    list = list.filter(v=>v.shakenIso && v.shakenIso <= limit);
+  }
   if(!showNonTarget) list = list.filter(v=>v.retailTarget!==false);
   if(searchQuery.trim()) list = list.filter(v=>matchesSearch(v, searchQuery));
   return list.slice().sort(compareVehicles);
@@ -885,6 +938,7 @@ function renderTable(){
       <td class="vin">${vinLines[0]}<br>${vinLines[1]}</td>
       <td class="carCell"><span class="carname">${displayCarName(v.name)}</span>${v.color?` <span class="carname">${v.color}</span>`:''}<br><span class="grade">${truncateText(v.grade, 15)}</span></td>
       <td>${v.date||''}${v.sup?`<br><span class="supText">${displaySupplier(v.sup)}</span>`:''}</td>
+      <td style="${shakenCellStyle(v.shakenIso)}">${v.shakenIso||'―'}</td>
       <td>${stockBadge(v.status1)}</td>
       <td><label class="rowSwitch" title="小売対象"><input type="checkbox" class="targetCk" data-vin="${v.vin}" ${v.retailTarget!==false?'checked':''}><span class="rowSlider"></span></label></td>
       <td><button class="aaBtn ${aaCls}" data-vin="${v.vin}" data-action="aa">🖼</button></td>
@@ -1279,6 +1333,18 @@ document.querySelectorAll('.toolbar .filterbtn[data-status]').forEach(b=>{
     document.querySelectorAll('.toolbar .filterbtn[data-status]').forEach(x=>x.classList.remove('active'));
     b.classList.add('active');
     statusFilter = b.dataset.status;
+    renderTable();
+  });
+});
+
+// ===== 車検期限の絞り込み(1・2・3か月以内。同じボタンをもう一度押すと解除) =====
+document.querySelectorAll('.toolbar .filterbtn[data-shaken]').forEach(b=>{
+  b.addEventListener('click', ()=>{
+    const n = Number(b.dataset.shaken);
+    shakenMonths = (shakenMonths === n) ? 0 : n;
+    document.querySelectorAll('.toolbar .filterbtn[data-shaken]').forEach(x=>{
+      x.classList.toggle('active', Number(x.dataset.shaken) === shakenMonths);
+    });
     renderTable();
   });
 });
