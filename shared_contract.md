@@ -56,6 +56,7 @@ const firebaseConfig = {
 | `flyerImages/{imgId}` | flyer.html | - | - | チラシのレイアウトに置く画像(WebP/Base64、長辺縮小済み)。「保存」ボタンを押した時だけ書き込む |
 | `flyerCarPhotos/{normVin}` | flyer.html | - | - | チラシ用の背景透過車両画像(1台1枚)。`{name, data:Base64(WebP/PNG・縮小済み), ua}`。AA画像(`aaPhotos`)とは別物 |
 | `flyerCarPhotoIndex/{normVin}` | flyer.html | - | - | `flyerCarPhotos` に画像があるかの目印 `{ua}`(一覧表示用に軽く読むため) |
+| `carsensorRestoration` | カーセンサーのスクレイピング(python フォルダの carsensor 系スクリプト。carsensor_daily.bat から毎朝実行。このリポジトリの外) | - | ads.html | カーセンサー掲載中の自社車両の修復歴。`{updatedAt, items:{<URLの物件ID>:{total(支払総額・円), year, mileage(km), color, restoration('あり'\|'なし'), url, fetchedAt}}}`。毎朝、自社分だけでノード全体を置き換える(書き込み元はスクレイピングのみ)。車台番号を持たないため、ads.html は 支払総額・年式・走行距離・色 の4項目でカーセンサーの行と突き合わせ、修復歴の「候補」として表示する(優先順位: 手動設定 > グーネット > このノード。manualShufuku へ自動で書き込まない) |
 | `newsLog` | car-app | ハブ・pricing.html(新規登録の通知) | - | 変更履歴(car-appが3ヶ月より古いものを自動削除) |
 | `inspections`, `inspectionPhotos`, `loanHistories` | car-app | - | - | car-app専用(点検シート・貸出履歴) |
 | `listings`, `listingPhotos` | (廃止) | - | car-app(読取・削除のみ) | v1.90で廃止した旧方式の残り |
